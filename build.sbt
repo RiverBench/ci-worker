@@ -13,4 +13,14 @@ lazy val root = (project in file("."))
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
     ),
+
+    // Discard module-info.class files
+    // Just Java Things (tm), I guess
+    assembly / assemblyMergeStrategy := {
+      case PathList("module-info.class") => MergeStrategy.discard
+      case PathList("META-INF", xs@_*) => MergeStrategy.discard
+      case PathList("reference.conf") => MergeStrategy.concat
+      case _ => MergeStrategy.first
+    },
+    assembly / assemblyOutputPath := file("target/assembly/ci-worker-assembly.jar"),
   )

@@ -11,5 +11,5 @@ object HelpCommand extends Command:
   override def run(args: Array[String]): Unit =
     println("Available commands:")
     Command.commands.foreach { command =>
-      println(s"  ${command.name} - ${command.description}")
+      println(s"  ${command.name} - ${command.description}\n")
     }
