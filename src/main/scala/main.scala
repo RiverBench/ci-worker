@@ -1,6 +1,8 @@
 package io.github.riverbench.ci_worker
 
+import commands.Command
+
 @main
-def main(): Unit = {
-  println("Hello world!")
-}
+def main(args: String*): Unit =
+  Command.runCommand(args.toArray)
+
