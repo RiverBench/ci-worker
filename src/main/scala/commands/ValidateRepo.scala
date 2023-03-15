@@ -1,6 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
+import io.github.riverbench.ci_worker.util.ArchiveReader
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -12,6 +13,8 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
 object ValidateRepo extends Command:
+  case class MetadataInfo(elementType: String = "", elementCount: Int = 0)
+
   override def name = "validate-repo"
 
   override def description = "Validates the dataset repository.\n" +
@@ -39,10 +42,10 @@ object ValidateRepo extends Command:
     else
       println("Directory structure is valid.")
 
-    val metadataInspectionResult = validateMetadata(repoDir, shaclFile)
-    if metadataInspectionResult.nonEmpty then
+    val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile)
+    if metadataErrors.nonEmpty then
       println("Metadata is invalid:")
-      metadataInspectionResult.foreach(println)
+      metadataErrors.foreach(println)
       System.exit(1)
     else
       println("Metadata is valid.")
@@ -73,7 +76,7 @@ object ValidateRepo extends Command:
 
     errors.toSeq
 
-  private def validateMetadata(repoDir: Path, shaclFile: Path): Seq[String] =
+  private def validateMetadata(repoDir: Path, shaclFile: Path): (Seq[String], MetadataInfo) =
     val errors = mutable.ArrayBuffer[String]()
 
     def loadRdf(p: Path): Model = try
@@ -86,12 +89,12 @@ object ValidateRepo extends Command:
     val model: Model = loadRdf(repoDir.resolve("metadata.ttl"))
     val shacl: Model = loadRdf(shaclFile)
     if errors.nonEmpty then
-      return errors.toSeq
+      return (errors.toSeq, MetadataInfo())
 
     val shapes = Shapes.parse(shacl)
     if shapes.numShapes() == 0 then
       errors += "No shapes found in SHACL file."
-      return errors.toSeq
+      return (errors.toSeq, MetadataInfo())
 
     val report = ShaclValidator.get().validate(shapes, model.getGraph)
 
@@ -100,7 +103,7 @@ object ValidateRepo extends Command:
       val buffer = new ByteArrayOutputStream()
       ShLib.printReport(buffer, report)
       errors ++= buffer.toString("utf-8").split("\n").map("  " + _)
-      return errors.toSeq
+      return (errors.toSeq, MetadataInfo())
 
     // Check if the data file exists for the specified stream element type
     val rb = "https://riverbench.github.io/schema/dataset#"
@@ -109,11 +112,19 @@ object ValidateRepo extends Command:
 
     if types.length != 1 then
       errors += s"Exactly one stream element type must be specified. There are ${types.length}."
-      return errors.toSeq
+      return (errors.toSeq, MetadataInfo())
 
     val streamType = types.head.asResource.getURI.split('#').last
     val dataFile = repoDir.resolve("data").resolve(streamType + ".tar.gz")
     if !Files.exists(dataFile) then
       errors += s"Data file does not exist: $dataFile"
 
-    errors.toSeq
+    (errors.toSeq, MetadataInfo())
+
+  private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
+    val dataFile = ArchiveReader.findDataFile(repoDir)
+    // TODO
+    // we'll need to force the files in the tar to be stored in order...
+
+    ArchiveReader.read(dataFile).map(_ => Seq.empty)
+    Seq()
