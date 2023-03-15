@@ -1,6 +1,12 @@
 package io.github.riverbench.ci_worker
 package commands
 
+import org.apache.commons.io.output.ByteArrayOutputStream
+import org.apache.jena.rdf.model.{Model, ModelFactory}
+import org.apache.jena.riot.RDFDataMgr
+import org.apache.jena.shacl.lib.ShLib
+import org.apache.jena.shacl.{ShaclValidator, Shapes}
+
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
@@ -33,6 +39,14 @@ object ValidateRepo extends Command:
     else
       println("Directory structure is valid.")
 
+    val metadataInspectionResult = validateMetadata(repoDir, shaclFile)
+    if metadataInspectionResult.nonEmpty then
+      println("Metadata is invalid:")
+      metadataInspectionResult.foreach(println)
+      System.exit(1)
+    else
+      println("Metadata is valid.")
+
   private def validateDirectoryStructure(repoDir: Path): Seq[String] =
     val files = Files.walk(repoDir).iterator().asScala.toSeq
 
@@ -52,10 +66,40 @@ object ValidateRepo extends Command:
     if datasetSources != 1 then
       errors += s"Exactly one dataset source must be present. There are $datasetSources."
 
-    // TODO: check for .github
-    errors ++= Seq("LICENSE", "README.md", "metadata.ttl")
+    errors ++= Seq("LICENSE", "README.md", "metadata.ttl", ".github/workflows/ci.yaml")
       .map(repoDir.resolve)
       .filter(f => !files.contains(f))
       .map(f => s"Missing file: $f")
 
     errors.toSeq
+
+  private def validateMetadata(repoDir: Path, shaclFile: Path): Seq[String] =
+    val errors = mutable.ArrayBuffer[String]()
+
+    def loadRdf(p: Path): Model = try
+      RDFDataMgr.loadModel(p.toString)
+    catch
+      case e: Exception =>
+        errors += s"Could not parse $p: ${e.getMessage}"
+        ModelFactory.createDefaultModel()
+
+    val model: Model = loadRdf(repoDir.resolve("metadata.ttl"))
+    val shacl: Model = loadRdf(shaclFile)
+    if errors.nonEmpty then
+      return errors.toSeq
+
+    val shapes = Shapes.parse(shacl)
+    if shapes.numShapes() == 0 then
+      errors += "No shapes found in SHACL file."
+      return errors.toSeq
+
+    val report = ShaclValidator.get().validate(shapes, model.getGraph)
+
+    if !report.conforms() then
+      errors += "Metadata does not conform to SHACL shapes"
+      val buffer = new ByteArrayOutputStream()
+      ShLib.printReport(buffer, report)
+      errors ++= buffer.toString("utf-8").split("\n").map("  " + _)
+
+    errors.toSeq
+

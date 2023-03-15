@@ -1,7 +1,7 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.2.2"
 
-lazy val jenaV = "4.6.1"
+lazy val jenaV = "4.7.0"
 
 lazy val root = (project in file("."))
   .settings(
@@ -12,6 +12,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
+      "org.apache.jena" % "jena-shacl" % jenaV,
     ),
 
     // Discard module-info.class files
