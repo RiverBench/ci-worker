@@ -9,7 +9,7 @@ WORKDIR /app
 RUN sbt assembly
 
 # Create the final image
-FROM ghcr.io/graalvm/jdk:ol8-java17-22.3.0-b2
+FROM eclipse-temurin:19-jre-jammy
 MAINTAINER "Piotr Sowiński <piotr.sowinski@ibspan.waw.pl>"
 
 # Copy the executable jar
