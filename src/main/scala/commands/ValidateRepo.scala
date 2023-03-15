@@ -100,6 +100,20 @@ object ValidateRepo extends Command:
       val buffer = new ByteArrayOutputStream()
       ShLib.printReport(buffer, report)
       errors ++= buffer.toString("utf-8").split("\n").map("  " + _)
+      return errors.toSeq
+
+    // Check if the data file exists for the specified stream element type
+    val rb = "https://riverbench.github.io/schema/dataset#"
+    val types = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementType"))
+      .asScala.toSeq
+
+    if types.length != 1 then
+      errors += s"Exactly one stream element type must be specified. There are ${types.length}."
+      return errors.toSeq
+
+    val streamType = types.head.asResource.getURI.split('#').last
+    val dataFile = repoDir.resolve("data").resolve(streamType + ".tar.gz")
+    if !Files.exists(dataFile) then
+      errors += s"Data file does not exist: $dataFile"
 
     errors.toSeq
-
