@@ -14,6 +14,8 @@ MAINTAINER "Piotr Sowiński <piotr.sowinski@ibspan.waw.pl>"
 
 # Copy the executable jar
 COPY --from=builder /app/target/assembly/ci-worker-assembly.jar /app/
+COPY bin/ci-worker /usr/local/bin/ci-worker
+RUN chmod +x /usr/local/bin/ci-worker
 
-WORKDIR /app
-ENTRYPOINT ["java", "-jar", "ci-worker-assembly.jar"]
+WORKDIR /worker
+ENTRYPOINT []
