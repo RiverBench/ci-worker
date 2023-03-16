@@ -1,6 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
+import akka.stream.scaladsl.Sink
 import io.github.riverbench.ci_worker.util.ArchiveReader
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
@@ -10,10 +11,12 @@ import org.apache.jena.shacl.{ShaclValidator, Shapes}
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
 object ValidateRepo extends Command:
-  case class MetadataInfo(elementType: String = "", elementCount: Int = 0)
+  private case class MetadataInfo(elementType: String = "", elementCount: Int = 0)
 
   override def name = "validate-repo"
 
@@ -49,6 +52,14 @@ object ValidateRepo extends Command:
       System.exit(1)
     else
       println("Metadata is valid.")
+
+    val packageErrors = validatePackage(repoDir, metadataInfo)
+    if packageErrors.nonEmpty then
+      println("Package is invalid:")
+      packageErrors.foreach(println)
+      System.exit(1)
+    else
+      println("Package is valid.")
 
   private def validateDirectoryStructure(repoDir: Path): Seq[String] =
     val files = Files.walk(repoDir).iterator().asScala.toSeq
@@ -119,12 +130,49 @@ object ValidateRepo extends Command:
     if !Files.exists(dataFile) then
       errors += s"Data file does not exist: $dataFile"
 
-    (errors.toSeq, MetadataInfo())
+    (errors.toSeq, MetadataInfo(
+      streamType,
+      model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementCount"))
+        .asScala.toSeq.head.asLiteral.getInt
+    ))
 
   private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
+    // TODO: test it
     val dataFile = ArchiveReader.findDataFile(repoDir)
-    // TODO
-    // we'll need to force the files in the tar to be stored in order...
 
-    ArchiveReader.read(dataFile).map(_ => Seq.empty)
-    Seq()
+    val filesFuture = ArchiveReader.read(dataFile)
+      .map((name, byteStream) => {
+        byteStream.runWith(Sink.ignore)
+        name.split('/').last
+      })
+      .runWith(Sink.seq)
+
+    val files = Await.result(filesFuture, Duration.Inf)
+
+    if files.isEmpty then
+      Seq("No files found in data archive.")
+    else if files.length != metadataInfo.elementCount then
+      Seq(s"Number of files in data archive (${files.length}) does not match" +
+        s" the number of elements specified in metadata (${metadataInfo.elementCount}).")
+    else
+      val errors = files
+        .map(_.split('.').head.toInt)
+        .sliding(2)
+        .flatMap(s => if s.head + 1 != s(1) then Some(s"Missing file: ${s.head + 1}") else None)
+        .take(10).toSeq
+
+      if errors.nonEmpty then
+        errors
+      else
+        files.flatMap(f => {
+          val extension = f.split('.').last
+          if metadataInfo.elementType == "triples" then
+            if extension != "ttl" then
+              Some(s"File name does not match the specified stream element type: $f")
+            else
+              None
+          else if extension != "trig" then
+            Some(s"File name does not match the specified stream element type: $f")
+          else
+            None
+        }).take(10)
