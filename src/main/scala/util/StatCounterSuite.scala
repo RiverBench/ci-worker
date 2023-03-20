@@ -2,7 +2,9 @@ package io.github.riverbench.ci_worker
 package util
 
 import org.apache.jena.query.Dataset
+import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.sparql.core.DatasetGraph
+import org.apache.jena.vocabulary.RDF
 
 import scala.::
 import scala.collection.mutable
@@ -10,11 +12,35 @@ import scala.jdk.CollectionConverters.*
 
 object StatCounterSuite:
   case class Result(iris: StatCounter.Result, blankNodes: StatCounter.Result, literals: StatCounter.Result,
-                    simpleLiterals: StatCounter.Result, dtLiterals: StatCounter.Result,
+                    plainLiterals: StatCounter.Result, dtLiterals: StatCounter.Result,
                     langLiterals: StatCounter.Result, quotedTriples: StatCounter.Result,
                     subjects: StatCounter.Result, predicates: StatCounter.Result,
                     objects: StatCounter.Result, graphs: StatCounter.Result,
-                    statements: StatCounter.Result)
+                    statements: StatCounter.Result):
+
+    def addToRdf(distRes: Resource): Unit =
+      val m = distRes.getModel
+      val toAdd = Seq(
+        "IriCountStatistics" -> iris,
+        "BlankNodeCountStatistics" -> blankNodes,
+        "LiteralCountStatistics" -> literals,
+        "PlainLiteralCountStatistics" -> plainLiterals,
+        "DatatypeLiteralCountStatistics" -> dtLiterals,
+        "LanguageLiteralCountStatistics" -> langLiterals,
+        "QuotedTripleCountStatistics" -> quotedTriples,
+        "SubjectCountStatistics" -> subjects,
+        "PredicateCountStatistics" -> predicates,
+        "ObjectCountStatistics" -> objects,
+        "GraphCountStatistics" -> graphs,
+        "StatementCountStatistics" -> statements
+      )
+
+      toAdd.foreach((name, stat) => {
+        val statRes = m.createResource()
+        statRes.addProperty(RDF.`type`, m.createResource(RdfUtil.pRb + name))
+        stat.addToRdf(statRes)
+        distRes.addProperty(RdfUtil.hasStatistics, statRes)
+      })
 
 /**
  * A set of stat counters for a stream.
@@ -25,12 +51,12 @@ class StatCounterSuite(val size: Long):
 
   // A bad heuristic: 10x the size of the stream is assumed to be the number of elements in the bloom filters
   private val cIris = new StatCounter[String](10 * size)
-  private val cBlankNodes = new StatCounter[String](10 * size)
   private val cLiterals = new StatCounter[String](10 * size)
-  private val cSimpleLiterals = new StatCounter[String](10 * size)
+  private val cPlainLiterals = new StatCounter[String](10 * size)
   private val cDtLiterals = new StatCounter[String](10 * size)
   private val cLangLiterals = new StatCounter[String](10 * size)
 
+  private val cBlankNodes = new LightStatCounter[String]()
   private val cQuotedTriples = new LightStatCounter[String]()
 
   private val cSubjects = new LightStatCounter[String]()
@@ -48,7 +74,7 @@ class StatCounterSuite(val size: Long):
     val iris = mutable.Set[String]()
     val blankNodes = mutable.Set[String]()
     val literals = mutable.Set[String]()
-    val simpleLiterals = mutable.Set[String]()
+    val plainliterals = mutable.Set[String]()
     val dtLiterals = mutable.Set[String]()
     val langLiterals = mutable.Set[String]()
     var quotedTripleCount = 0
@@ -76,7 +102,7 @@ class StatCounterSuite(val size: Long):
         else if n.getLiteralDatatypeURI != null then
           dtLiterals += lit
         else
-          simpleLiterals += n.getLiteralLexicalForm
+          plainliterals += n.getLiteralLexicalForm
       else if n.isNodeTriple then
         // isomorphism in RDF-star is a pain...
         quotedTripleCount += 1
@@ -85,7 +111,7 @@ class StatCounterSuite(val size: Long):
     cIris.addUnique(iris)
     cBlankNodes.addUnique(blankNodes)
     cLiterals.addUnique(literals)
-    cSimpleLiterals.addUnique(simpleLiterals)
+    cPlainLiterals.addUnique(plainliterals)
     cDtLiterals.addUnique(dtLiterals)
     cLangLiterals.addUnique(langLiterals)
 
@@ -97,6 +123,6 @@ class StatCounterSuite(val size: Long):
     cStatements.lightAdd(stCount)
 
   def result: StatCounterSuite.Result =
-    StatCounterSuite.Result(cIris.result, cBlankNodes.result, cLiterals.result, cSimpleLiterals.result,
+    StatCounterSuite.Result(cIris.result, cBlankNodes.result, cLiterals.result, cPlainLiterals.result,
       cDtLiterals.result, cLangLiterals.result, cQuotedTriples.result, cSubjects.result,
       cPredicates.result, cObjects.result, cGraphs.result, cStatements.result)

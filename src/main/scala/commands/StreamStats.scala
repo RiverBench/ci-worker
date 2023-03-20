@@ -7,6 +7,7 @@ import akka.stream.scaladsl.*
 import util.{ArchiveReader, Constants, MetadataInfo, MetadataReader, StatCounterSuite}
 
 import org.apache.jena.query.DatasetFactory
+import org.apache.jena.rdf.model.ModelFactory
 import org.apache.jena.riot.{Lang, RDFParser}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
 
@@ -64,8 +65,13 @@ object StreamStats extends Command:
 
     Await.result(statFuture, scala.concurrent.duration.Duration.Inf)
       .foreach((num, stats) => {
+        val m = ModelFactory.createDefaultModel()
+        stats.addToRdf(m.createResource())
+
         println(s"Package $num")
-        println(stats)
+        println("===========")
+        m.write(System.out, "TURTLE")
+        println()
         println()
       })
 

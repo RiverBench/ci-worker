@@ -2,13 +2,23 @@ package io.github.riverbench.ci_worker
 package util
 
 import com.google.common.hash.{BloomFilter, Funnel, PrimitiveSink}
+import org.apache.jena.datatypes.xsd.XSDDatatype.*
+import org.apache.jena.graph.NodeFactory
+import org.apache.jena.rdf.model.{Model, Resource}
 
 import java.util
 
 //noinspection UnstableApiUsage
 object StatCounter:
-  case class Result(count: Long, sum: Long, mean: Double, stDev: Double, min: Long, max: Long,
-                    uniqueCount: Option[Long])
+  case class Result(sum: Long, mean: Double, stDev: Double, min: Long, max: Long,
+                    uniqueCount: Option[Long]):
+    def addToRdf(statRes: Resource): Unit =
+      statRes.addProperty(RdfUtil.sum, sum.toString, XSDinteger)
+      statRes.addProperty(RdfUtil.mean, mean.toString, XSDdouble)
+      statRes.addProperty(RdfUtil.stDev, stDev.toString, XSDdouble)
+      statRes.addProperty(RdfUtil.minimum, min.toString, XSDinteger)
+      statRes.addProperty(RdfUtil.maximum, max.toString, XSDinteger)
+      uniqueCount.foreach(c => statRes.addProperty(RdfUtil.uniqueCount, c.toString, XSDinteger))
 
   implicit val stringFunnel: Funnel[String] =
     (from: String, into: PrimitiveSink) => into.putBytes(from.getBytes)
@@ -39,7 +49,7 @@ class LightStatCounter[T]:
   def result: Result = this.synchronized {
     val mean = sum.toDouble / count
     val stDev = Math.sqrt(sumSq.toDouble / count - mean * mean)
-    Result(count, sum, mean, stDev, min, max, None)
+    Result(sum, mean, stDev, min, max, None)
   }
 
 //noinspection UnstableApiUsage
