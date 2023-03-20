@@ -42,24 +42,26 @@ object ValidateRepo extends Command:
       println("Directory structure is invalid:")
       dirInspectionResult.foreach(println)
       System.exit(1)
-    else
-      println("Directory structure is valid.")
+
+    println("Directory structure is valid.")
 
     val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile)
     if metadataErrors.nonEmpty then
       println("Metadata is invalid:")
       metadataErrors.foreach(println)
       System.exit(1)
-    else
-      println("Metadata is valid.")
+
+    println("Metadata is valid.")
+    println("Stream element type: " + metadataInfo.elementType)
+    println("Stream element count: " + metadataInfo.elementCount)
 
     val packageErrors = validatePackage(repoDir, metadataInfo)
     if packageErrors.nonEmpty then
       println("Package is invalid:")
       packageErrors.foreach(println)
       System.exit(1)
-    else
-      println("Package is valid.")
+
+    println("Package is valid.")
 
   private def validateDirectoryStructure(repoDir: Path): Seq[String] =
     val files = Files.walk(repoDir).iterator().asScala.toSeq
@@ -137,7 +139,6 @@ object ValidateRepo extends Command:
     ))
 
   private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
-    // TODO: test it
     val dataFile = ArchiveReader.findDataFile(repoDir)
 
     val filesFuture = ArchiveReader.read(dataFile)

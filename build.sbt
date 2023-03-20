@@ -15,6 +15,7 @@ lazy val root = (project in file("."))
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,
+      "com.google.guava" % "guava" % "31.1-jre",
     ),
 
     // Packages available only with Scala 2.13
@@ -33,4 +34,7 @@ lazy val root = (project in file("."))
       case _ => MergeStrategy.first
     },
     assembly / assemblyOutputPath := file("target/assembly/ci-worker-assembly.jar"),
+
+    // emit deprecated warnings
+    scalacOptions ++= Seq("-deprecation"),
   )
