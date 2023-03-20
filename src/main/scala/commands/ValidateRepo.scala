@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import akka.stream.scaladsl.Sink
-import io.github.riverbench.ci_worker.util.ArchiveReader
+import io.github.riverbench.ci_worker.util.{ArchiveReader, MetadataInfo, MetadataReader}
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -16,8 +16,6 @@ import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
 object ValidateRepo extends Command:
-  private case class MetadataInfo(elementType: String = "", elementCount: Int = 0)
-
   override def name = "validate-repo"
 
   override def description = "Validates the dataset repository.\n" +
@@ -118,25 +116,14 @@ object ValidateRepo extends Command:
       errors ++= buffer.toString("utf-8").split("\n").map("  " + _)
       return (errors.toSeq, MetadataInfo())
 
+    val mi = MetadataReader.read(repoDir)
+
     // Check if the data file exists for the specified stream element type
-    val rb = "https://riverbench.github.io/schema/dataset#"
-    val types = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementType"))
-      .asScala.toSeq
-
-    if types.length != 1 then
-      errors += s"Exactly one stream element type must be specified. There are ${types.length}."
-      return (errors.toSeq, MetadataInfo())
-
-    val streamType = types.head.asResource.getURI.split('#').last
-    val dataFile = repoDir.resolve("data").resolve(streamType + ".tar.gz")
+    val dataFile = repoDir.resolve("data").resolve(mi.elementType + ".tar.gz")
     if !Files.exists(dataFile) then
       errors += s"Data file does not exist: $dataFile"
 
-    (errors.toSeq, MetadataInfo(
-      streamType,
-      model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementCount"))
-        .asScala.toSeq.head.asLiteral.getInt
-    ))
+    (errors.toSeq, mi)
 
   private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
     val dataFile = ArchiveReader.findDataFile(repoDir)

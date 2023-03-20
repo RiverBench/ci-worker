@@ -16,15 +16,20 @@ object StatCounterSuite:
                     objects: StatCounter.Result, graphs: StatCounter.Result,
                     statements: StatCounter.Result)
 
+/**
+ * A set of stat counters for a stream.
+ * @param size expected size of the stream – used to allocate bloom filters
+ */
 class StatCounterSuite(val size: Long):
   import StatCounter.*
 
-  private val cIris = new StatCounter[String](size)
-  private val cBlankNodes = new StatCounter[String](size)
-  private val cLiterals = new StatCounter[String](size)
-  private val cSimpleLiterals = new StatCounter[String](size)
-  private val cDtLiterals = new StatCounter[String](size)
-  private val cLangLiterals = new StatCounter[String](size)
+  // A bad heuristic: 10x the size of the stream is assumed to be the number of elements in the bloom filters
+  private val cIris = new StatCounter[String](10 * size)
+  private val cBlankNodes = new StatCounter[String](10 * size)
+  private val cLiterals = new StatCounter[String](10 * size)
+  private val cSimpleLiterals = new StatCounter[String](10 * size)
+  private val cDtLiterals = new StatCounter[String](10 * size)
+  private val cLangLiterals = new StatCounter[String](10 * size)
 
   private val cQuotedTriples = new LightStatCounter[String]()
 
