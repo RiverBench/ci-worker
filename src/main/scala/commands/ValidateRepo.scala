@@ -117,6 +117,7 @@ object ValidateRepo extends Command:
       return (errors.toSeq, MetadataInfo())
 
     val mi = MetadataReader.read(repoDir)
+    errors ++= mi.conformance.checkConsistency()
 
     // Check if the data file exists for the specified stream element type
     val dataFile = repoDir.resolve("data").resolve(mi.elementType + ".tar.gz")

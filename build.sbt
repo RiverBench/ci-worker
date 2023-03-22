@@ -4,6 +4,7 @@ ThisBuild / scalaVersion := "3.2.2"
 lazy val akkaV = "2.6.19"
 lazy val alpakkaV = "3.0.4"
 lazy val jenaV = "4.7.0"
+lazy val rdf4jV = "4.2.3"
 
 lazy val root = (project in file("."))
   .settings(
@@ -12,10 +13,13 @@ lazy val root = (project in file("."))
 
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
+      "com.google.guava" % "guava" % "31.1-jre",
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,
-      "com.google.guava" % "guava" % "31.1-jre",
+      "org.eclipse.rdf4j" % "rdf4j-model" % rdf4jV,
+      "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % rdf4jV,
+      "org.eclipse.rdf4j" % "rdf4j-rio-trig" % rdf4jV,
     ),
 
     // Packages available only with Scala 2.13
