@@ -9,8 +9,8 @@ import scala.concurrent.ExecutionContext
 object Command:
   val commands: Seq[Command] = Seq(
     HelpCommand,
-    ValidateRepo,
-    StreamStats,
+    ValidateRepoCommand,
+    StreamStatsCommand,
   )
 
   def getCommand(name: Option[String]): Command =

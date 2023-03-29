@@ -14,8 +14,8 @@ object StatCounter:
                     uniqueCount: Option[Long]):
     def addToRdf(statRes: Resource): Unit =
       statRes.addProperty(RdfUtil.sum, sum.toString, XSDinteger)
-      statRes.addProperty(RdfUtil.mean, mean.toString, XSDdouble)
-      statRes.addProperty(RdfUtil.stDev, stDev.toString, XSDdouble)
+      statRes.addProperty(RdfUtil.mean, mean.toString, XSDdecimal)
+      statRes.addProperty(RdfUtil.stDev, stDev.toString, XSDdecimal)
       statRes.addProperty(RdfUtil.minimum, min.toString, XSDinteger)
       statRes.addProperty(RdfUtil.maximum, max.toString, XSDinteger)
       uniqueCount.foreach(c => statRes.addProperty(RdfUtil.uniqueCount, c.toString, XSDinteger))

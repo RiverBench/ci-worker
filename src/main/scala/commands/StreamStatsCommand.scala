@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import akka.stream.{IOResult, SubstreamCancelStrategy}
+import akka.stream.{IOResult, OverflowStrategy, SubstreamCancelStrategy}
 import akka.{Done, NotUsed}
 import akka.stream.scaladsl.*
 import util.*
@@ -11,19 +11,21 @@ import org.apache.jena.rdf.model.ModelFactory
 import org.apache.jena.riot.system.ErrorHandlerFactory
 import org.apache.jena.riot.{Lang, RDFParser}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
+import org.eclipse.rdf4j.model.vocabulary.XSD
 import org.eclipse.rdf4j.rio
 
-import java.io.{ByteArrayInputStream, InputStream}
+import java.io.{ByteArrayInputStream, FileOutputStream, InputStream}
 import java.nio.file.FileSystems
 import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters.*
 
-object StreamStats extends Command:
+object StreamStatsCommand extends Command:
   override def name: String = "stream-stats"
 
-  override def description = "..."
+  override def description = "Computes statistics for a streamed variant of the dataset.\n" +
+    "Args: <repo-dir>"
 
-  override def validateArgs(args: Array[String]) = true
+  override def validateArgs(args: Array[String]) = args.length == 2
 
   override def run(args: Array[String]): Unit =
     val repoDir = FileSystems.getDefault.getPath(args(1))
@@ -66,9 +68,12 @@ object StreamStats extends Command:
         ds
       })
       .zipWithIndex
+      .buffer(100, OverflowStrategy.backpressure)
       .grouped(25)
       .splitAfter(SubstreamCancelStrategy.propagate)(datasets =>
-        Constants.packageSizes.contains(datasets.last._2 + 1)
+        val shouldSplit = Constants.packageSizes.contains(datasets.last._2 + 1)
+        if shouldSplit then println(s"Splitting stream at ${datasets.last._2 + 1}")
+        shouldSplit
       )
       .mapAsync(3) { datasets => Future {
         for (ds, num) <- datasets do
@@ -83,18 +88,24 @@ object StreamStats extends Command:
       .concatSubstreams
       .runWith(Sink.seq)
 
+    val m = ModelFactory.createDefaultModel()
+    m.setNsPrefix("rb", RdfUtil.pRb)
+    m.setNsPrefix("dcat", RdfUtil.pDcat)
+    m.setNsPrefix("xsd", XSD.NAMESPACE)
+    val datasetRes = m.createResource(RdfUtil.pTemp + "dataset")
+
     Await.result(statFuture, scala.concurrent.duration.Duration.Inf)
       .foreach((num, stats) => {
-        val m = ModelFactory.createDefaultModel()
-        stats.addToRdf(m.createResource())
-
-        println(s"Package $num")
-        println("===========")
-        m.write(System.out, "TURTLE")
-        println()
-        println()
+        val distRes = m.createResource()
+        datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
+        stats.addToRdf(distRes, metadata, num, false)
       })
 
+    val statsFile = repoDir.resolve("temp_stats.ttl").toFile
+    val os = new FileOutputStream(statsFile)
+
+    m.write(os, "TURTLE")
+    println("Done.")
 
   private def checkStructure(metadata: MetadataInfo, ds: DatasetGraph): Option[String] =
     if metadata.elementType == "triples" then

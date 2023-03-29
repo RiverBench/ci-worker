@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import akka.stream.scaladsl.Sink
-import io.github.riverbench.ci_worker.util.{ArchiveReader, MetadataInfo, MetadataReader}
+import util.{ArchiveReader, MetadataInfo, MetadataReader}
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -15,7 +15,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
-object ValidateRepo extends Command:
+object ValidateRepoCommand extends Command:
   override def name = "validate-repo"
 
   override def description = "Validates the dataset repository.\n" +

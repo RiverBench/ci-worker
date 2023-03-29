@@ -1,6 +1,7 @@
 package io.github.riverbench.ci_worker
 package util
 
+import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.query.Dataset
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.sparql.core.DatasetGraph
@@ -18,7 +19,7 @@ object StatCounterSuite:
                     objects: StatCounter.Result, graphs: StatCounter.Result,
                     statements: StatCounter.Result):
 
-    def addToRdf(distRes: Resource): Unit =
+    def addToRdf(distRes: Resource, mi: MetadataInfo, size: Long, flat: Boolean): Unit =
       val m = distRes.getModel
       val toAdd = Seq(
         "IriCountStatistics" -> iris,
@@ -35,6 +36,36 @@ object StatCounterSuite:
         "StatementCountStatistics" -> statements
       )
 
+      // Info about the distribution
+      // Media type, byte size, link, checksum are added separately by the packaging pipeline
+      distRes.addProperty(RDF.`type`, RdfUtil.Distribution)
+      distRes.addProperty(RDF.`type`, RdfUtil.DcatDistribution)
+
+      val sizeString = if size == mi.elementCount then
+        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.fullDistribution)
+        "Full"
+      else
+        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.partialDistribution)
+        Constants.packageSizeToHuman(size) + " elements"
+
+      if flat then
+        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.flatDistribution)
+        distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString flat distribution")
+      else
+        mi.elementType match
+          case "graphs" =>
+            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.graphStreamDistribution)
+            distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString graph stream distribution")
+          case "triples" =>
+            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.tripleStreamDistribution)
+            distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString triple stream distribution")
+          case "quads" =>
+            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.quadStreamDistribution)
+            distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString quad stream distribution")
+
+      distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
+
+      // Stats
       toAdd.foreach((name, stat) => {
         val statRes = m.createResource()
         statRes.addProperty(RDF.`type`, m.createResource(RdfUtil.pRb + name))
