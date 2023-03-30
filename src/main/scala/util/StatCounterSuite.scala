@@ -19,7 +19,8 @@ object StatCounterSuite:
                     objects: StatCounter.Result, graphs: StatCounter.Result,
                     statements: StatCounter.Result):
 
-    def addToRdf(distRes: Resource, mi: MetadataInfo, size: Long, flat: Boolean): Unit =
+    def addToRdf(distRes: Resource, mi: MetadataInfo, size: Long, flat: Boolean):
+    Unit =
       val m = distRes.getModel
       val toAdd = Seq(
         "IriCountStatistics" -> iris,

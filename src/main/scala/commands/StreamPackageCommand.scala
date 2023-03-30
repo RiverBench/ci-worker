@@ -1,12 +1,13 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{ArchiveHelper, Constants, MetadataReader}
+import util.{Constants, MetadataReader}
 
 import akka.NotUsed
 import akka.stream.alpakka.file.TarArchiveMetadata
 import akka.stream.scaladsl.*
 import akka.util.ByteString
+import io.github.riverbench.ci_worker.util.io.FileHelper
 
 import java.nio.file.FileSystems
 import scala.concurrent.Await

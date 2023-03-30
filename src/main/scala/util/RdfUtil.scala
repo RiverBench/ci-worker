@@ -9,12 +9,12 @@ object RdfUtil:
 
   // Prefix for RiverBench
   val pRb = "https://riverbench.github.io/schema/dataset#"
-
   // Prefix for temporary resources
   val pTemp = "https://riverbench.github.io/temp#"
-
   // Prefix for DCAT
   val pDcat = "http://www.w3.org/ns/dcat#"
+  // Prefix for SPDX
+  val pSpdx = "http://spdx.org/rdf/terms#"
 
   // Properties
   val maximum = m.createProperty(pRb, "maximum")
@@ -30,10 +30,20 @@ object RdfUtil:
 
   val dcatDistribution = m.createProperty(pDcat, "distribution")
   val dcatTitle = m.createProperty(pDcat, "title")
+  val dcatByteSize = m.createProperty(pDcat, "byteSize")
+  val dcatMediaType = m.createProperty(pDcat, "mediaType")
+  val dcatCompressFormat = m.createProperty(pDcat, "compressFormat")
+  val dcatPackageFormat = m.createProperty(pDcat, "packageFormat")
+  val dcatDownloadURL = m.createProperty(pDcat, "downloadURL")
+
+  val spdxChecksum = m.createProperty(pSpdx, "checksum")
+  val spdxAlgorithm = m.createProperty(pSpdx, "algorithm")
+  val spdxChecksumValue = m.createProperty(pSpdx, "checksumValue")
 
   // Classes
   val Distribution = m.createResource(pRb + "Distribution")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
+  val SpdxChecksum = m.createResource(pSpdx + "Checksum")
 
   // Instances
   val partialDistribution = m.createResource(pRb + "partialDistribution")
@@ -42,3 +52,6 @@ object RdfUtil:
   val quadStreamDistribution = m.createResource(pRb + "quadStreamDistribution")
   val graphStreamDistribution = m.createResource(pRb + "graphStreamDistribution")
   val flatDistribution = m.createResource(pRb + "flatDistribution")
+
+  val spdxChecksumAlgorithmSha1 = m.createResource(pSpdx + "checksumAlgorithm_sha1")
+  val spdxChecksumAlgorithmMd5 = m.createResource(pSpdx + "checksumAlgorithm_md5")

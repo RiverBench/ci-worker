@@ -2,7 +2,8 @@ package io.github.riverbench.ci_worker
 package commands
 
 import akka.stream.scaladsl.Sink
-import util.{ArchiveHelper, MetadataInfo, MetadataReader}
+import util.{MetadataInfo, MetadataReader}
+import io.github.riverbench.ci_worker.util.io.FileHelper
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -127,9 +128,9 @@ object ValidateRepoCommand extends Command:
     (errors.toSeq, mi)
 
   private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
-    val dataFile = ArchiveHelper.findDataFile(repoDir)
+    val dataFile = FileHelper.findDataFile(repoDir)
 
-    val filesFuture = ArchiveHelper.read(dataFile)
+    val filesFuture = FileHelper.readArchive(dataFile)
       .map((tarMeta, byteStream) => {
         byteStream.runWith(Sink.ignore)
         tarMeta.filePath.split('/').last

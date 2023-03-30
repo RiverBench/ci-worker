@@ -5,11 +5,12 @@ import akka.stream.*
 import akka.{Done, NotUsed}
 import akka.stream.scaladsl.*
 import util.*
+import util.io.*
 
 import akka.stream.alpakka.file.TarArchiveMetadata
 import akka.util.ByteString
 import org.apache.jena.query.DatasetFactory
-import org.apache.jena.rdf.model.ModelFactory
+import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.system.ErrorHandlerFactory
 import org.apache.jena.riot.{Lang, RDFDataMgr, RDFParser, RDFWriter}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
@@ -22,6 +23,8 @@ import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters.*
 
 object StreamStatsCommand extends Command:
+  private case class PartialResult(size: Long, stats: StatCounterSuite.Result, streamRes: SaveResult)
+
   override def name: String = "stream-stats"
 
   override def description = "Packages a dataset.\n" +
@@ -32,7 +35,7 @@ object StreamStatsCommand extends Command:
   override def run(args: Array[String]): Unit =
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val outDir = FileSystems.getDefault.getPath(args(2))
-    val dataFile = ArchiveHelper.findDataFile(repoDir)
+    val dataFile = FileHelper.findDataFile(repoDir)
     val metadata = MetadataReader.read(repoDir)
     val stats = new StatCounterSuite(metadata.elementCount)
     val packages = Constants.packageSizes
@@ -42,13 +45,14 @@ object StreamStatsCommand extends Command:
 
     val sinkStats = Sink.seq[(Long, StatCounterSuite.Result)]
     val sinkStreamPackage = packageStreamSink(metadata, outDir, packages)
+    val sinkChecks = Sink.ignore
 
-    val g = RunnableGraph.fromGraph(GraphDSL.createGraph(sinkStats, sinkStreamPackage)
-    ((_, _))
+    val g = RunnableGraph.fromGraph(GraphDSL.createGraph(sinkStats, sinkStreamPackage, sinkChecks)
+    ((_, _, _))
     { implicit builder =>
-      (sStats, sStreamPackage) =>
+      (sStats, sStreamPackage, sChecks) =>
       import GraphDSL.Implicits.*
-      val in = ArchiveHelper.read(dataFile)
+      val in = FileHelper.readArchive(dataFile)
         .mapAsync(1)((name, byteStream) => {
           byteStream
             .runFold(String())((acc, bs) => acc + bs.utf8String)
@@ -59,37 +63,39 @@ object StreamStatsCommand extends Command:
         .zipWithIndex
         .buffer(50, OverflowStrategy.backpressure)
       val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](4))
+      val checksMerge = builder.add(Merge[Unit](2))
 
       in ~> inBroad
-      inBroad ~> checkRdf4jFlow.async ~> Sink.ignore
-      inBroad ~> parseJenaBuffered.async ~> dsBroad ~> checkStructureFlow(metadata).async ~> Sink.ignore
+      inBroad ~> checkRdf4jFlow.async ~> checksMerge ~> sChecks
+      inBroad ~> parseJenaBuffered.async ~> dsBroad ~> checkStructureFlow(metadata).async ~> checksMerge
       dsBroad ~> statsFlow(stats).async ~> sStats
       dsBroad ~> sStreamPackage
       // TODO: flat packaging
       dsBroad ~> Sink.ignore
 
       ClosedShape
+    }).mapMaterializedValue((fStats, fSeqStreamRes, fChecks) => {
+      val fStreamRes = Future.sequence(fSeqStreamRes)
+      for
+        stats <- fStats
+        streamRes <- fStreamRes
+        // There is no value returned from the checks sink, but we need to ensure it is run
+        _ <- fChecks
+      yield
+        for ((num, stat), streamR) <- stats.zip(streamRes) yield
+          PartialResult(num, stat, streamR)
     })
-
-    val (statFuture, streamPackageFutures) = g.run()
 
     val m = ModelFactory.createDefaultModel()
     m.setNsPrefix("rb", RdfUtil.pRb)
     m.setNsPrefix("dcat", RdfUtil.pDcat)
     m.setNsPrefix("xsd", XSD.NAMESPACE)
+    m.setNsPrefix("spdx", RdfUtil.pSpdx)
     val datasetRes = m.createResource(RdfUtil.pTemp + "dataset")
 
-    Await.result(statFuture, scala.concurrent.duration.Duration.Inf)
-      .foreach((num, stats) => {
-        val distRes = m.createResource()
-        datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
-        stats.addToRdf(distRes, metadata, num, false)
-      })
-
-    // TODO: run these futures in parallel
-    Await.result(Future.sequence(streamPackageFutures), scala.concurrent.duration.Duration.Inf)
-      .foreach(_ => {
-        println("eeee.")
+    Await.result(g.run(), scala.concurrent.duration.Duration.Inf)
+      .foreach(pResult => {
+        distributionToRdf(datasetRes, metadata, pResult)
       })
 
     val statsFile = outDir.resolve("temp_stats_stream.ttl").toFile
@@ -97,6 +103,14 @@ object StreamStatsCommand extends Command:
 
     m.write(os, "TURTLE")
     println("Done.")
+
+  private def distributionToRdf(datasetRes: Resource, mi: MetadataInfo, pResult: PartialResult): Unit =
+    val m = datasetRes.getModel
+    val streamDistRes = m.createResource()
+    datasetRes.addProperty(RdfUtil.dcatDistribution, streamDistRes)
+    pResult.stats.addToRdf(streamDistRes, mi, pResult.size, false)
+    pResult.streamRes.addToRdf(streamDistRes, mi, false)
+    // TODO: download url? do we want to do it here?
 
   private def parseJenaFlow: Flow[(TarArchiveMetadata, String), DatasetGraph, NotUsed] =
     Flow[(TarArchiveMetadata, String)].map((tarMeta, data) => {
@@ -147,13 +161,11 @@ object StreamStatsCommand extends Command:
     })
 
   private def packageStreamSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
-  Sink[(DatasetGraph, Long), Seq[Future[IOResult]]] =
-    // TODO: checksum?!?!
-    // TODO: size??!!
+  Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
     val sinks = packages.map { case (size, name) =>
       Flow[(String, String)]
         .take(size)
-        .toMat(ArchiveHelper.write(outDir.resolve(s"stream_$name.tar.gz"), size))(Keep.right)
+        .toMat(FileHelper.writeArchive(outDir.resolve(s"stream_$name.tar.gz"), size))(Keep.right)
     }
     Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
       sinkList =>
@@ -184,8 +196,12 @@ object StreamStatsCommand extends Command:
       SinkShape(writerFlowG.in)
     })
 
-  private def checkStructureFlow(metadata: MetadataInfo) =
+  private def checkStructureFlow(metadata: MetadataInfo): Flow[(DatasetGraph, Long), Unit, NotUsed] =
     Flow[(DatasetGraph, Long)].map((ds, _) => checkStructure(metadata, ds))
+      .map({
+        case Some(msg) => throw new Exception(msg)
+        case None => ()
+      })
 
   private def checkStructure(metadata: MetadataInfo, ds: DatasetGraph): Option[String] =
     if metadata.elementType == "triples" then

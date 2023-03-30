@@ -1,35 +1,67 @@
 package io.github.riverbench.ci_worker
-package util
+package util.io
 
-import akka.{Done, NotUsed}
 import akka.actor.typed.ActorSystem
-import akka.stream.IOResult
+import akka.stream.*
 import akka.stream.alpakka.file.TarArchiveMetadata
 import akka.stream.alpakka.file.scaladsl.Archive
 import akka.stream.scaladsl.*
 import akka.util.ByteString
+import akka.{Done, NotUsed}
 
 import java.io.BufferedInputStream
 import java.nio.file.{Files, Path}
 import java.time.Instant
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-object ArchiveHelper:
+object FileHelper:
+
   def findDataFile(datasetDir: Path): Path =
     Seq("triples", "quads", "graphs")
       .map(name => datasetDir.resolve(s"data/$name.tar.gz"))
       .filter(Files.exists(_))
       .head
 
-  def read(file: Path): Source[(TarArchiveMetadata, Source[ByteString, NotUsed]), Future[IOResult]] =
+  def readArchive(file: Path): Source[(TarArchiveMetadata, Source[ByteString, NotUsed]), Future[IOResult]] =
     val source = FileIO.fromPath(file)
     source.via(Compression.gunzip())
       .via(Archive.tarReader())
       .filterNot((metadata, _) => metadata.isDirectory)
       .map((metadata, stream) => (metadata, stream))
 
-  def write(file: Path, len: Long): Sink[(String, String), Future[IOResult]] =
+  def fileSink(file: Path)(implicit ec: ExecutionContext): Sink[ByteString, Future[SaveResult]] =
+    val sinkIO = FileIO.toPath(file)
+    val sinkSize = Flow[ByteString]
+      .map(_.size)
+      .fold(0L)(_ + _)
+      .toMat(Sink.head)(Keep.right)
+    val sinkMd5 = DigestCalculator.hexString(DigAlgorithm.MD5)
+      .toMat(Sink.head)(Keep.right)
+    val sinkSha1 = DigestCalculator.hexString(DigAlgorithm.`SHA-1`)
+      .toMat(Sink.head)(Keep.right)
+
+    Sink.fromGraph(GraphDSL.createGraph(sinkIO, sinkSize, sinkMd5, sinkSha1)
+    ((_, _, _, _)) { implicit b =>
+      (sIO, sSize, sMd5, sSha1) =>
+        import GraphDSL.Implicits.*
+        val bCast = b.add(Broadcast[ByteString](4))
+        bCast ~> sIO
+        bCast ~> sSize
+        bCast ~> sMd5
+        bCast ~> sSha1
+        SinkShape(bCast.in)
+    }).mapMaterializedValue((fIo, fSize, fMd5, fSha1) => {
+      for
+        io <- fIo
+        size <- fSize
+        md5 <- fMd5
+        sha1 <- fSha1
+      yield SaveResult(io, size, md5, sha1)
+    })
+
+  def writeArchive(file: Path, len: Long)(implicit ec: ExecutionContext):
+  Sink[(String, String), Future[SaveResult]] =
     val dirLevels = Math.floor(Math.log10(len.toDouble) / 3).toInt
 
     def makePathForFile(name: String): (String, Iterable[String]) =
@@ -62,4 +94,4 @@ object ArchiveHelper:
       })
       .via(Archive.tar())
       .via(Compression.gzip)
-      .toMat(FileIO.toPath(file))(Keep.right)
+      .toMat(fileSink(file))(Keep.right)
