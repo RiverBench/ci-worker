@@ -11,6 +11,7 @@ object Command:
     HelpCommand,
     ValidateRepoCommand,
     StreamStatsCommand,
+    StreamPackageCommand,
   )
 
   def getCommand(name: Option[String]): Command =

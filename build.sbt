@@ -40,5 +40,7 @@ lazy val root = (project in file("."))
     assembly / assemblyOutputPath := file("target/assembly/ci-worker-assembly.jar"),
 
     // emit deprecated warnings
-    scalacOptions ++= Seq("-deprecation"),
+    scalacOptions ++= Seq(
+      "-deprecation",
+    ),
   )

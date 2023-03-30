@@ -29,18 +29,19 @@ object StreamStatsCommand extends Command:
 
   override def run(args: Array[String]): Unit =
     val repoDir = FileSystems.getDefault.getPath(args(1))
-    val dataFile = ArchiveReader.findDataFile(repoDir)
+    val dataFile = ArchiveHelper.findDataFile(repoDir)
     val metadata = MetadataReader.read(repoDir)
     val stats = new StatCounterSuite(metadata.elementCount)
 
-    val statFuture = ArchiveReader.read(dataFile)
+    val statFuture = ArchiveHelper.read(dataFile)
       .mapAsync(1)((name, byteStream) => {
         byteStream
           .runFold(String())((acc, bs) => acc + bs.utf8String)
           .map(data => (name, data))
       })
       .async
-      .map((name, data) => {
+      .map((tarMeta, data) => {
+        val name = tarMeta.filePathName
         val lang = if name.endsWith(".ttl") then Lang.TTL else Lang.TRIG
         val ds = DatasetGraphFactory.create()
         // Parse the dataset in Jena
@@ -101,7 +102,7 @@ object StreamStatsCommand extends Command:
         stats.addToRdf(distRes, metadata, num, false)
       })
 
-    val statsFile = repoDir.resolve("temp_stats.ttl").toFile
+    val statsFile = repoDir.resolve("temp_stats_stream.ttl").toFile
     val os = new FileOutputStream(statsFile)
 
     m.write(os, "TURTLE")

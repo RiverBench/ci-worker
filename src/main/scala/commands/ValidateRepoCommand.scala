@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import akka.stream.scaladsl.Sink
-import util.{ArchiveReader, MetadataInfo, MetadataReader}
+import util.{ArchiveHelper, MetadataInfo, MetadataReader}
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -127,12 +127,12 @@ object ValidateRepoCommand extends Command:
     (errors.toSeq, mi)
 
   private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
-    val dataFile = ArchiveReader.findDataFile(repoDir)
+    val dataFile = ArchiveHelper.findDataFile(repoDir)
 
-    val filesFuture = ArchiveReader.read(dataFile)
-      .map((name, byteStream) => {
+    val filesFuture = ArchiveHelper.read(dataFile)
+      .map((tarMeta, byteStream) => {
         byteStream.runWith(Sink.ignore)
-        name.split('/').last
+        tarMeta.filePath.split('/').last
       })
       .runWith(Sink.seq)
 
@@ -155,7 +155,9 @@ object ValidateRepoCommand extends Command:
       else
         files.flatMap(f => {
           val extension = f.split('.').last
-          if metadataInfo.elementType == "triples" then
+          if f.split('.').head.length != 10 then
+            Some(s"File name does not match the expected format: $f")
+          else if metadataInfo.elementType == "triples" then
             if extension != "ttl" then
               Some(s"File name does not match the specified stream element type: $f")
             else
