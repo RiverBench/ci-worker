@@ -20,28 +20,28 @@ object StreamPackageCommand extends Command:
   override def validateArgs(args: Array[String]) = args.length == 2
 
   override def run(args: Array[String]): Unit =
-    val repoDir = FileSystems.getDefault.getPath(args(1))
-    val dataFile = ArchiveHelper.findDataFile(repoDir)
-    val metadata = MetadataReader.read(repoDir)
+//    val repoDir = FileSystems.getDefault.getPath(args(1))
+//    val dataFile = ArchiveHelper.findDataFile(repoDir)
+//    val metadata = MetadataReader.read(repoDir)
+//
+//    val packages = Constants.packageSizes
+//      .filter(_ <= metadata.elementCount)
+//      .map(s => (s, Constants.packageSizeToHuman(s)))
+//      ++ Seq((metadata.elementCount, "full"))
+//
+//    val sinks = packages.map { case (size, name) =>
+//      Flow[(TarArchiveMetadata, Source[ByteString, NotUsed])]
+//        .take(size)
+//        .toMat(ArchiveHelper.write(repoDir.resolve(s"stream_$name.tar.gz"), size))(Keep.right)
+//    }
 
-    val packages = Constants.packageSizes
-      .filter(_ <= metadata.elementCount)
-      .map(s => (s, Constants.packageSizeToHuman(s)))
-      ++ Seq((metadata.elementCount, "full"))
+//    val ioFuture = ArchiveHelper.read(dataFile)
+////      .mapAsync((m, byteStream) => {
+////        byteStream.runWith(Sink.seq).onComplete { buffer =>
+////          (m, Source.fromIterator(() => buffer.iterator))
+////        }
+////      })
+//      .runWith(ArchiveHelper.write(repoDir.resolve("stream_copy.tar.gz"), metadata.elementCount))
 
-    val sinks = packages.map { case (size, name) =>
-      Flow[(TarArchiveMetadata, Source[ByteString, NotUsed])]
-        .take(size)
-        .toMat(ArchiveHelper.write(repoDir.resolve(s"stream_$name.tar.gz"), size))(Keep.right)
-    }
-
-    val ioFuture = ArchiveHelper.read(dataFile)
-      .mapAsync((m, byteStream) => {
-        byteStream.runWith(Sink.seq).onComplete { buffer =>
-          (m, Source.fromIterator(() => buffer.iterator))
-        }
-      })
-      .runWith(ArchiveHelper.write(repoDir.resolve("stream_copy.tar.gz"), metadata.elementCount))
-
-    Await.ready(ioFuture, scala.concurrent.duration.Duration.Inf)
+//    Await.ready(ioFuture, scala.concurrent.duration.Duration.Inf)
     println("Done!")

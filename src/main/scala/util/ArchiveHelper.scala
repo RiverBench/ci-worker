@@ -29,12 +29,10 @@ object ArchiveHelper:
       .filterNot((metadata, _) => metadata.isDirectory)
       .map((metadata, stream) => (metadata, stream))
 
-  def write(file: Path, len: Long):
-  Sink[(TarArchiveMetadata, Source[ByteString, NotUsed]), Future[IOResult]] =
+  def write(file: Path, len: Long): Sink[(String, String), Future[IOResult]] =
     val dirLevels = Math.floor(Math.log10(len.toDouble) / 3).toInt
 
-    def makePathForFile(m: TarArchiveMetadata): (String, Iterable[String]) =
-      val name = m.filePath.split('/').last
+    def makePathForFile(name: String): (String, Iterable[String]) =
       val num = name.split('.').head
       var dir = ""
       val extraDirs = ListBuffer[String]()
@@ -45,21 +43,22 @@ object ArchiveHelper:
         dir += currentLevel
       (dir + name, extraDirs)
 
-    Flow[(TarArchiveMetadata, Source[ByteString, NotUsed])]
-      .filter((m, _) => !m.isDirectory)
-      .mapConcat((m, stream) => {
-        val (name, extraDirs) = makePathForFile(m)
+    Flow[(String, String)]
+      .mapConcat((name, data) => {
+        val bytes = data.getBytes
+        val (path, extraDirs) = makePathForFile(name)
         val metadata = TarArchiveMetadata(
           filePathPrefix = "",
-          filePathName = name,
-          size = m.size,
+          filePathName = path,
+          size = bytes.length,
           lastModification = Instant.now,
-          linkIndicatorByte = m.linkIndicatorByte,
         )
         extraDirs.map(extraDir => (
           TarArchiveMetadata.directory(extraDir),
           Source.empty[ByteString]
-        )) ++ Seq((metadata, stream))
+        )) ++ Seq(
+          (metadata, Source(Seq(ByteString(bytes))))
+        )
       })
       .via(Archive.tar())
       .via(Compression.gzip)
