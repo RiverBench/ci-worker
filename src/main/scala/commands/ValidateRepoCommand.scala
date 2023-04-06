@@ -3,6 +3,7 @@ package commands
 
 import akka.stream.scaladsl.Sink
 import util.{MetadataInfo, MetadataReader}
+
 import io.github.riverbench.ci_worker.util.io.FileHelper
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
@@ -12,7 +13,7 @@ import org.apache.jena.shacl.{ShaclValidator, Shapes}
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
@@ -25,7 +26,7 @@ object ValidateRepoCommand extends Command:
   override def validateArgs(args: Array[String]) =
     args.length == 3
 
-  override def run(args: Array[String]): Unit =
+  override def run(args: Array[String]): Future[Unit] =
     val repoDir = FileSystems.getDefault.getPath(args(1))
     if !Files.exists(repoDir) then
       println(s"Directory does not exist: $repoDir")
@@ -54,13 +55,14 @@ object ValidateRepoCommand extends Command:
     println("Stream element type: " + metadataInfo.elementType)
     println("Stream element count: " + metadataInfo.elementCount)
 
-    val packageErrors = validatePackage(repoDir, metadataInfo)
-    if packageErrors.nonEmpty then
-      println("Package is invalid:")
-      packageErrors.foreach(println)
-      System.exit(1)
+    validatePackage(repoDir, metadataInfo) map { packageErrors =>
+      if packageErrors.nonEmpty then
+        println("Package is invalid:")
+        packageErrors.foreach(println)
+        System.exit(1)
 
-    println("Package is valid.")
+      println("Package is valid.")
+    }
 
   private def validateDirectoryStructure(repoDir: Path): Seq[String] =
     val files = Files.walk(repoDir).iterator().asScala.toSeq
@@ -127,7 +129,7 @@ object ValidateRepoCommand extends Command:
 
     (errors.toSeq, mi)
 
-  private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
+  private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Future[Seq[String]] =
     val dataFile = FileHelper.findDataFile(repoDir)
 
     val filesFuture = FileHelper.readArchive(dataFile)
@@ -137,34 +139,35 @@ object ValidateRepoCommand extends Command:
       })
       .runWith(Sink.seq)
 
-    val files = Await.result(filesFuture, Duration.Inf)
-
-    if files.isEmpty then
-      Seq("No files found in data archive.")
-    else if files.length != metadataInfo.elementCount then
-      Seq(s"Number of files in data archive (${files.length}) does not match" +
-        s" the number of elements specified in metadata (${metadataInfo.elementCount}).")
-    else
-      val errors = files
-        .map(_.split('.').head.toInt)
-        .sliding(2)
-        .flatMap(s => if s.head + 1 != s(1) then Some(s"Missing file: ${s.head + 1}") else None)
-        .take(10).toSeq
-
-      if errors.nonEmpty then
-        errors
+    filesFuture.map { files =>
+      if files.isEmpty then
+        Seq("No files found in data archive.")
+      else if files.length != metadataInfo.elementCount then
+        Seq(s"Number of files in data archive (${files.length}) does not match" +
+          s" the number of elements specified in metadata (${metadataInfo.elementCount}).")
       else
-        files.flatMap(f => {
-          val extension = f.split('.').last
-          if f.split('.').head.length != 10 then
-            Some(s"File name does not match the expected format: $f")
-          else if metadataInfo.elementType == "triples" then
-            if extension != "ttl" then
+        val errors = files
+          .map(_.split('.').head.toInt)
+          .sliding(2)
+          .flatMap(s => if s.head + 1 != s(1) then Some(s"Missing file: ${s.head + 1}") else None)
+          .take(10).toSeq
+
+        if errors.nonEmpty then
+          errors
+        else
+          files.flatMap(f => {
+            val extension = f.split('.').last
+            if f.split('.').head.length != 10 then
+              Some(s"File name does not match the expected format: $f")
+            else if metadataInfo.elementType == "triples" then
+              if extension != "ttl" then
+                Some(s"File name does not match the specified stream element type: $f")
+              else
+                None
+            else if extension != "trig" then
               Some(s"File name does not match the specified stream element type: $f")
             else
               None
-          else if extension != "trig" then
-            Some(s"File name does not match the specified stream element type: $f")
-          else
-            None
-        }).take(10)
+          }).take(10)
+    }
+

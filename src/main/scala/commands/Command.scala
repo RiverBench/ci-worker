@@ -3,9 +3,11 @@ package commands
 
 import akka.actor.typed.ActorSystem
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object Command:
+  implicit private val ec: ExecutionContext = Global.actorSystem.executionContext
+
   val commands: Seq[Command] = Seq(
     HelpCommand,
     ValidateRepoCommand,
@@ -17,11 +19,11 @@ object Command:
       case Some(name) => commands.find(_.name == name).getOrElse(ErrorCommand)
       case None => ErrorCommand
 
-  def runCommand(args: Array[String]): Unit =
+  def runCommand(args: Array[String]): Future[Unit] =
     val command = getCommand(args.headOption)
     command.validateArgs(args) match
       case true => command.run(args)
-      case false => println(command.description)
+      case false => Future { println(command.description) }
 
 trait Command:
   implicit val actorSystem: ActorSystem[_] = Global.actorSystem
@@ -30,4 +32,4 @@ trait Command:
   def name: String
   def description: String
   def validateArgs(args: Array[String]): Boolean
-  def run(args: Array[String]): Unit
+  def run(args: Array[String]): Future[Unit]
