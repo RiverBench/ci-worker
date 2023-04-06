@@ -28,14 +28,13 @@ object PackageCommand extends Command:
   override def name: String = "package"
 
   override def description = "Packages a dataset.\n" +
-    "Args: <repo-dir> <output-dir> <version>"
+    "Args: <repo-dir> <output-dir>"
 
-  override def validateArgs(args: Array[String]) = args.length == 4
+  override def validateArgs(args: Array[String]) = args.length == 3
 
   override def run(args: Array[String]): Unit =
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val outDir = FileSystems.getDefault.getPath(args(2))
-    val version = args(3).strip
 
     val dataFile = FileHelper.findDataFile(repoDir)
     val metadata = MetadataReader.read(repoDir)
@@ -100,13 +99,14 @@ object PackageCommand extends Command:
     m.setNsPrefix("spdx", RdfUtil.pSpdx)
 
     val datasetRes = m.createResource(RdfUtil.pTemp + "dataset")
-    datasetRes.addProperty(RdfUtil.dcatVersion, version)
-    val baseUrl = AppConfig.CiWorker.baseDownloadUrl + metadata.identifier + "/" + version
-    datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
+    // TODO: add this in the release script
+//    datasetRes.addProperty(RdfUtil.dcatVersion, version)
+//    val baseUrl = AppConfig.CiWorker.baseDownloadUrl + metadata.identifier + "/" + version
+//    datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
 
     Await.result(g.run(), scala.concurrent.duration.Duration.Inf)
       .foreach(pResult => {
-        distributionToRdf(datasetRes, metadata, pResult, baseUrl)
+        distributionToRdf(datasetRes, metadata, pResult)
       })
 
     val statsFile = outDir.resolve("package_metadata.ttl").toFile
@@ -120,14 +120,14 @@ object PackageCommand extends Command:
    * @param datasetRes the dataset resource
    * @param mi dataset metadata
    * @param pResult partial result for the distribution
-   * @param baseUrl the base URL for the download URL
    */
-  private def distributionToRdf(datasetRes: Resource, mi: MetadataInfo, pResult: PartialResult, baseUrl: String):
+  private def distributionToRdf(datasetRes: Resource, mi: MetadataInfo, pResult: PartialResult):
   Unit =
     val m = datasetRes.getModel
     val distRes = m.createResource()
     datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
-    distRes.addProperty(RdfUtil.dcatDownloadURL, m.createResource(baseUrl + "/" + pResult.saveRes.name))
+    // TODO: add this in the release script
+    // distRes.addProperty(RdfUtil.dcatDownloadURL, m.createResource(baseUrl + "/" + pResult.saveRes.name))
     pResult.stats.addToRdf(distRes, mi, pResult.size, pResult.flat)
     pResult.saveRes.addToRdf(distRes, mi, pResult.flat)
 
