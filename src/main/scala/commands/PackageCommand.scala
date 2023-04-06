@@ -32,7 +32,7 @@ object PackageCommand extends Command:
 
   override def validateArgs(args: Array[String]) = args.length == 3
 
-  override def run(args: Array[String]): Unit =
+  override def run(args: Array[String]): Future[Unit] =
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val outDir = FileSystems.getDefault.getPath(args(2))
 
@@ -104,16 +104,16 @@ object PackageCommand extends Command:
 //    val baseUrl = AppConfig.CiWorker.baseDownloadUrl + metadata.identifier + "/" + version
 //    datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
 
-    Await.result(g.run(), scala.concurrent.duration.Duration.Inf)
-      .foreach(pResult => {
+    g.run() map { pResults =>
+      for pResult <- pResults do
         distributionToRdf(datasetRes, metadata, pResult)
-      })
 
-    val statsFile = outDir.resolve("package_metadata.ttl").toFile
-    val os = new FileOutputStream(statsFile)
+      val statsFile = outDir.resolve("package_metadata.ttl").toFile
+      val os = new FileOutputStream(statsFile)
 
-    m.write(os, "TURTLE")
-    println("Done.")
+      m.write(os, "TURTLE")
+      println("Done.")
+    }
 
   /**
    * Adds RDF metadata for a given distribution
