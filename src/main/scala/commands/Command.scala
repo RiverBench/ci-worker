@@ -12,6 +12,7 @@ object Command:
     HelpCommand,
     ValidateRepoCommand,
     PackageCommand,
+    SelfTestCommand,
   )
 
   def getCommand(name: Option[String]): Command =

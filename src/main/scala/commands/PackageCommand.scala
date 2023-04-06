@@ -68,7 +68,7 @@ object PackageCommand extends Command:
       val checksMerge = builder.add(Merge[Unit](2))
 
       in ~> inBroad
-      inBroad ~> checkRdf4jFlow ~> checksMerge ~> sChecks
+      inBroad ~> checkRdf4jFlow(metadata) ~> checksMerge ~> sChecks
       inBroad ~> parseJenaBuffered.async ~> dsBroad ~> checkStructureFlow(metadata).async ~> checksMerge
       dsBroad ~> statsFlow(stats) ~> sStats
       dsBroad ~> sStreamPackage
@@ -178,12 +178,18 @@ object PackageCommand extends Command:
    * Checks that the data can be parsed by RDF4J without errors
    * @return a flow that checks the data
    */
-  private def checkRdf4jFlow: Flow[(TarArchiveMetadata, String), Unit, NotUsed] =
+  private def checkRdf4jFlow(mi: MetadataInfo): Flow[(TarArchiveMetadata, String), Unit, NotUsed] =
+    val format = mi.elementType match
+      case "triples" =>
+        if mi.conformance.usesRdfStar then rio.RDFFormat.TURTLESTAR else rio.RDFFormat.TURTLE
+      case _ =>
+        if mi.conformance.usesRdfStar then rio.RDFFormat.TRIGSTAR else rio.RDFFormat.TRIG
+
     Flow[(TarArchiveMetadata, String)]
       .async
       .map((_, data) => {
         val rioErrListener = new rio.helpers.ParseErrorCollector()
-        val parser = rio.Rio.createParser(rio.RDFFormat.TRIGSTAR)
+        val parser = rio.Rio.createParser(format)
           .setParseErrorListener(rioErrListener)
           .setRDFHandler(Rdf4jUtil.BlackHoleRdfHandler)
         parser.parse(new ByteArrayInputStream(data.getBytes()))
