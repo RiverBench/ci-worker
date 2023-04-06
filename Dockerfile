@@ -12,6 +12,13 @@ RUN sbt assembly
 FROM eclipse-temurin:19-jre-jammy
 MAINTAINER "Piotr Sowiński <piotr.sowinski@ibspan.waw.pl>"
 
+RUN apt update && \
+    apt install -y git && \
+    curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
+    apt install -y git-lfs && \
+    git lfs install && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy the executable jar
 COPY --from=builder /app/target/assembly/ci-worker-assembly.jar /app/
 COPY bin/ci-worker /usr/local/bin/ci-worker
