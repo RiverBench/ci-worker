@@ -1,10 +1,15 @@
 package io.github.riverbench.ci_worker
 package commands
 
+import akka.actor.typed.ActorSystem
+
+import scala.concurrent.ExecutionContext
+
 object Command:
   val commands: Seq[Command] = Seq(
     HelpCommand,
-    ValidateRepo,
+    ValidateRepoCommand,
+    PackageCommand,
   )
 
   def getCommand(name: Option[String]): Command =
@@ -19,6 +24,9 @@ object Command:
       case false => println(command.description)
 
 trait Command:
+  implicit val actorSystem: ActorSystem[_] = Global.actorSystem
+  implicit val executionContext: ExecutionContext = actorSystem.executionContext
+
   def name: String
   def description: String
   def validateArgs(args: Array[String]): Boolean

@@ -1,6 +1,9 @@
 package io.github.riverbench.ci_worker
 package commands
 
+import akka.stream.scaladsl.Sink
+import util.{MetadataInfo, MetadataReader}
+import io.github.riverbench.ci_worker.util.io.FileHelper
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -9,9 +12,11 @@ import org.apache.jena.shacl.{ShaclValidator, Shapes}
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
-object ValidateRepo extends Command:
+object ValidateRepoCommand extends Command:
   override def name = "validate-repo"
 
   override def description = "Validates the dataset repository.\n" +
@@ -36,16 +41,26 @@ object ValidateRepo extends Command:
       println("Directory structure is invalid:")
       dirInspectionResult.foreach(println)
       System.exit(1)
-    else
-      println("Directory structure is valid.")
 
-    val metadataInspectionResult = validateMetadata(repoDir, shaclFile)
-    if metadataInspectionResult.nonEmpty then
+    println("Directory structure is valid.")
+
+    val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile)
+    if metadataErrors.nonEmpty then
       println("Metadata is invalid:")
-      metadataInspectionResult.foreach(println)
+      metadataErrors.foreach(println)
       System.exit(1)
-    else
-      println("Metadata is valid.")
+
+    println("Metadata is valid.")
+    println("Stream element type: " + metadataInfo.elementType)
+    println("Stream element count: " + metadataInfo.elementCount)
+
+    val packageErrors = validatePackage(repoDir, metadataInfo)
+    if packageErrors.nonEmpty then
+      println("Package is invalid:")
+      packageErrors.foreach(println)
+      System.exit(1)
+
+    println("Package is valid.")
 
   private def validateDirectoryStructure(repoDir: Path): Seq[String] =
     val files = Files.walk(repoDir).iterator().asScala.toSeq
@@ -73,7 +88,7 @@ object ValidateRepo extends Command:
 
     errors.toSeq
 
-  private def validateMetadata(repoDir: Path, shaclFile: Path): Seq[String] =
+  private def validateMetadata(repoDir: Path, shaclFile: Path): (Seq[String], MetadataInfo) =
     val errors = mutable.ArrayBuffer[String]()
 
     def loadRdf(p: Path): Model = try
@@ -86,12 +101,12 @@ object ValidateRepo extends Command:
     val model: Model = loadRdf(repoDir.resolve("metadata.ttl"))
     val shacl: Model = loadRdf(shaclFile)
     if errors.nonEmpty then
-      return errors.toSeq
+      return (errors.toSeq, MetadataInfo())
 
     val shapes = Shapes.parse(shacl)
     if shapes.numShapes() == 0 then
       errors += "No shapes found in SHACL file."
-      return errors.toSeq
+      return (errors.toSeq, MetadataInfo())
 
     val report = ShaclValidator.get().validate(shapes, model.getGraph)
 
@@ -100,20 +115,56 @@ object ValidateRepo extends Command:
       val buffer = new ByteArrayOutputStream()
       ShLib.printReport(buffer, report)
       errors ++= buffer.toString("utf-8").split("\n").map("  " + _)
-      return errors.toSeq
+      return (errors.toSeq, MetadataInfo())
+
+    val mi = MetadataReader.read(repoDir)
+    errors ++= mi.conformance.checkConsistency()
 
     // Check if the data file exists for the specified stream element type
-    val rb = "https://riverbench.github.io/schema/dataset#"
-    val types = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementType"))
-      .asScala.toSeq
-
-    if types.length != 1 then
-      errors += s"Exactly one stream element type must be specified. There are ${types.length}."
-      return errors.toSeq
-
-    val streamType = types.head.asResource.getURI.split('#').last
-    val dataFile = repoDir.resolve("data").resolve(streamType + ".tar.gz")
+    val dataFile = repoDir.resolve("data").resolve(mi.elementType + ".tar.gz")
     if !Files.exists(dataFile) then
       errors += s"Data file does not exist: $dataFile"
 
-    errors.toSeq
+    (errors.toSeq, mi)
+
+  private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Seq[String] =
+    val dataFile = FileHelper.findDataFile(repoDir)
+
+    val filesFuture = FileHelper.readArchive(dataFile)
+      .map((tarMeta, byteStream) => {
+        byteStream.runWith(Sink.ignore)
+        tarMeta.filePath.split('/').last
+      })
+      .runWith(Sink.seq)
+
+    val files = Await.result(filesFuture, Duration.Inf)
+
+    if files.isEmpty then
+      Seq("No files found in data archive.")
+    else if files.length != metadataInfo.elementCount then
+      Seq(s"Number of files in data archive (${files.length}) does not match" +
+        s" the number of elements specified in metadata (${metadataInfo.elementCount}).")
+    else
+      val errors = files
+        .map(_.split('.').head.toInt)
+        .sliding(2)
+        .flatMap(s => if s.head + 1 != s(1) then Some(s"Missing file: ${s.head + 1}") else None)
+        .take(10).toSeq
+
+      if errors.nonEmpty then
+        errors
+      else
+        files.flatMap(f => {
+          val extension = f.split('.').last
+          if f.split('.').head.length != 10 then
+            Some(s"File name does not match the expected format: $f")
+          else if metadataInfo.elementType == "triples" then
+            if extension != "ttl" then
+              Some(s"File name does not match the specified stream element type: $f")
+            else
+              None
+          else if extension != "trig" then
+            Some(s"File name does not match the specified stream element type: $f")
+          else
+            None
+        }).take(10)
