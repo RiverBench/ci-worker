@@ -2,7 +2,6 @@ package io.github.riverbench.ci_worker
 package commands
 
 import akka.actor.typed.ActorSystem
-import io.github.riverbench.ci_worker.Global
 
 import scala.concurrent.ExecutionContext
 
