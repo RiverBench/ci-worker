@@ -19,7 +19,7 @@ import org.eclipse.rdf4j.rio
 
 import java.io.{ByteArrayInputStream, FileOutputStream, InputStream}
 import java.nio.file.{FileSystems, Path}
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
 object PackageCommand extends Command:

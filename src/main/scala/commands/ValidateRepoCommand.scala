@@ -13,7 +13,7 @@ import org.apache.jena.shacl.{ShaclValidator, Shapes}
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
