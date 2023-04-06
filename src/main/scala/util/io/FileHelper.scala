@@ -17,12 +17,22 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object FileHelper:
 
+  /**
+   * Finds the source data file in the dataset directory.
+   * @param datasetDir the dataset directory
+   * @return the path to the data file
+   */
   def findDataFile(datasetDir: Path): Path =
     Seq("triples", "quads", "graphs")
       .map(name => datasetDir.resolve(s"data/$name.tar.gz"))
       .filter(Files.exists(_))
       .head
 
+  /**
+   * Reads a source data archive.
+   * @param file the path to the archive
+   * @return a source of the archive entries
+   */
   def readArchive(file: Path): Source[(TarArchiveMetadata, Source[ByteString, NotUsed]), Future[IOResult]] =
     val source = FileIO.fromPath(file)
     source.via(Compression.gunzip())
@@ -30,6 +40,12 @@ object FileHelper:
       .filterNot((metadata, _) => metadata.isDirectory)
       .map((metadata, stream) => (metadata, stream))
 
+  /**
+   * Reusable sink for files that calculates the size, md5 and sha1 checksums.
+   * @param file the path to the file
+   * @param ec the execution context
+   * @return a sink that writes to the file and calculates the size and checksums
+   */
   def fileSink(file: Path)(implicit ec: ExecutionContext): Sink[ByteString, Future[SaveResult]] =
     val sinkIO = FileIO.toPath(file)
     val sinkSize = Flow[ByteString]
@@ -57,9 +73,16 @@ object FileHelper:
         size <- fSize
         md5 <- fMd5
         sha1 <- fSha1
-      yield SaveResult(io, size, md5, sha1)
+      yield SaveResult(io, file.getFileName.toString, size, md5, sha1)
     })
 
+  /**
+   * Sink for writing a distribution data archive.
+   * @param file the path to the archive
+   * @param len the number of entries in the archive
+   * @param ec the execution context
+   * @return a sink that writes to the archive of (filename, data) pairs
+   */
   def writeArchive(file: Path, len: Long)(implicit ec: ExecutionContext):
   Sink[(String, String), Future[SaveResult]] =
     val dirLevels = Math.floor(Math.log10(len.toDouble) / 3).toInt

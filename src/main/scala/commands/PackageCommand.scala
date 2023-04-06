@@ -22,19 +22,21 @@ import java.nio.file.{FileSystems, Path}
 import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters.*
 
-object StreamStatsCommand extends Command:
-  private case class PartialResult(size: Long, stats: StatCounterSuite.Result, streamRes: SaveResult)
+object PackageCommand extends Command:
+  private case class PartialResult(size: Long, stats: StatCounterSuite.Result, saveRes: SaveResult, flat: Boolean)
 
-  override def name: String = "stream-stats"
+  override def name: String = "package"
 
   override def description = "Packages a dataset.\n" +
-    "Args: <repo-dir> <output-dir>"
+    "Args: <repo-dir> <output-dir> <version>"
 
-  override def validateArgs(args: Array[String]) = args.length == 3
+  override def validateArgs(args: Array[String]) = args.length == 4
 
   override def run(args: Array[String]): Unit =
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val outDir = FileSystems.getDefault.getPath(args(2))
+    val version = args(3).strip
+
     val dataFile = FileHelper.findDataFile(repoDir)
     val metadata = MetadataReader.read(repoDir)
     val stats = new StatCounterSuite(metadata.elementCount)
@@ -45,12 +47,13 @@ object StreamStatsCommand extends Command:
 
     val sinkStats = Sink.seq[(Long, StatCounterSuite.Result)]
     val sinkStreamPackage = packageStreamSink(metadata, outDir, packages)
+    val sinkFlatPackage = packageFlatSink(metadata, outDir, packages)
     val sinkChecks = Sink.ignore
 
-    val g = RunnableGraph.fromGraph(GraphDSL.createGraph(sinkStats, sinkStreamPackage, sinkChecks)
-    ((_, _, _))
+    val g = RunnableGraph.fromGraph(GraphDSL.createGraph(sinkStats, sinkStreamPackage, sinkFlatPackage, sinkChecks)
+    ((_, _, _, _))
     { implicit builder =>
-      (sStats, sStreamPackage, sChecks) =>
+      (sStats, sStreamPackage, sFlatPackage, sChecks) =>
       import GraphDSL.Implicits.*
       val in = FileHelper.readArchive(dataFile)
         .mapAsync(1)((name, byteStream) => {
@@ -66,24 +69,28 @@ object StreamStatsCommand extends Command:
       val checksMerge = builder.add(Merge[Unit](2))
 
       in ~> inBroad
-      inBroad ~> checkRdf4jFlow.async ~> checksMerge ~> sChecks
+      inBroad ~> checkRdf4jFlow ~> checksMerge ~> sChecks
       inBroad ~> parseJenaBuffered.async ~> dsBroad ~> checkStructureFlow(metadata).async ~> checksMerge
-      dsBroad ~> statsFlow(stats).async ~> sStats
+      dsBroad ~> statsFlow(stats) ~> sStats
       dsBroad ~> sStreamPackage
-      // TODO: flat packaging
-      dsBroad ~> Sink.ignore
+      dsBroad ~> sFlatPackage
 
       ClosedShape
-    }).mapMaterializedValue((fStats, fSeqStreamRes, fChecks) => {
+    }).mapMaterializedValue((fStats, fSeqStreamRes, fSeqFlatRes, fChecks) => {
       val fStreamRes = Future.sequence(fSeqStreamRes)
+      val fFlatRes = Future.sequence(fSeqFlatRes)
       for
         stats <- fStats
         streamRes <- fStreamRes
+        flatRes <- fFlatRes
         // There is no value returned from the checks sink, but we need to ensure it is run
         _ <- fChecks
       yield
-        for ((num, stat), streamR) <- stats.zip(streamRes) yield
-          PartialResult(num, stat, streamR)
+        val sr = for ((num, stat), streamR) <- stats.zip(streamRes) yield
+          PartialResult(num, stat, streamR, false)
+        val fr = for ((num, stat), flatR) <- stats.zip(flatRes) yield
+          PartialResult(num, stat, flatR, true)
+        sr ++ fr
     })
 
     val m = ModelFactory.createDefaultModel()
@@ -91,27 +98,43 @@ object StreamStatsCommand extends Command:
     m.setNsPrefix("dcat", RdfUtil.pDcat)
     m.setNsPrefix("xsd", XSD.NAMESPACE)
     m.setNsPrefix("spdx", RdfUtil.pSpdx)
+
     val datasetRes = m.createResource(RdfUtil.pTemp + "dataset")
+    datasetRes.addProperty(RdfUtil.dcatVersion, version)
+    val baseUrl = AppConfig.CiWorker.baseDownloadUrl + metadata.identifier + "/" + version
+    datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
 
     Await.result(g.run(), scala.concurrent.duration.Duration.Inf)
       .foreach(pResult => {
-        distributionToRdf(datasetRes, metadata, pResult)
+        distributionToRdf(datasetRes, metadata, pResult, baseUrl)
       })
 
-    val statsFile = outDir.resolve("temp_stats_stream.ttl").toFile
+    val statsFile = outDir.resolve("package_metadata.ttl").toFile
     val os = new FileOutputStream(statsFile)
 
     m.write(os, "TURTLE")
     println("Done.")
 
-  private def distributionToRdf(datasetRes: Resource, mi: MetadataInfo, pResult: PartialResult): Unit =
+  /**
+   * Adds RDF metadata for a given distribution
+   * @param datasetRes the dataset resource
+   * @param mi dataset metadata
+   * @param pResult partial result for the distribution
+   * @param baseUrl the base URL for the download URL
+   */
+  private def distributionToRdf(datasetRes: Resource, mi: MetadataInfo, pResult: PartialResult, baseUrl: String):
+  Unit =
     val m = datasetRes.getModel
-    val streamDistRes = m.createResource()
-    datasetRes.addProperty(RdfUtil.dcatDistribution, streamDistRes)
-    pResult.stats.addToRdf(streamDistRes, mi, pResult.size, false)
-    pResult.streamRes.addToRdf(streamDistRes, mi, false)
-    // TODO: download url? do we want to do it here?
+    val distRes = m.createResource()
+    datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
+    distRes.addProperty(RdfUtil.dcatDownloadURL, m.createResource(baseUrl + "/" + pResult.saveRes.name))
+    pResult.stats.addToRdf(distRes, mi, pResult.size, pResult.flat)
+    pResult.saveRes.addToRdf(distRes, mi, pResult.flat)
 
+  /**
+   * Creates a flow for parsing the input stream with Jena to DatasetGraphs
+   * @return a flow that parses the input stream
+   */
   private def parseJenaFlow: Flow[(TarArchiveMetadata, String), DatasetGraph, NotUsed] =
     Flow[(TarArchiveMetadata, String)].map((tarMeta, data) => {
       val name = tarMeta.filePathName
@@ -129,9 +152,15 @@ object StreamStatsCommand extends Command:
       ds
     })
 
+  /**
+   * Creates a flow for computing dataset statistics per distribution
+   * @param stats the statistics object to use
+   * @return a flow that computes statistics
+   */
   private def statsFlow(stats: StatCounterSuite):
   Flow[(DatasetGraph, Long), (Long, StatCounterSuite.Result), NotUsed] =
     Flow[(DatasetGraph, Long)]
+      .async
       .splitAfter(SubstreamCancelStrategy.propagate)((_, num) =>
         val shouldSplit = Constants.packageSizes.contains(num + 1)
         if shouldSplit then println(s"Splitting stats stream at ${num + 1}")
@@ -145,21 +174,34 @@ object StreamStatsCommand extends Command:
       .map(num => (num, stats.result))
       .concatSubstreams
 
+  /**
+   * Checks that the data can be parsed by RDF4J without errors
+   * @return a flow that checks the data
+   */
   private def checkRdf4jFlow: Flow[(TarArchiveMetadata, String), Unit, NotUsed] =
-    Flow[(TarArchiveMetadata, String)].map((_, data) => {
-      val rioErrListener = new rio.helpers.ParseErrorCollector()
-      val parser = rio.Rio.createParser(rio.RDFFormat.TRIGSTAR)
-        .setParseErrorListener(rioErrListener)
-        .setRDFHandler(Rdf4jUtil.BlackHoleRdfHandler)
-      parser.parse(new ByteArrayInputStream(data.getBytes()))
-      val messages = rioErrListener.getFatalErrors.asScala ++
-        rioErrListener.getErrors.asScala ++
-        rioErrListener.getWarnings.asScala
+    Flow[(TarArchiveMetadata, String)]
+      .async
+      .map((_, data) => {
+        val rioErrListener = new rio.helpers.ParseErrorCollector()
+        val parser = rio.Rio.createParser(rio.RDFFormat.TRIGSTAR)
+          .setParseErrorListener(rioErrListener)
+          .setRDFHandler(Rdf4jUtil.BlackHoleRdfHandler)
+        parser.parse(new ByteArrayInputStream(data.getBytes()))
+        val messages = rioErrListener.getFatalErrors.asScala ++
+          rioErrListener.getErrors.asScala ++
+          rioErrListener.getWarnings.asScala
 
-      if messages.nonEmpty then
-        throw new Exception(s"File $name is not valid RDF: \n  ${messages.mkString("\n  ")}")
-    })
+        if messages.nonEmpty then
+          throw new Exception(s"File $name is not valid RDF: \n  ${messages.mkString("\n  ")}")
+      })
 
+  /**
+   * Creates a sink that writes the data as packaged streams
+   * @param metadata the metadata of the dataset
+   * @param outDir the directory to write the files to
+   * @param packages the packages to create (size, name)
+   * @return the sink
+   */
   private def packageStreamSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
   Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
     val sinks = packages.map { case (size, name) =>
@@ -171,6 +213,7 @@ object StreamStatsCommand extends Command:
       sinkList =>
       import GraphDSL.Implicits.*
       val writerFlow = Flow[(DatasetGraph, Long)]
+        .async
         .map((ds, num) => {
           if metadata.elementType == "triples" then
             val data = RDFWriter.create()
@@ -196,6 +239,57 @@ object StreamStatsCommand extends Command:
       SinkShape(writerFlowG.in)
     })
 
+  /**
+   * Creates a sink that writes the data to flat files
+   * @param metadata the metadata of the dataset
+   * @param outDir the directory to write the files to
+   * @param packages the packages to write (size, name)
+   * @return the sink
+   */
+  private def packageFlatSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
+  Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
+    val fileExtension = if metadata.elementType == "triples" then "nt" else "nq"
+
+    val sinks = packages.map { case (size, name) =>
+      Flow[ByteString]
+        .take(size)
+        .via(Compression.gzip)
+        .toMat(FileHelper.fileSink(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
+    }
+
+    Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
+      sinkList =>
+      import GraphDSL.Implicits.*
+      val serializeFlow = Flow[(DatasetGraph, Long)]
+        .async
+        .map((ds, _) => {
+          if metadata.elementType == "triples" then
+            RDFWriter.create()
+              .lang(Lang.NTRIPLES)
+              .source(ds.getDefaultGraph)
+              .asString()
+          else
+            RDFWriter.create()
+              .lang(Lang.NQUADS)
+              .source(ds)
+              .asString()
+        })
+        .map(ByteString.fromString)
+
+      val serializeFlowG = builder.add(serializeFlow)
+      val serializeBroad = builder.add(Broadcast[ByteString](sinkList.size))
+      serializeFlowG.out ~> serializeBroad
+      for sink <- sinkList do
+        serializeBroad ~> sink
+
+      SinkShape(serializeFlowG.in)
+    })
+
+  /**
+   * Checks the structure of the dataset
+   * @param metadata the metadata of the dataset
+   * @return a flow that checks the structure of the dataset
+   */
   private def checkStructureFlow(metadata: MetadataInfo): Flow[(DatasetGraph, Long), Unit, NotUsed] =
     Flow[(DatasetGraph, Long)].map((ds, _) => checkStructure(metadata, ds))
       .map({

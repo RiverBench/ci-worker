@@ -10,8 +10,7 @@ object Command:
   val commands: Seq[Command] = Seq(
     HelpCommand,
     ValidateRepoCommand,
-    StreamStatsCommand,
-    StreamPackageCommand,
+    PackageCommand,
   )
 
   def getCommand(name: Option[String]): Command =

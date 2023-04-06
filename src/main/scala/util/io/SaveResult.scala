@@ -8,22 +8,22 @@ import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model.Resource
 import org.apache.jena.vocabulary.RDF
 
-case class SaveResult(io: IOResult, size: Long, md5: String, sha1: String):
+case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1: String):
   def addToRdf(distRes: Resource, mi: MetadataInfo, flat: Boolean): Unit =
     distRes.addProperty(RdfUtil.dcatByteSize, size.toString, XSDinteger)
     distRes.addProperty(RdfUtil.dcatCompressFormat, "application/gzip")
 
     if flat then
+      if mi.elementType == "triples" then
+        distRes.addProperty(RdfUtil.dcatMediaType, "application/n-triples")
+      else
+        distRes.addProperty(RdfUtil.dcatMediaType, "application/n-quads")
+    else
       distRes.addProperty(RdfUtil.dcatPackageFormat, "application/tar")
       if mi.elementType == "triples" then
         distRes.addProperty(RdfUtil.dcatMediaType, "text/turtle")
       else
         distRes.addProperty(RdfUtil.dcatMediaType, "application/trig")
-    else
-      if mi.elementType == "triples" then
-        distRes.addProperty(RdfUtil.dcatMediaType, "application/n-triples")
-      else
-        distRes.addProperty(RdfUtil.dcatMediaType, "application/n-quads")
 
     val md5Checksum = distRes.getModel.createResource()
       .addProperty(RDF.`type`, RdfUtil.SpdxChecksum)

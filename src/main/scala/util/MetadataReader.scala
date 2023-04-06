@@ -6,7 +6,7 @@ import org.apache.jena.riot.RDFDataMgr
 import java.nio.file.Path
 import scala.jdk.CollectionConverters.*
 
-case class MetadataInfo(elementType: String = "", elementCount: Long = 0,
+case class MetadataInfo(identifier: String = "", elementType: String = "", elementCount: Long = 0,
                         conformance: ConformanceInfo = ConformanceInfo())
 
 case class ConformanceInfo(conformsToRdf11: Boolean = false, conformsToRdfStarDraft_20211217: Boolean = false,
@@ -41,6 +41,8 @@ object MetadataReader:
         .asScala.toSeq.head.asLiteral.getBoolean
 
     MetadataInfo(
+      identifier = model.listObjectsOfProperty(RdfUtil.dctermsIdentifier)
+        .asScala.toSeq.head.asLiteral.getString.strip,
       elementType = types.head.asResource.getURI.split('#').last,
       elementCount = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementCount"))
         .asScala.toSeq.head.asLiteral.getLong,
