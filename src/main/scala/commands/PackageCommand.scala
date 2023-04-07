@@ -98,11 +98,7 @@ object PackageCommand extends Command:
     m.setNsPrefix("xsd", XSD.NAMESPACE)
     m.setNsPrefix("spdx", RdfUtil.pSpdx)
 
-    val datasetRes = m.createResource(RdfUtil.pTemp + "dataset")
-    // TODO: add this in the release script
-//    datasetRes.addProperty(RdfUtil.dcatVersion, version)
-//    val baseUrl = AppConfig.CiWorker.baseDownloadUrl + metadata.identifier + "/" + version
-//    datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
+    val datasetRes = m.createResource(RdfUtil.tempDataset.getURI)
 
     g.run() map { pResults =>
       for pResult <- pResults do
@@ -126,8 +122,7 @@ object PackageCommand extends Command:
     val m = datasetRes.getModel
     val distRes = m.createResource()
     datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
-    // TODO: add this in the release script
-    // distRes.addProperty(RdfUtil.dcatDownloadURL, m.createResource(baseUrl + "/" + pResult.saveRes.name))
+    distRes.addProperty(RdfUtil.hasFileName, pResult.saveRes.name)
     pResult.stats.addToRdf(distRes, mi, pResult.size, pResult.flat)
     pResult.saveRes.addToRdf(distRes, mi, pResult.flat)
 
