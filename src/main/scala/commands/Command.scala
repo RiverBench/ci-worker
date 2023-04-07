@@ -13,6 +13,7 @@ object Command:
     ValidateRepoCommand,
     PackageCommand,
     SelfTestCommand,
+    MergeMetadataCommand,
   )
 
   def getCommand(name: Option[String]): Command =

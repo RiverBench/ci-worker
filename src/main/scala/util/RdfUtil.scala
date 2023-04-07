@@ -29,6 +29,7 @@ object RdfUtil:
   val hasStatistics = m.createProperty(pRb, "hasStatistics")
   val hasDistributionType = m.createProperty(pRb, "hasDistributionType")
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
+  val hasFileName = m.createProperty(pRb, "hasFileName")
 
   val dcatDistribution = m.createProperty(pDcat, "distribution")
   val dcatTitle = m.createProperty(pDcat, "title")
@@ -47,6 +48,7 @@ object RdfUtil:
   val spdxChecksumValue = m.createProperty(pSpdx, "checksumValue")
 
   // Classes
+  val Dataset = m.createResource(pRb + "Dataset")
   val Distribution = m.createResource(pRb + "Distribution")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")
@@ -61,3 +63,5 @@ object RdfUtil:
 
   val spdxChecksumAlgorithmSha1 = m.createResource(pSpdx + "checksumAlgorithm_sha1")
   val spdxChecksumAlgorithmMd5 = m.createResource(pSpdx + "checksumAlgorithm_md5")
+
+  val tempDataset = m.createResource(pTemp + "dataset")
