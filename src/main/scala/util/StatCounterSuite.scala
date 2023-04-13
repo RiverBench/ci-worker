@@ -51,18 +51,18 @@ object StatCounterSuite:
 
       if flat then
         distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.flatDistribution)
-        distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString flat distribution")
+        distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString flat distribution")
       else
         mi.elementType match
           case "graphs" =>
             distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.graphStreamDistribution)
-            distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString graph stream distribution")
+            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString graph stream distribution")
           case "triples" =>
             distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.tripleStreamDistribution)
-            distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString triple stream distribution")
+            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString triple stream distribution")
           case "quads" =>
             distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.quadStreamDistribution)
-            distRes.addProperty(RdfUtil.dcatTitle, s"$sizeString quad stream distribution")
+            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString quad stream distribution")
 
       distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
 
