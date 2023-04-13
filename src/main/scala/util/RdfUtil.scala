@@ -30,18 +30,18 @@ object RdfUtil:
   val hasDistributionType = m.createProperty(pRb, "hasDistributionType")
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
   val hasFileName = m.createProperty(pRb, "hasFileName")
+  val hasVersion = m.createProperty(pRb, "hasVersion")
 
   val dcatDistribution = m.createProperty(pDcat, "distribution")
-  val dcatTitle = m.createProperty(pDcat, "title")
   val dcatByteSize = m.createProperty(pDcat, "byteSize")
   val dcatMediaType = m.createProperty(pDcat, "mediaType")
   val dcatCompressFormat = m.createProperty(pDcat, "compressFormat")
   val dcatPackageFormat = m.createProperty(pDcat, "packageFormat")
   val dcatDownloadURL = m.createProperty(pDcat, "downloadURL")
-  val dcatVersion = m.createProperty(pDcat, "version")
   val dcatLandingPage = m.createProperty(pDcat, "landingPage")
 
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
+  val dctermsTitle = m.createProperty(pDcterms, "title")
 
   val spdxChecksum = m.createProperty(pSpdx, "checksum")
   val spdxAlgorithm = m.createProperty(pSpdx, "algorithm")

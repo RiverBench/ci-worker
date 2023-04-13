@@ -50,7 +50,7 @@ object MergeMetadataCommand extends Command:
     (repoMetadata, datasetRes)
 
   private def addVersionMetadata(m: Model, datasetRes: Resource, mi: MetadataInfo, version: String): Unit =
-    datasetRes.addProperty(RdfUtil.dcatVersion, version)
+    datasetRes.addProperty(RdfUtil.hasVersion, version)
     val baseUrl = AppConfig.CiWorker.baseDownloadUrl + mi.identifier + "/" + version
     datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
 
