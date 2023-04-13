@@ -9,6 +9,8 @@ object RdfUtil:
 
   // Prefix for RiverBench
   val pRb = "https://riverbench.github.io/schema/dataset#"
+  // Prefix for RiverBench documentation schema
+  val pRbDoc = "https://riverbench.github.io/schema/documentation#"
   // Prefix for temporary resources
   val pTemp = "https://riverbench.github.io/temp#"
   // Prefix for DCAT
@@ -31,6 +33,9 @@ object RdfUtil:
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
+  val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
+  val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
+  val isHiddenInDoc = m.createProperty(pRbDoc, "isHiddenInDoc")
 
   val dcatDistribution = m.createProperty(pDcat, "distribution")
   val dcatByteSize = m.createProperty(pDcat, "byteSize")
@@ -50,6 +55,7 @@ object RdfUtil:
   // Classes
   val Dataset = m.createResource(pRb + "Dataset")
   val Distribution = m.createResource(pRb + "Distribution")
+  val DocGroup = m.createResource(pRbDoc + "DocGroup")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")
 

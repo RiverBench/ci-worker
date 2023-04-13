@@ -1,6 +1,7 @@
 package io.github.riverbench.ci_worker
 package util
 
+import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
 
 import java.nio.file.Path
@@ -32,6 +33,9 @@ object MetadataReader:
    */
   def read(repoDir: Path): MetadataInfo =
     val model = RDFDataMgr.loadModel(repoDir.resolve("metadata.ttl").toString)
+    fromModel(model)
+
+  def fromModel(model: Model): MetadataInfo =
     val rb = "https://riverbench.github.io/schema/dataset#"
     val types = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementType"))
       .asScala.toSeq
