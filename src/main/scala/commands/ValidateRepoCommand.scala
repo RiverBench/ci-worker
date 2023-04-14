@@ -26,7 +26,7 @@ object ValidateRepoCommand extends Command:
   override def validateArgs(args: Array[String]) =
     args.length == 3
 
-  override def run(args: Array[String]): Future[Unit] =
+  override def run(args: Array[String]): Future[Unit] = Future {
     val repoDir = FileSystems.getDefault.getPath(args(1))
     if !Files.exists(repoDir) then
       println(s"Directory does not exist: $repoDir")
@@ -54,7 +54,8 @@ object ValidateRepoCommand extends Command:
     println("Metadata is valid.")
     println("Stream element type: " + metadataInfo.elementType)
     println("Stream element count: " + metadataInfo.elementCount)
-
+    (repoDir, metadataInfo)
+  } flatMap { (repoDir, metadataInfo) =>
     validatePackage(repoDir, metadataInfo) map { packageErrors =>
       if packageErrors.nonEmpty then
         println("Package is invalid:")
@@ -63,6 +64,7 @@ object ValidateRepoCommand extends Command:
 
       println("Package is valid.")
     }
+  }
 
   private def validateDirectoryStructure(repoDir: Path): Seq[String] =
     val files = Files.walk(repoDir).iterator().asScala.toSeq
