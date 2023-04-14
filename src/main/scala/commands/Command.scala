@@ -14,6 +14,7 @@ object Command:
     PackageCommand,
     SelfTestCommand,
     MergeMetadataCommand,
+    DatasetDocGenCommand,
   )
 
   def getCommand(name: Option[String]): Command =

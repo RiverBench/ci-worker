@@ -1,14 +1,16 @@
 package io.github.riverbench.ci_worker
 package util
 
-import org.apache.jena.rdf.model.ModelFactory
-import org.apache.jena.vocabulary.VCARD
+import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
+import org.apache.jena.vocabulary.{RDF, RDFS, VCARD}
 
 object RdfUtil:
   val m = ModelFactory.createDefaultModel()
 
   // Prefix for RiverBench
   val pRb = "https://riverbench.github.io/schema/dataset#"
+  // Prefix for RiverBench documentation schema
+  val pRbDoc = "https://riverbench.github.io/schema/documentation#"
   // Prefix for temporary resources
   val pTemp = "https://riverbench.github.io/temp#"
   // Prefix for DCAT
@@ -31,6 +33,9 @@ object RdfUtil:
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
+  val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
+  val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
+  val isHiddenInDoc = m.createProperty(pRbDoc, "isHiddenInDoc")
 
   val dcatDistribution = m.createProperty(pDcat, "distribution")
   val dcatByteSize = m.createProperty(pDcat, "byteSize")
@@ -40,6 +45,7 @@ object RdfUtil:
   val dcatDownloadURL = m.createProperty(pDcat, "downloadURL")
   val dcatLandingPage = m.createProperty(pDcat, "landingPage")
 
+  val dctermsDescription = m.createProperty(pDcterms, "description")
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
   val dctermsTitle = m.createProperty(pDcterms, "title")
 
@@ -50,6 +56,7 @@ object RdfUtil:
   // Classes
   val Dataset = m.createResource(pRb + "Dataset")
   val Distribution = m.createResource(pRb + "Distribution")
+  val DocGroup = m.createResource(pRbDoc + "DocGroup")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")
 
@@ -65,3 +72,26 @@ object RdfUtil:
   val spdxChecksumAlgorithmMd5 = m.createResource(pSpdx + "checksumAlgorithm_md5")
 
   val tempDataset = m.createResource(pTemp + "dataset")
+
+  def getString(subject: Resource, prop: Property, m: Option[Model] = None): Option[String] =
+    val model = m.getOrElse(subject.getModel)
+    val langString = model.getProperty(subject, prop, "en")
+    if langString != null then
+      Some(langString.getString)
+    else
+      val string = model.getProperty(subject, prop)
+      if string != null then Some(string.getString) else None
+
+  def getLabel(subject: Resource, m: Option[Model] = None): String =
+    getString(subject, RDFS.label, m).getOrElse(subject.getLocalName)
+
+  def getPrettyLabel(subject: Resource, m: Option[Model] = None): String =
+    getLabel(subject, m).strip.capitalize
+
+  /**
+   * Checks if a resource is probably a named thing.
+   * @return
+   */
+  def isNamedThing(subject: Resource, m: Option[Model]): Boolean =
+    val model = m.getOrElse(subject.getModel)
+    model.getProperty(subject, RDF.`type`) != null

@@ -1,12 +1,14 @@
 package io.github.riverbench.ci_worker
 package util
 
+import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
 
 import java.nio.file.Path
 import scala.jdk.CollectionConverters.*
 
-case class MetadataInfo(identifier: String = "", elementType: String = "", elementCount: Long = 0,
+case class MetadataInfo(identifier: String = "", description: String = "", elementType: String = "",
+                        landingPage: String = "", elementCount: Long = 0,
                         conformance: ConformanceInfo = ConformanceInfo())
 
 case class ConformanceInfo(conformsToRdf11: Boolean = false, conformsToRdfStarDraft_20211217: Boolean = false,
@@ -32,6 +34,9 @@ object MetadataReader:
    */
   def read(repoDir: Path): MetadataInfo =
     val model = RDFDataMgr.loadModel(repoDir.resolve("metadata.ttl").toString)
+    fromModel(model)
+
+  def fromModel(model: Model): MetadataInfo =
     val rb = "https://riverbench.github.io/schema/dataset#"
     val types = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementType"))
       .asScala.toSeq
@@ -43,6 +48,10 @@ object MetadataReader:
     MetadataInfo(
       identifier = model.listObjectsOfProperty(RdfUtil.dctermsIdentifier)
         .asScala.toSeq.head.asLiteral.getString.strip,
+      description = model.listObjectsOfProperty(RdfUtil.dctermsDescription)
+        .asScala.toSeq.head.asLiteral.getString.strip,
+      landingPage = model.listObjectsOfProperty(RdfUtil.dcatLandingPage)
+        .asScala.toSeq.head.asResource.getURI,
       elementType = types.head.asResource.getURI.split('#').last,
       elementCount = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementCount"))
         .asScala.toSeq.head.asLiteral.getLong,
