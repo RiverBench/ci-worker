@@ -17,14 +17,17 @@ object DatasetDocGenCommand extends Command:
   def name: String = "dataset-doc-gen"
 
   def description: String = "Generates documentation for a dataset.\n" +
-    "Args: <path to merged metadata.ttl> <schema repo dir> <output dir>"
+    "Args: <path to merged metadata.ttl> <dataset repo dir> <schema repo dir> <output dir>"
 
-  def validateArgs(args: Array[String]): Boolean = args.length == 4
+  def validateArgs(args: Array[String]): Boolean = args.length == 5
 
   def run(args: Array[String]): Future[Unit] = Future {
     val metadataPath = FileSystems.getDefault.getPath(args(1))
-    val schemaRepoDir = FileSystems.getDefault.getPath(args(2))
-    val outputDir = FileSystems.getDefault.getPath(args(3))
+    val datasetRepoDir = FileSystems.getDefault.getPath(args(2))
+    val schemaRepoDir = FileSystems.getDefault.getPath(args(3))
+    val outputDir = FileSystems.getDefault.getPath(args(4))
+
+    copyDocs(datasetRepoDir, outputDir)
 
     val metadata = RDFDataMgr.loadModel(metadataPath.toString)
     val mi = MetadataReader.fromModel(metadata)
@@ -59,7 +62,7 @@ object DatasetDocGenCommand extends Command:
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
     val docIndex = docBuilderIndex.build(mi.description, datasetRes)
-    Files.writeString(outputDir.resolve("index.md"), docIndex.toMarkdown)
+    Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
     println("Generated index.md")
 
     val docBuilderReadme = new DocBuilder(ontologies, optReadme)
@@ -70,6 +73,23 @@ object DatasetDocGenCommand extends Command:
     )
     println("Generated README.md")
   }
+
+  private val allowedDocExtensions = Set("md", "jpg", "png", "svg", "jpeg", "bmp", "webp", "gif")
+
+  private def copyDocs(datasetDir: Path, outputDir: Path): Unit =
+    val docDir = datasetDir.resolve("doc")
+    val outputDocDir = outputDir.resolve("docs")
+    Files.createDirectories(outputDocDir)
+    if Files.exists(docDir) then
+      val docFiles = Files.list(docDir).iterator().asScala
+        .filter(f => Files.isRegularFile(f) && allowedDocExtensions.contains(f.getFileName.toString.split('.').last))
+        // Only files smaller than 2 MB
+        .filter(f => Files.size(f) < 2 * 1024 * 1024)
+        .toSeq
+      for docFile <- docFiles do
+        val target = outputDocDir.resolve(docFile.getFileName)
+        Files.copy(docFile, target)
+        println(s"Copied $docFile to $target")
 
   private def getOntologies(schemaRepoDir: Path): Model =
     val ontologyPaths = Seq(
