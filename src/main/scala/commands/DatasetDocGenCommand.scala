@@ -61,7 +61,7 @@ object DatasetDocGenCommand extends Command:
     Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
     println("Generated index.md")
 
-    if version == "latest" then
+    if version == "dev" then
       val optReadme = optIndex.copy(
         hidePropsInLevel = optIndex.hidePropsInLevel ++ Seq(
           (3, RdfUtil.hasStatistics), // distribution stats
@@ -132,7 +132,7 @@ object DatasetDocGenCommand extends Command:
   private def readmeIntro(websiteLink: String): String =
     f"""
        |
-       |*This README is a snapshot of documentation for the latest version of the dataset.
+       |*This README is a snapshot of documentation for the latest development version of the dataset.
        |Full documentation for all versions can be found [on the website]($websiteLink).*
        |""".stripMargin
 
