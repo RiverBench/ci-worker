@@ -32,9 +32,4 @@ object DocProp:
 
 case class DocProp(prop: Resource, label: String, comment: Option[String],
                    weight: Int, hidden: Boolean, group: Option[String]):
-  def toMarkdown: String = comment match
-    case Some(c) =>
-      val cClean = c.replace('"', '\'').replace("\n", " ")
-      f"$label<sup>[?](## \"$cClean\")</sup>"
-    case None => label
-
+  def toMarkdown: String = MarkdownUtil.toPrettyString(label, comment)

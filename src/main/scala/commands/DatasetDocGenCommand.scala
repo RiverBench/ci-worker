@@ -29,6 +29,7 @@ object DatasetDocGenCommand extends Command:
     val docBuilder = new DatasetDocBuilder(ontologies, metadata)
     val doc = docBuilder.build()
 
+    // TODO: save
     println(doc.toMarkdown)
   }
 
@@ -43,7 +44,9 @@ object DatasetDocGenCommand extends Command:
 
     val model = ModelFactory.createDefaultModel()
     for path <- ontologyPaths do
-      RDFDataMgr.read(model, path.toString)
+      val m = RDFDataMgr.loadModel(path.toString)
+      m.removeNsPrefix("")
+      model.add(m)
     model
 
 

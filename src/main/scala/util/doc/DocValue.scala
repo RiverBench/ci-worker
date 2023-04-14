@@ -2,6 +2,7 @@ package io.github.riverbench.ci_worker
 package util.doc
 
 import util.RdfUtil
+
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model
 import org.apache.jena.rdf.model.Model
@@ -16,13 +17,18 @@ object DocValue:
   case class Literal(value: model.Literal) extends DocValue:
     def toMarkdown: String = value.getDatatype match
       case XSDboolean => if value.getBoolean then "yes" else "no"
-      case _ => value.getLexicalForm.strip
+      case _ =>
+        val str = value.getLexicalForm.strip
+        // Heuristic for
+        if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) then
+          f"`$str`" else str
 
   case class RdfNamedThing(value: model.Resource, ontologies: Model) extends DocValue:
     private val label = RdfUtil.getPrettyLabel(value, Some(ontologies))
+    private val comment = RdfUtil.getString(value, RDFS.comment, Some(ontologies))
 
     def toMarkdown: String =
-      f"$label ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"
+      f"${MarkdownUtil.toPrettyString(label, comment)} ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"
 
     override def getTitle: Option[String] = Some(label)
 
@@ -42,7 +48,7 @@ object DocValue:
 
   case class List(values: Iterable[DocValue], baseName: Option[String]) extends DocValue:
     override val isNestedList = true
-    // TODO: sorting by onto-specified prop
+
     def toMarkdown: String =
       val baseItemName = baseName.getOrElse("Item").strip
       val valuesSorted = values.toSeq.sortBy(_.getTitle.getOrElse(baseItemName))

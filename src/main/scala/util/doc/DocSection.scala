@@ -3,29 +3,45 @@ package util.doc
 
 import scala.collection.mutable
 
-class DocSection(val level: Int, val title: String, val content: String):
-  val entries = mutable.ListBuffer[(DocProp, DocValue)]()
-  val subsections = mutable.ListBuffer[DocSection]()
+class DocSection(val level: Int):
+  private val entries = mutable.ListBuffer[(DocProp, DocValue)]()
+  private val subsections = mutable.ListBuffer[DocSection]()
+
+  private var title = "(empty)"
+  private var content = ""
+  private var weight: Option[Double] = None
+
+  // Accessors set and get
+  def setTitle(title: String): Unit = this.title = title
+  def setContent(content: String): Unit = this.content = content
+  def setWeight(weight: Double): Unit = this.weight = Some(weight)
+  def getTitle: String = title
 
   def addEntry(prop: DocProp, value: DocValue): Unit =
-    if prop.group.isDefined then
+    if level == 1 && prop.group.isDefined then
       if !subsections.exists(_.title == prop.group.get) then
-        addSubsection(prop.group.get, "")
+        val subSec = addSubsection()
+        subSec.setTitle(prop.group.get)
       val sub = subsections.find(_.title == prop.group.get).get
       sub.addEntry(prop.copy(group = None), value)
     else
       entries.addOne((prop, value))
 
-  def addSubsection(title: String, content: String): DocSection =
-    val section = DocSection(level + 1, title, content)
+  def addSubsection(): DocSection =
+    val section = DocSection(level + 1)
     subsections += section
     section
 
   private def getWeight: Double =
-    val selfWeight = if entries.isEmpty then 0.0 else
+    val selfWeight = if weight.isDefined then
+      weight.get
+    else if entries.isEmpty then
+      0.0
+    else
       entries.map(_._1.weight.toDouble).filter(_ < 3_000_000.0).sum / entries.size
+
     val subWeight = if subsections.isEmpty then 0.0 else
-      subsections.map(_.getWeight).sum / subsections.size
+      subsections.map(_.getWeight).filter(_ < 3_000_000.0).sum / subsections.size
 
     selfWeight + subWeight
 
@@ -41,7 +57,12 @@ class DocSection(val level: Int, val title: String, val content: String):
     if entries.nonEmpty && subsections.nonEmpty then
       sb.append("\n")
 
-    for sub <- subsections.sortBy(_.getWeight) do
-      sb.append(s"${sub.toMarkdown}\n\n")
+    val sortedSections = if level == 1 then
+      subsections.sortBy(_.getWeight)
+    else
+      subsections.sortBy(_.title)
+
+    for sub <- sortedSections do
+      sb.append(s"${sub.toMarkdown.strip}\n\n")
 
     sb.toString
