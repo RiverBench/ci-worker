@@ -34,6 +34,8 @@ object DatasetDocGenCommand extends Command:
     val datasetRes = metadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
     val landingPage = datasetRes.listProperties(RdfUtil.dcatLandingPage)
       .asScala.toSeq.head.getResource.getURI
+    val version = datasetRes.listProperties(RdfUtil.hasVersion)
+      .asScala.toSeq.head.getLiteral.getString
 
     val ontologies = getOntologies(schemaRepoDir)
     val optIndex = DocBuilder.Options(
@@ -54,24 +56,27 @@ object DatasetDocGenCommand extends Command:
         (3, RDF.`type`), // for distributions
       )
     )
-    val optReadme = optIndex.copy(
-      hidePropsInLevel = optIndex.hidePropsInLevel ++ Seq(
-        (3, RdfUtil.hasStatistics), // distribution stats
-        (3, RdfUtil.spdxChecksum), // distribution checksums
-      )
-    )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
     val docIndex = docBuilderIndex.build(mi.description, datasetRes)
     Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
     println("Generated index.md")
 
-    val docBuilderReadme = new DocBuilder(ontologies, optReadme)
-    val docReadme = docBuilderReadme.build(mi.description + readmeIntro(landingPage), datasetRes)
-    Files.writeString(
-      outputDir.resolve("README.md"),
-      readmeHeader(mi.identifier) + "\n\n" + docReadme.toMarkdown
-    )
-    println("Generated README.md")
+    if version == "latest" then
+      val optReadme = optIndex.copy(
+        hidePropsInLevel = optIndex.hidePropsInLevel ++ Seq(
+          (3, RdfUtil.hasStatistics), // distribution stats
+          (3, RdfUtil.spdxChecksum), // distribution checksums
+        )
+      )
+      val docBuilderReadme = new DocBuilder(ontologies, optReadme)
+      val docReadme = docBuilderReadme.build(mi.description + readmeIntro(landingPage), datasetRes)
+      Files.writeString(
+        outputDir.resolve("README.md"),
+        readmeHeader(mi.identifier) + "\n\n" + docReadme.toMarkdown
+      )
+      println("Generated README.md")
+    else
+      println(f"Version is $version – not generating README.md")
   }
 
   private val allowedDocExtensions = Set("md", "jpg", "png", "svg", "jpeg", "bmp", "webp", "gif")
@@ -120,7 +125,8 @@ object DatasetDocGenCommand extends Command:
        |-- to them from the description in the metadata.ttl file.
        |--
        |-->
-       |[![.github/workflows/ci.yaml]($baseRepoUrl/dataset-$id/actions/workflows/ci.yaml/badge.svg?event=push)]($baseRepoUrl/dataset-$id/actions/workflows/ci.yaml)
+       |[![.github/workflows/validate.yaml]($baseRepoUrl/dataset-$id/actions/workflows/validate.yaml/badge.svg?event=push)]($baseRepoUrl/dataset-$id/actions/workflows/validate.yaml)
+       |[![.github/workflows/release.yaml]($baseRepoUrl/dataset-$id/actions/workflows/release.yaml/badge.svg?event=push)]($baseRepoUrl/dataset-$id/actions/workflows/release.yaml)
        |""".stripMargin
 
   private def readmeIntro(websiteLink: String): String =
