@@ -125,7 +125,6 @@ object DatasetDocGenCommand extends Command:
        |-- to them from the description in the metadata.ttl file.
        |--
        |-->
-       |[![.github/workflows/validate.yaml]($baseRepoUrl/dataset-$id/actions/workflows/validate.yaml/badge.svg?event=push)]($baseRepoUrl/dataset-$id/actions/workflows/validate.yaml)
        |[![.github/workflows/release.yaml]($baseRepoUrl/dataset-$id/actions/workflows/release.yaml/badge.svg?event=push)]($baseRepoUrl/dataset-$id/actions/workflows/release.yaml)
        |""".stripMargin
 
