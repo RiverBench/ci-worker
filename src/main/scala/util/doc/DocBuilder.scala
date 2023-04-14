@@ -1,56 +1,49 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import util.{MetadataReader, RdfUtil}
+import util.RdfUtil
 
 import org.apache.jena.rdf.model.{Literal, Model, Property, RDFNode, Resource}
-import org.apache.jena.sparql.vocabulary.FOAF
-import org.apache.jena.vocabulary.{RDF, RDFS}
+import org.apache.jena.vocabulary.RDF
 
 import scala.jdk.CollectionConverters.*
 
-object DatasetDocBuilder:
-  private val titleProps = Seq(
-    RdfUtil.dctermsTitle,
-    RDFS.label,
-    FOAF.name,
-    FOAF.nick,
-    RDF.`type`,
-  )
+object DocBuilder:
+  case class Options(titleProps: Seq[Property], nestedSectionProps: Seq[Property],
+                     hidePropsInLevel: Seq[(Int, Property)])
 
-  private val nestedSectionProps = Seq(
-    RdfUtil.dcatDistribution,
-    RdfUtil.hasStatistics,
-  )
-
-class DatasetDocBuilder(ontologies: Model, metadata: Model):
-  import DatasetDocBuilder.*
-
+class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
   private val groups = new DocGroupRegistry(ontologies)
 
-  def build(): DocSection =
+  def build(content: String, rootResource: Resource): DocSection =
     val rootSection = new DocSection(1)
-    val datasetRes = metadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
-    buildSection(datasetRes, rootSection)
+    rootSection.setContent(content)
+    buildSection(rootResource, rootSection)
     rootSection
 
   private def buildSection(resource: Resource, section: DocSection): Unit =
     val props = getDocPropsForRes(resource)
 
     val usedValues = props.flatMap { (prop, nodes) =>
-      if nestedSectionProps.exists(p => p.getURI == prop.prop.getURI) then
-        val nestedSection = section.addSubsection()
-        nestedSection.setWeight(prop.weight)
-        nestedSection.setTitle(prop.group.getOrElse(prop.toMarkdown))
-        for node <- nodes do
-          val itemSection = nestedSection.addSubsection()
-          node match
-            case res: Resource => buildSection(res, itemSection)
-            case _ => println("WARNING: nested section node is not a resource")
+      val isPropHiddenInLevel = opt.hidePropsInLevel.exists { case (l, p) =>
+        l == section.level && p.getURI == prop.prop.getURI
+      }
+
+      if opt.nestedSectionProps.exists(p => p.getURI == prop.prop.getURI) then
+        if !isPropHiddenInLevel then
+          val nestedSection = section.addSubsection()
+          nestedSection.setWeight(prop.weight)
+          nestedSection.setTitle(prop.group.getOrElse(prop.toMarkdown))
+          for node <- nodes do
+            val itemSection = nestedSection.addSubsection()
+            node match
+              case res: Resource => buildSection(res, itemSection)
+              case _ => println("WARNING: nested section node is not a resource")
         None
       else
         val value = makeValue(prop, nodes)
-        section.addEntry(prop, value)
+        if !isPropHiddenInLevel then
+          section.addEntry(prop, value)
         Some(prop, value)
     }
     getTitleForProps(usedValues) match
@@ -89,10 +82,9 @@ class DatasetDocBuilder(ontologies: Model, metadata: Model):
       values.head
 
   private def getTitleForProps(props: Iterable[(DocProp, DocValue)]): Option[String] =
-    titleProps.flatMap { prop =>
+    opt.titleProps.flatMap { prop =>
       props.collect {
         case (p, value) if p.prop.getURI == prop.getURI =>
           value.getTitle.getOrElse(value.toMarkdown)
       }
     }.headOption
-

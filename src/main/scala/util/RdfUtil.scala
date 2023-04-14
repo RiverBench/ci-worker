@@ -45,6 +45,7 @@ object RdfUtil:
   val dcatDownloadURL = m.createProperty(pDcat, "downloadURL")
   val dcatLandingPage = m.createProperty(pDcat, "landingPage")
 
+  val dctermsDescription = m.createProperty(pDcterms, "description")
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
   val dctermsTitle = m.createProperty(pDcterms, "title")
 
