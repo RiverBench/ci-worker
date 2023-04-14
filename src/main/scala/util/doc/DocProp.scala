@@ -8,14 +8,6 @@ import org.apache.jena.vocabulary.RDFS
 
 object DocProp:
   def apply(prop: Resource, ontologies: Model, groups: DocGroupRegistry): DocProp =
-    def getString(propType: Property): Option[String] =
-      val langString = ontologies.getProperty(prop, propType, "en")
-      if langString != null then
-        Some(langString.getString)
-      else
-        val string = ontologies.getProperty(prop, propType)
-        if string != null then Some(string.getString) else None
-
     val weightSt = ontologies.getProperty(prop, RdfUtil.hasDocWeight)
     val weightVal = if weightSt == null || !weightSt.getObject.isLiteral then
       Int.MaxValue
@@ -31,8 +23,8 @@ object DocProp:
 
     DocProp(
       prop,
-      label = getString(RDFS.label).getOrElse(prop.getLocalName),
-      comment = getString(RDFS.comment),
+      label = RdfUtil.getPrettyLabel(prop, Some(ontologies)),
+      comment = RdfUtil.getString(prop, RDFS.comment, Some(ontologies)),
       weight = weightVal,
       hidden = hiddenSt != null && hiddenSt.getObject.isLiteral && hiddenSt.getBoolean,
       group = groupVal,

@@ -16,8 +16,10 @@ class DocSection(val level: Int, val title: String, val content: String):
     else
       entries.addOne((prop, value))
 
-  def addSubsection(title: String, content: String): Unit =
-    subsections += DocSection(level + 1, title, content)
+  def addSubsection(title: String, content: String): DocSection =
+    val section = DocSection(level + 1, title, content)
+    subsections += section
+    section
 
   private def getWeight: Double =
     val selfWeight = if entries.isEmpty then 0.0 else

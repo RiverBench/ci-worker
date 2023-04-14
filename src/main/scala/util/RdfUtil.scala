@@ -1,8 +1,8 @@
 package io.github.riverbench.ci_worker
 package util
 
-import org.apache.jena.rdf.model.ModelFactory
-import org.apache.jena.vocabulary.VCARD
+import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
+import org.apache.jena.vocabulary.{RDF, RDFS, VCARD}
 
 object RdfUtil:
   val m = ModelFactory.createDefaultModel()
@@ -71,3 +71,26 @@ object RdfUtil:
   val spdxChecksumAlgorithmMd5 = m.createResource(pSpdx + "checksumAlgorithm_md5")
 
   val tempDataset = m.createResource(pTemp + "dataset")
+
+  def getString(subject: Resource, prop: Property, m: Option[Model] = None): Option[String] =
+    val model = m.getOrElse(subject.getModel)
+    val langString = model.getProperty(subject, prop, "en")
+    if langString != null then
+      Some(langString.getString)
+    else
+      val string = model.getProperty(subject, prop)
+      if string != null then Some(string.getString) else None
+
+  def getLabel(subject: Resource, m: Option[Model] = None): String =
+    getString(subject, RDFS.label, m).getOrElse(subject.getLocalName)
+
+  def getPrettyLabel(subject: Resource, m: Option[Model] = None): String =
+    getLabel(subject, m).strip.capitalize
+
+  /**
+   * Checks if a resource is probably a named thing.
+   * @return
+   */
+  def isNamedThing(subject: Resource, m: Option[Model]): Boolean =
+    val model = m.getOrElse(subject.getModel)
+    model.getProperty(subject, RDF.`type`) != null
