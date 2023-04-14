@@ -1,10 +1,10 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import akka.stream.scaladsl.Sink
 import util.{MetadataInfo, MetadataReader}
+import util.io.FileHelper
 
-import io.github.riverbench.ci_worker.util.io.FileHelper
+import akka.stream.scaladsl.Sink
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -85,8 +85,9 @@ object ValidateRepoCommand extends Command:
     if datasetSources != 1 then
       errors += s"Exactly one dataset source must be present. There are $datasetSources."
 
-    errors ++= Seq("LICENSE", "README.md", "metadata.ttl", ".github/workflows/ci.yaml")
-      .map(repoDir.resolve)
+    errors ++= Seq("LICENSE", "README.md", "metadata.ttl",
+      ".github/workflows/validate.yaml", ".github/workflows/release.yaml"
+    ).map(repoDir.resolve)
       .filter(f => !files.contains(f))
       .map(f => s"Missing file: $f")
 
