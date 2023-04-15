@@ -11,6 +11,8 @@ import org.apache.jena.vocabulary.{RDF, RDFS}
 import scala.jdk.CollectionConverters.*
 
 object DocValue:
+  import MarkdownUtil.indent
+
   case class Text(value: String) extends DocValue:
     def toMarkdown: String = value.strip
 
@@ -19,7 +21,7 @@ object DocValue:
       case XSDboolean => if value.getBoolean then "yes" else "no"
       case _ =>
         val str = value.getLexicalForm.strip
-        // Heuristic for
+        // Heuristic for hash-like strings
         if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) then
           f"`$str`" else str
 
@@ -32,6 +34,9 @@ object DocValue:
 
     override def getTitle: Option[String] = Some(label)
 
+  case class Link(value: model.Resource) extends DocValue:
+    def toMarkdown: String = f"[${value.getURI}](${value.getURI})"
+
   case class BlankNode(values: Iterable[(DocProp, DocValue)], name: Option[String]) extends DocValue:
     override val isNestedList = true
     override def toMarkdown: String = values
@@ -39,9 +44,9 @@ object DocValue:
       .sortBy(_._1.weight)
       .map { case (prop, value) =>
         val vMd = if value.isNestedList then
-          value.toMarkdown.linesIterator.map("  " + _).mkString("\n")
+          value.toMarkdown.linesIterator.map(indent + _).mkString("\n")
         else value.toMarkdown
-        s"\n  - **${prop.toMarkdown}**: $vMd"
+        s"\n$indent- **${prop.toMarkdown}**: $vMd"
       }.mkString
 
     override def getTitle = name
@@ -54,9 +59,9 @@ object DocValue:
       val valuesSorted = values.toSeq.sortBy(_.getTitle.getOrElse(baseItemName))
       val items = for (value, i) <- valuesSorted.zipWithIndex yield
         if value.isNestedList then
-          f"  - **${value.getTitle.getOrElse(baseItemName)} (${i + 1})**" +
-            value.toMarkdown.linesIterator.map("  " + _).mkString("\n")
-        else s"  - ${value.toMarkdown}"
+          f"$indent- **${value.getTitle.getOrElse(baseItemName)} (${i + 1})**" +
+            value.toMarkdown.linesIterator.map(indent + _).mkString("\n")
+        else f"$indent- ${value.toMarkdown}"
       "\n" + items.mkString("\n")
 
 trait DocValue:
