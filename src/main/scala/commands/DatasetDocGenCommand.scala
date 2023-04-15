@@ -37,6 +37,11 @@ object DatasetDocGenCommand extends Command:
     val version = datasetRes.listProperties(RdfUtil.hasVersion)
       .asScala.toSeq.head.getLiteral.getString
 
+    val readableVersion = version match
+      case "dev" => "development version"
+      case _ => version
+    val title = f"${mi.identifier} ($readableVersion)"
+
     val ontologies = getOntologies(schemaRepoDir)
     val optIndex = DocBuilder.Options(
       titleProps = Seq(
@@ -57,7 +62,7 @@ object DatasetDocGenCommand extends Command:
       )
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
-    val docIndex = docBuilderIndex.build(mi.description, datasetRes)
+    val docIndex = docBuilderIndex.build(title, mi.description, datasetRes)
     Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
     println("Generated index.md")
 
@@ -69,7 +74,7 @@ object DatasetDocGenCommand extends Command:
         )
       )
       val docBuilderReadme = new DocBuilder(ontologies, optReadme)
-      val docReadme = docBuilderReadme.build(mi.description + readmeIntro(landingPage), datasetRes)
+      val docReadme = docBuilderReadme.build(title, mi.description + readmeIntro(landingPage), datasetRes)
       Files.writeString(
         outputDir.resolve("README.md"),
         readmeHeader(mi.identifier) + "\n\n" + docReadme.toMarkdown

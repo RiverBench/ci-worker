@@ -15,10 +15,12 @@ object DocBuilder:
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
   private val groups = new DocGroupRegistry(ontologies)
 
-  def build(content: String, rootResource: Resource): DocSection =
+  def build(title: String, content: String, rootResource: Resource): DocSection =
     val rootSection = new DocSection(1)
     rootSection.setContent(content)
     buildSection(rootResource, rootSection)
+    // Override title
+    rootSection.setTitle(title)
     rootSection
 
   private def buildSection(resource: Resource, section: DocSection): Unit =
