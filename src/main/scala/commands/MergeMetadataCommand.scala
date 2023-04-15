@@ -27,8 +27,8 @@ object MergeMetadataCommand extends Command:
     val versionTag = args(4)
 
     val mi = MetadataReader.read(repoDir)
-    val (merged, datasetRes) = getMergedMetadata(repoDir, packageDir)
-    addVersionMetadata(merged, datasetRes, mi, versionTag)
+    val (merged, datasetRes) = getMergedMetadata(repoDir, packageDir, mi, versionTag)
+    addVersionMetadata(merged, datasetRes, versionTag)
 
     val outFile = outputDir.resolve("metadata.ttl").toFile
     val os = new FileOutputStream(outFile)
@@ -36,25 +36,29 @@ object MergeMetadataCommand extends Command:
     println("Wrote metadata to " + outFile.getAbsolutePath)
   }
 
-  private def getMergedMetadata(repoDir: Path, packageDir: Path): (Model, Resource) =
+  private def getMergedMetadata(repoDir: Path, packageDir: Path, mi: MetadataInfo, version: String):
+  (Model, Resource) =
     val repoMetadata = RDFDataMgr.loadModel(repoDir.resolve("metadata.ttl").toString)
     val packageMetadata = RDFDataMgr.loadModel(packageDir.resolve("package_metadata.ttl").toString)
 
-    val datasetRes = repoMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
-    val tempStatements = packageMetadata.listStatements(RdfUtil.tempDataset, null, null).asScala.toSeq
-    for tempS <- tempStatements do
-      packageMetadata.add(datasetRes, tempS.getPredicate, tempS.getObject)
-      packageMetadata.remove(tempS)
-
+    val tempDatasetRes = repoMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
+    val newDatasetRes = repoMetadata.createResource(AppConfig.CiWorker.baseDownloadUrl + mi.identifier + "/" + version)
     repoMetadata.add(packageMetadata)
-    (repoMetadata, datasetRes)
+    val tempStatements = repoMetadata.listStatements(RdfUtil.tempDataset, null, null).asScala.toSet
+      ++ repoMetadata.listStatements(tempDatasetRes, null, null).asScala.toSet
 
-  private def addVersionMetadata(m: Model, datasetRes: Resource, mi: MetadataInfo, version: String): Unit =
+    for tempS <- tempStatements do
+      repoMetadata.add(newDatasetRes, tempS.getPredicate, tempS.getObject)
+      repoMetadata.remove(tempS)
+
+    (repoMetadata, newDatasetRes)
+
+  private def addVersionMetadata(m: Model, datasetRes: Resource, version: String): Unit =
     datasetRes.addProperty(RdfUtil.hasVersion, version)
-    val baseUrl = AppConfig.CiWorker.baseDownloadUrl + mi.identifier + "/" + version
+    val baseUrl = datasetRes.getURI
     datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
 
     for distRes <- datasetRes.listProperties(RdfUtil.dcatDistribution).asScala.map(_.getObject.asResource).toSeq do
       val fileName = distRes.getProperty(RdfUtil.hasFileName).getObject.asLiteral.getString
-      val downloadUrl = baseUrl + "/" + fileName
+      val downloadUrl = baseUrl + "/files/" + fileName
       distRes.addProperty(RdfUtil.dcatDownloadURL, m.createResource(downloadUrl))
