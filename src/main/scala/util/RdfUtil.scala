@@ -4,6 +4,8 @@ package util
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.vocabulary.{RDF, RDFS, VCARD}
 
+import scala.jdk.CollectionConverters.*
+
 object RdfUtil:
   val m = ModelFactory.createDefaultModel()
 
@@ -35,6 +37,7 @@ object RdfUtil:
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
+  val hasRestriction = m.createProperty(pRb, "hasRestriction")
   val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
   val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
 
@@ -49,6 +52,8 @@ object RdfUtil:
   val dcatPackageFormat = m.createProperty(pDcat, "packageFormat")
   val dcatDownloadURL = m.createProperty(pDcat, "downloadURL")
   val dcatLandingPage = m.createProperty(pDcat, "landingPage")
+  val dcatInSeries = m.createProperty(pDcat, "inSeries")
+  val dcatSeriesMember = m.createProperty(pDcat, "seriesMember")
 
   val dctermsDescription = m.createProperty(pDcterms, "description")
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
@@ -102,12 +107,15 @@ object RdfUtil:
     model.getProperty(subject, RDF.`type`) != null
 
   def renameResource(oldResource: Resource, newResource: Resource, model: Model): Unit =
-    val iter = model.listStatements()
-    while iter.hasNext do
-      val stmt = iter.nextStatement
+    val newStatements = for stmt <- model.listStatements.asScala yield
       if stmt.getSubject == oldResource then
-        model.add(newResource, stmt.getPredicate, stmt.getObject)
-      if stmt.getObject == oldResource then
-        model.add(stmt.getSubject, stmt.getPredicate, newResource)
+        Some(newResource, stmt.getPredicate, stmt.getObject)
+      else if stmt.getObject == oldResource then
+        Some(stmt.getSubject, stmt.getPredicate, newResource)
+      else None
+
+    for stmt <- newStatements.flatten.toSeq do
+      model.add(stmt._1, stmt._2, stmt._3)
+
     model.removeAll(oldResource, null, null)
     model.removeAll(null, null, oldResource)

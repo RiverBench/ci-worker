@@ -51,6 +51,8 @@ object MergeMetadataCommand extends Command:
       repoMetadata.add(newDatasetRes, tempS.getPredicate, tempS.getObject)
       repoMetadata.remove(tempS)
 
+    repoMetadata.removeNsPrefix("")
+
     (repoMetadata, newDatasetRes)
 
   private def addVersionMetadata(m: Model, datasetRes: Resource, version: String): Unit =
