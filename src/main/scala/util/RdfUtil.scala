@@ -4,6 +4,8 @@ package util
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.vocabulary.{RDF, RDFS, VCARD}
 
+import scala.jdk.CollectionConverters.*
+
 object RdfUtil:
   val m = ModelFactory.createDefaultModel()
 
@@ -13,6 +15,8 @@ object RdfUtil:
   val pRbDoc = "https://riverbench.github.io/schema/documentation#"
   // Prefix for temporary resources
   val pTemp = "https://riverbench.github.io/temp#"
+  // Prefix for published profiles
+  val pProfile = "https://riverbench.github.io/profiles/"
   // Prefix for DCAT
   val pDcat = "http://www.w3.org/ns/dcat#"
   // Prefix for DCTERMS
@@ -33,6 +37,10 @@ object RdfUtil:
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
+  val hasRestriction = m.createProperty(pRb, "hasRestriction")
+  val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
+  val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
+
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
   val isHiddenInDoc = m.createProperty(pRbDoc, "isHiddenInDoc")
@@ -44,6 +52,8 @@ object RdfUtil:
   val dcatPackageFormat = m.createProperty(pDcat, "packageFormat")
   val dcatDownloadURL = m.createProperty(pDcat, "downloadURL")
   val dcatLandingPage = m.createProperty(pDcat, "landingPage")
+  val dcatInSeries = m.createProperty(pDcat, "inSeries")
+  val dcatSeriesMember = m.createProperty(pDcat, "seriesMember")
 
   val dctermsDescription = m.createProperty(pDcterms, "description")
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
@@ -95,3 +105,17 @@ object RdfUtil:
   def isNamedThing(subject: Resource, m: Option[Model]): Boolean =
     val model = m.getOrElse(subject.getModel)
     model.getProperty(subject, RDF.`type`) != null
+
+  def renameResource(oldResource: Resource, newResource: Resource, model: Model): Unit =
+    val newStatements = for stmt <- model.listStatements.asScala yield
+      if stmt.getSubject == oldResource then
+        Some(newResource, stmt.getPredicate, stmt.getObject)
+      else if stmt.getObject == oldResource then
+        Some(stmt.getSubject, stmt.getPredicate, newResource)
+      else None
+
+    for stmt <- newStatements.flatten.toSeq do
+      model.add(stmt._1, stmt._2, stmt._3)
+
+    model.removeAll(oldResource, null, null)
+    model.removeAll(null, null, oldResource)

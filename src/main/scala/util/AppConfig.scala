@@ -20,4 +20,6 @@ object AppConfig:
   def getConfig = config
 
   object CiWorker:
-    val baseDownloadUrl = config.getString("ci-worker.base-download-url")
+    val baseDatasetUrl = config.getString("ci-worker.base-dataset-url")
+
+    val baseProfileUrl = config.getString("ci-worker.base-profile-url")
