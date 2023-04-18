@@ -13,6 +13,8 @@ object RdfUtil:
   val pRbDoc = "https://riverbench.github.io/schema/documentation#"
   // Prefix for temporary resources
   val pTemp = "https://riverbench.github.io/temp#"
+  // Prefix for published profiles
+  val pProfile = "https://riverbench.github.io/profiles/"
   // Prefix for DCAT
   val pDcat = "http://www.w3.org/ns/dcat#"
   // Prefix for DCTERMS
@@ -33,6 +35,9 @@ object RdfUtil:
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
+  val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
+  val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
+
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
   val isHiddenInDoc = m.createProperty(pRbDoc, "isHiddenInDoc")
@@ -95,3 +100,14 @@ object RdfUtil:
   def isNamedThing(subject: Resource, m: Option[Model]): Boolean =
     val model = m.getOrElse(subject.getModel)
     model.getProperty(subject, RDF.`type`) != null
+
+  def renameResource(oldResource: Resource, newResource: Resource, model: Model): Unit =
+    val iter = model.listStatements()
+    while iter.hasNext do
+      val stmt = iter.nextStatement
+      if stmt.getSubject == oldResource then
+        model.add(newResource, stmt.getPredicate, stmt.getObject)
+      if stmt.getObject == oldResource then
+        model.add(stmt.getSubject, stmt.getPredicate, newResource)
+    model.removeAll(oldResource, null, null)
+    model.removeAll(null, null, oldResource)

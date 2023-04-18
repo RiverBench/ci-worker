@@ -42,7 +42,7 @@ object MergeMetadataCommand extends Command:
     val packageMetadata = RDFDataMgr.loadModel(packageDir.resolve("package_metadata.ttl").toString)
 
     val tempDatasetRes = repoMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
-    val newDatasetRes = repoMetadata.createResource(AppConfig.CiWorker.baseDownloadUrl + mi.identifier + "/" + version)
+    val newDatasetRes = repoMetadata.createResource(AppConfig.CiWorker.baseDatasetUrl + mi.identifier + "/" + version)
     repoMetadata.add(packageMetadata)
     val tempStatements = repoMetadata.listStatements(RdfUtil.tempDataset, null, null).asScala.toSet
       ++ repoMetadata.listStatements(tempDatasetRes, null, null).asScala.toSet
