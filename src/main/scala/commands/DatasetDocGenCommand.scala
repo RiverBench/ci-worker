@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{MetadataReader, RdfUtil}
+import util.{MetadataReader, RdfIoUtil, RdfUtil}
 import util.doc.DocBuilder
 
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
@@ -42,7 +42,7 @@ object DatasetDocGenCommand extends Command:
       case _ => version
     val title = f"${mi.identifier} ($readableVersion)"
 
-    val ontologies = getOntologies(schemaRepoDir)
+    val ontologies = RdfIoUtil.loadOntologies(schemaRepoDir)
     val optIndex = DocBuilder.Options(
       titleProps = Seq(
         RdfUtil.dctermsTitle,
@@ -100,22 +100,6 @@ object DatasetDocGenCommand extends Command:
         val target = outputDocDir.resolve(docFile.getFileName)
         Files.copy(docFile, target)
         println(s"Copied $docFile to $target")
-
-  private def getOntologies(schemaRepoDir: Path): Model =
-    val ontologyPaths = Seq(
-      schemaRepoDir.resolve("src/dataset.ttl"),
-      schemaRepoDir.resolve("src/documentation.ttl"),
-      schemaRepoDir.resolve("src/theme.ttl"),
-    ) ++ schemaRepoDir.resolve("src/imports").toFile.listFiles()
-      .filter(f => f.isFile && (f.getName.endsWith(".ttl") || f.getName.endsWith(".rdf")))
-      .map(_.toPath)
-
-    val model = ModelFactory.createDefaultModel()
-    for path <- ontologyPaths do
-      val m = RDFDataMgr.loadModel(path.toString)
-      m.removeNsPrefix("")
-      model.add(m)
-    model
 
   private val baseRepoUrl = "https://github.com/RiverBench"
 

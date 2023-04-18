@@ -16,6 +16,7 @@ object Command:
     MergeMetadataCommand,
     DatasetDocGenCommand,
     PackageProfilesCommand,
+    MainDocGenCommand,
   )
 
   def getCommand(name: Option[String]): Command =

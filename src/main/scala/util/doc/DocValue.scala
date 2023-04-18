@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import util.RdfUtil
+import util.{AppConfig, RdfUtil}
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model
@@ -33,6 +33,27 @@ object DocValue:
       f"${MarkdownUtil.toPrettyString(label, comment)} ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"
 
     override def getTitle: Option[String] = Some(label)
+
+  object InternalLink:
+    def apply(value: model.Resource): InternalLink | Link =
+      val uri = value.getURI
+      val toSplit = if uri.startsWith(AppConfig.CiWorker.baseDatasetUrl) then
+        Some(uri.drop(AppConfig.CiWorker.baseDatasetUrl.length))
+      else if uri.startsWith(AppConfig.CiWorker.baseProfileUrl) then
+        Some(uri.drop(AppConfig.CiWorker.baseProfileUrl.length))
+      else None
+
+      toSplit match
+        case Some(toSplit) =>
+          val parts = toSplit.split('/')
+          if parts.length != 2 then
+            Link(value)
+          else
+            InternalLink(uri, s"${parts(0)} (${parts(1)})")
+        case _ => Link(value)
+
+  case class InternalLink(uri: String, name: String) extends DocValue:
+    def toMarkdown: String = f"[$name]($uri)"
 
   case class Link(value: model.Resource) extends DocValue:
     def toMarkdown: String = f"[${value.getURI}](${value.getURI})"
