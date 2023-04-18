@@ -49,7 +49,9 @@ object MainDocGenCommand extends Command:
         (1, RdfUtil.dctermsDescription),
         (1, RdfUtil.dctermsTitle),
         (1, RDF.`type`),
-      )
+      ) ++ (if version == "dev" then Seq(
+        (1, RdfUtil.hasVersion),
+      ) else Seq.empty)
     )
 
     val rootRes = mainMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.RiverBench).next.asResource
