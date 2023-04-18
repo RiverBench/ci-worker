@@ -6,7 +6,7 @@ import util.{AppConfig, RdfUtil}
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.vocabulary.{RDF, RDFS}
+import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
 
 import scala.jdk.CollectionConverters.*
 
@@ -27,7 +27,10 @@ object DocValue:
 
   case class RdfNamedThing(value: model.Resource, ontologies: Model) extends DocValue:
     private val label = RdfUtil.getPrettyLabel(value, Some(ontologies))
-    private val comment = RdfUtil.getString(value, RDFS.comment, Some(ontologies))
+    private val comment = (
+      RdfUtil.getString(value, RDFS.comment, Some(ontologies)) ++
+        RdfUtil.getString(value, SKOS.definition, Some(ontologies))
+    ).headOption
 
     def toMarkdown: String =
       f"${MarkdownUtil.toPrettyString(label, comment)} ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"

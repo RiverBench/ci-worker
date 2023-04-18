@@ -6,7 +6,7 @@ import util.doc.DocBuilder
 
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
-import org.apache.jena.vocabulary.{RDF, RDFS}
+import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.concurrent.Future
@@ -36,6 +36,48 @@ object MainDocGenCommand extends Command:
     profileDocGen(profileCollection, ontologies, outDir, readableVersion)
 
     println("Generating main documentation...")
+    val mainMetadata = RDFDataMgr.loadModel(mainMetadataOutDir.resolve("metadata.ttl").toString)
+    val mainDocOpt = DocBuilder.Options(
+      titleProps = Seq(
+        RdfUtil.hasLabelOverride,
+        RdfUtil.dctermsTitle,
+        RDFS.label,
+        SKOS.prefLabel,
+        RDF.`type`,
+      ),
+      hidePropsInLevel = Seq(
+        (1, RdfUtil.dctermsDescription),
+        (1, RdfUtil.dctermsTitle),
+        (1, RDF.`type`),
+      )
+    )
+
+    val rootRes = mainMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.RiverBench).next.asResource
+    val mainDocBuilder = new DocBuilder(ontologies, mainDocOpt)
+    val mainDoc = mainDocBuilder.build(
+      "RiverBench" + (if version == "dev" then "" else f" ($version)"),
+      Files.readString(repoDir.resolve("doc/index.md")),
+      rootRes
+    )
+    Files.writeString(outDir.resolve("index.md"), mainDoc.toMarkdown)
+
+    if version == "dev" then
+      println("Generating README...")
+      val readmeDocOpt = mainDocOpt.copy(hidePropsInLevel = mainDocOpt.hidePropsInLevel ++ Seq(
+        (1, RdfUtil.hasVersion),
+      ))
+      val readmeDocBuilder = new DocBuilder(ontologies, readmeDocOpt)
+      val readmeDoc = readmeDocBuilder.build(
+        "RiverBench",
+        Files.readString(repoDir.resolve("doc/readme_body.md")),
+        rootRes
+      )
+      Files.writeString(
+        outDir.resolve("README.md"),
+        Files.readString(repoDir.resolve("doc/readme_header.md")).strip +
+          "\n\n" +
+          readmeDoc.toMarkdown
+      )
   }
 
   private def profileDocGen(profileCollection: ProfileCollection, ontologies: Model, outDir: Path, version: String):

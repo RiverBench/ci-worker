@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package util
 
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
-import org.apache.jena.vocabulary.{RDF, RDFS, VCARD}
+import org.apache.jena.vocabulary.{RDF, RDFS, SKOS, VCARD}
 
 import scala.jdk.CollectionConverters.*
 
@@ -44,6 +44,7 @@ object RdfUtil:
 
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
+  val hasLabelOverride = m.createProperty(pRbDoc, "hasLabelOverride")
   val isHiddenInDoc = m.createProperty(pRbDoc, "isHiddenInDoc")
 
   val dcatDistribution = m.createProperty(pDcat, "distribution")
@@ -72,6 +73,7 @@ object RdfUtil:
   val Dataset = m.createResource(pRb + "Dataset")
   val Distribution = m.createResource(pRb + "Distribution")
   val Profile = m.createResource(pRb + "Profile")
+  val RiverBench = m.createResource(pRb + "RiverBench")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")
@@ -99,7 +101,11 @@ object RdfUtil:
       if string != null then Some(string.getString) else None
 
   def getLabel(subject: Resource, m: Option[Model] = None): String =
-    getString(subject, RDFS.label, m).getOrElse(subject.getLocalName)
+    (
+      getString(subject, RdfUtil.hasLabelOverride, m) ++
+      getString(subject, SKOS.prefLabel, m) ++
+      getString(subject, RDFS.label, m)
+    ).headOption.getOrElse(subject.getLocalName)
 
   def getPrettyLabel(subject: Resource, m: Option[Model] = None): String =
     getLabel(subject, m).strip.capitalize
