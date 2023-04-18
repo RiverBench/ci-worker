@@ -9,8 +9,8 @@ import org.apache.jena.vocabulary.RDF
 import scala.jdk.CollectionConverters.*
 
 object DocBuilder:
-  case class Options(titleProps: Seq[Property], nestedSectionProps: Seq[Property],
-                     hidePropsInLevel: Seq[(Int, Property)])
+  case class Options(titleProps: Seq[Property] = Seq(), nestedSectionProps: Seq[Property] = Seq(),
+                     hidePropsInLevel: Seq[(Int, Property)] = Seq())
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
   private val groups = new DocGroupRegistry(ontologies)
@@ -76,7 +76,7 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
       case res: Resource if docProp.prop.getURI == RDF.`type`.getURI ||
         RdfUtil.isNamedThing(res, Some(ontologies)) =>
         DocValue.RdfNamedThing(res, ontologies)
-      case res: Resource => DocValue.Link(res)
+      case res: Resource => DocValue.InternalLink(res)
       case node => DocValue.Text(node.toString)
     }
     if values.size > 1 then

@@ -66,6 +66,7 @@ object RdfUtil:
   // Classes
   val Dataset = m.createResource(pRb + "Dataset")
   val Distribution = m.createResource(pRb + "Distribution")
+  val Profile = m.createResource(pRb + "Profile")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")
