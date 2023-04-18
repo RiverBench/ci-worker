@@ -15,7 +15,7 @@ object Command:
     SelfTestCommand,
     MergeMetadataCommand,
     DatasetDocGenCommand,
-    PackageProfilesCommand,
+    PackageMainCommand,
     MainDocGenCommand,
   )
 

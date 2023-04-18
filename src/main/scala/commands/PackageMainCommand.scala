@@ -11,10 +11,10 @@ import java.nio.file.{FileSystems, Path}
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
-object PackageProfilesCommand extends Command:
-  override def name: String = "package-profiles"
+object PackageMainCommand extends Command:
+  override def name: String = "package-main"
 
-  override def description: String = "Package profiles, inferring additional properties.\n" +
+  override def description: String = "Package main repo metadata, incl. profiles.\n" +
     "Args: <version> <main-repo-dir> <out-dir>"
 
   override def validateArgs(args: Array[String]) = args.length == 4
@@ -34,32 +34,60 @@ object PackageProfilesCommand extends Command:
     val datasetsVersion = if version == "dev" then "dev" else "latest"
     val datasetCollection = DatasetCollection.fromReleases(datasetNames, datasetsVersion)
 
+    // Prepare main model
+    val mainModel = RDFDataMgr.loadModel(repoDir.resolve("metadata.ttl").toString)
+    val oldMainRes = mainModel.createResource(AppConfig.CiWorker.rbRootUrl)
+    val mainVer = if version == "dev" then "" else "v/" + version
+    val newMainRes = mainModel.createResource(AppConfig.CiWorker.rbRootUrl + mainVer)
+
     println("Processing profiles...")
     val subSupModel = profileCollection.getSubSuperAssertions
 
+    def getProfileUri(name: String) = AppConfig.CiWorker.baseProfileUrl + name + "/" + version
+
     for (name, profileModel) <- profileCollection.profiles do
       // Add version tags to URIs
-      val oldRes = profileModel.createResource(RdfUtil.pProfile + name)
-      val newRes = profileModel.createResource(AppConfig.CiWorker.baseProfileUrl + name + "/" + version)
+      val oldRes = profileModel.createResource(AppConfig.CiWorker.baseProfileUrl + name)
+      val newRes = profileModel.createResource(getProfileUri(name))
       RdfUtil.renameResource(oldRes, newRes, profileModel)
       RdfUtil.renameResource(oldRes, newRes, subSupModel)
 
     for (name, profileModel) <- profileCollection.profiles do
       // Add inferred properties
-      val res = subSupModel.createResource(RdfUtil.pProfile + name + "/" + version)
+      val res = subSupModel.createResource(getProfileUri(name))
       profileModel.removeAll(res, RdfUtil.isSupersetOfProfile, null)
       profileModel.add(subSupModel.listStatements(res, null, null))
-
+      // Version metadata
+      profileModel.add(res, RdfUtil.hasVersion, version)
+      profileModel.add(res, RdfUtil.dcatInCatalog, newMainRes)
       // Link datasets to profiles
       linkProfileAndDatasets(profileModel, res, datasetCollection)
       // Prettify
       profileModel.removeNsPrefix("")
 
+    println("Processing main metadata...")
+    RdfUtil.renameResource(oldMainRes, newMainRes, mainModel)
+    newMainRes.addProperty(RdfUtil.foafHomepage, newMainRes)
+    newMainRes.addProperty(RdfUtil.hasVersion, version)
+
+    // Add links to datasets and profiles
+    for (name, _) <- profileCollection.profiles do
+      val profileRes = mainModel.createResource(getProfileUri(name))
+      newMainRes.addProperty(RdfUtil.hasProfile, profileRes)
+    for ((_, dsModel) <- datasetCollection.datasets) do
+      val dsRes = dsModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
+      newMainRes.addProperty(RdfUtil.dcatDataset, dsRes)
+
     // Write to files
     println("Writing profiles...")
+    outDir.resolve("profiles").toFile.mkdirs()
     for (name, profileModel) <- profileCollection.profiles do
-      val outFile = outDir.resolve(name + ".ttl").toFile
+      val outFile = outDir.resolve(f"profiles/$name.ttl").toFile
       RDFDataMgr.write(new FileOutputStream(outFile), profileModel, Lang.TURTLE)
+
+    println("Writing main metadata...")
+    val mainOutFile = outDir.resolve("metadata.ttl").toFile
+    RDFDataMgr.write(new FileOutputStream(mainOutFile), mainModel, Lang.TURTLE)
 
     println("Done.")
   }

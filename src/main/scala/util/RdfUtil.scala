@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package util
 
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
-import org.apache.jena.vocabulary.{RDF, RDFS, VCARD}
+import org.apache.jena.vocabulary.{RDF, RDFS, SKOS, VCARD}
 
 import scala.jdk.CollectionConverters.*
 
@@ -15,12 +15,12 @@ object RdfUtil:
   val pRbDoc = "https://riverbench.github.io/schema/documentation#"
   // Prefix for temporary resources
   val pTemp = "https://riverbench.github.io/temp#"
-  // Prefix for published profiles
-  val pProfile = "https://riverbench.github.io/profiles/"
   // Prefix for DCAT
   val pDcat = "http://www.w3.org/ns/dcat#"
   // Prefix for DCTERMS
   val pDcterms = "http://purl.org/dc/terms/"
+  // Prefix for FOAF
+  val pFoaf = "http://xmlns.com/foaf/0.1/"
   // Prefix for SPDX
   val pSpdx = "http://spdx.org/rdf/terms#"
 
@@ -38,11 +38,13 @@ object RdfUtil:
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
   val hasRestriction = m.createProperty(pRb, "hasRestriction")
+  val hasProfile = m.createProperty(pRb, "hasProfile")
   val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
   val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
 
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
+  val hasLabelOverride = m.createProperty(pRbDoc, "hasLabelOverride")
   val isHiddenInDoc = m.createProperty(pRbDoc, "isHiddenInDoc")
 
   val dcatDistribution = m.createProperty(pDcat, "distribution")
@@ -52,12 +54,16 @@ object RdfUtil:
   val dcatPackageFormat = m.createProperty(pDcat, "packageFormat")
   val dcatDownloadURL = m.createProperty(pDcat, "downloadURL")
   val dcatLandingPage = m.createProperty(pDcat, "landingPage")
+  val dcatInCatalog = m.createProperty(pDcat, "inCatalog")
   val dcatInSeries = m.createProperty(pDcat, "inSeries")
   val dcatSeriesMember = m.createProperty(pDcat, "seriesMember")
+  val dcatDataset = m.createProperty(pDcat, "dataset")
 
   val dctermsDescription = m.createProperty(pDcterms, "description")
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
   val dctermsTitle = m.createProperty(pDcterms, "title")
+
+  val foafHomepage = m.createProperty(pFoaf, "homepage")
 
   val spdxChecksum = m.createProperty(pSpdx, "checksum")
   val spdxAlgorithm = m.createProperty(pSpdx, "algorithm")
@@ -67,6 +73,7 @@ object RdfUtil:
   val Dataset = m.createResource(pRb + "Dataset")
   val Distribution = m.createResource(pRb + "Distribution")
   val Profile = m.createResource(pRb + "Profile")
+  val RiverBench = m.createResource(pRb + "RiverBench")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")
@@ -94,7 +101,11 @@ object RdfUtil:
       if string != null then Some(string.getString) else None
 
   def getLabel(subject: Resource, m: Option[Model] = None): String =
-    getString(subject, RDFS.label, m).getOrElse(subject.getLocalName)
+    (
+      getString(subject, RdfUtil.hasLabelOverride, m) ++
+      getString(subject, SKOS.prefLabel, m) ++
+      getString(subject, RDFS.label, m)
+    ).headOption.getOrElse(subject.getLocalName)
 
   def getPrettyLabel(subject: Resource, m: Option[Model] = None): String =
     getLabel(subject, m).strip.capitalize
@@ -108,6 +119,7 @@ object RdfUtil:
     model.getProperty(subject, RDF.`type`) != null
 
   def renameResource(oldResource: Resource, newResource: Resource, model: Model): Unit =
+    if oldResource.getURI == newResource.getURI then return
     val newStatements = for stmt <- model.listStatements.asScala yield
       if stmt.getSubject == oldResource then
         Some(newResource, stmt.getPredicate, stmt.getObject)
