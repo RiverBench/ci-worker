@@ -36,12 +36,11 @@ object MetadataReader:
     fromModel(model)
 
   def fromModel(model: Model): MetadataInfo =
-    val rb = "https://riverbench.github.io/schema/dataset#"
-    val types = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementType"))
+    val types = model.listObjectsOfProperty(RdfUtil.hasStreamElementType)
       .asScala.toSeq
 
     def getBool(prop: String): Boolean =
-      model.listObjectsOfProperty(model.createProperty(rb + prop))
+      model.listObjectsOfProperty(model.createProperty(RdfUtil.pRb + prop))
         .asScala.toSeq.head.asLiteral.getBoolean
 
     MetadataInfo(
@@ -50,7 +49,7 @@ object MetadataReader:
       description = model.listObjectsOfProperty(RdfUtil.dctermsDescription)
         .asScala.toSeq.head.asLiteral.getString.strip,
       elementType = types.head.asResource.getURI.split('#').last,
-      elementCount = model.listObjectsOfProperty(model.createProperty(rb + "hasStreamElementCount"))
+      elementCount = model.listObjectsOfProperty(RdfUtil.hasStreamElementCount)
         .asScala.toSeq.head.asLiteral.getLong,
       conformance = ConformanceInfo(
         conformsToRdf11 = getBool("conformsToRdf11"),

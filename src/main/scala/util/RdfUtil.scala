@@ -35,6 +35,7 @@ object RdfUtil:
   val hasStatistics = m.createProperty(pRb, "hasStatistics")
   val hasDistributionType = m.createProperty(pRb, "hasDistributionType")
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
+  val hasStreamElementType = m.createProperty(pRb, "hasStreamElementType")
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
   val hasRestriction = m.createProperty(pRb, "hasRestriction")
