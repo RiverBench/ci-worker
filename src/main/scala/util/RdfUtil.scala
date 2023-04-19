@@ -10,7 +10,7 @@ object RdfUtil:
   val m = ModelFactory.createDefaultModel()
 
   // Prefix for RiverBench
-  val pRb = "https://riverbench.github.io/schema/dataset#"
+  val pRb = "https://riverbench.github.io/schema/metadata#"
   // Prefix for RiverBench documentation schema
   val pRbDoc = "https://riverbench.github.io/schema/documentation#"
   // Prefix for temporary resources
