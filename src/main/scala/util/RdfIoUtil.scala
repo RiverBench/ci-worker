@@ -9,7 +9,7 @@ import java.nio.file.Path
 object RdfIoUtil:
   def loadOntologies(schemaRepoDir: Path): Model =
     val ontologyPaths = Seq(
-      schemaRepoDir.resolve("src/dataset.ttl"),
+      schemaRepoDir.resolve("src/metadata.ttl"),
       schemaRepoDir.resolve("src/documentation.ttl"),
       schemaRepoDir.resolve("src/theme.ttl"),
     ) ++ schemaRepoDir.resolve("src/imports").toFile.listFiles()

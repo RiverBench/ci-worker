@@ -17,6 +17,7 @@ object Command:
     DatasetDocGenCommand,
     PackageMainCommand,
     MainDocGenCommand,
+    PackageSchemaCommand,
   )
 
   def getCommand(name: Option[String]): Command =
