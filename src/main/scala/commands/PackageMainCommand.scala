@@ -1,7 +1,8 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, DatasetCollection, ProfileCollection, RdfUtil}
+import util.{AppConfig, Constants, DatasetCollection, ProfileCollection, RdfUtil}
+
 import org.apache.jena.rdf.model.{Model, Property, RDFNode, Resource}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.apache.jena.vocabulary.RDF
@@ -82,12 +83,14 @@ object PackageMainCommand extends Command:
     println("Writing profiles...")
     outDir.resolve("profiles").toFile.mkdirs()
     for (name, profileModel) <- profileCollection.profiles do
-      val outFile = outDir.resolve(f"profiles/$name.ttl").toFile
-      RDFDataMgr.write(new FileOutputStream(outFile), profileModel, Lang.TURTLE)
+      for (ext, format) <- Constants.outputFormats do
+        val outFile = outDir.resolve(f"profiles/$name.$ext").toFile
+        RDFDataMgr.write(new FileOutputStream(outFile), profileModel, format)
 
     println("Writing main metadata...")
-    val mainOutFile = outDir.resolve("metadata.ttl").toFile
-    RDFDataMgr.write(new FileOutputStream(mainOutFile), mainModel, Lang.TURTLE)
+    for (ext, format) <- Constants.outputFormats do
+      val mainOutFile = outDir.resolve(f"metadata.$ext").toFile
+      RDFDataMgr.write(new FileOutputStream(mainOutFile), mainModel, format)
 
     println("Done.")
   }

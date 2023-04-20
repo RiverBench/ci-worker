@@ -30,10 +30,11 @@ object MergeMetadataCommand extends Command:
     val (merged, datasetRes) = getMergedMetadata(repoDir, packageDir, mi, versionTag)
     addVersionMetadata(merged, datasetRes, versionTag)
 
-    val outFile = outputDir.resolve("metadata.ttl").toFile
-    val os = new FileOutputStream(outFile)
-    RDFDataMgr.write(os, merged, RDFFormat.TURTLE_PRETTY)
-    println("Wrote metadata to " + outFile.getAbsolutePath)
+    for (ext, format) <- Constants.outputFormats do
+      val outFile = outputDir.resolve(f"metadata.$ext").toFile
+      val os = new FileOutputStream(outFile)
+      RDFDataMgr.write(os, merged, format)
+      println("Wrote metadata to " + outFile.getAbsolutePath)
   }
 
   private def getMergedMetadata(repoDir: Path, packageDir: Path, mi: MetadataInfo, version: String):

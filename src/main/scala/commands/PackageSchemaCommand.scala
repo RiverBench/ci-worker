@@ -1,7 +1,8 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.AppConfig
+import util.{AppConfig, Constants}
+
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.apache.jena.vocabulary.{OWL, OWL2, RDF}
 
@@ -24,11 +25,6 @@ object PackageSchemaCommand extends Command:
     val outDir = FileSystems.getDefault.getPath(args(3))
 
     val toProcessNames = Seq("metadata", "documentation", "dataset-shacl", "theme")
-    val formats = Seq(
-      ("ttl", Lang.TTL),
-      ("rdf", Lang.RDFXML),
-      ("nt", Lang.NT),
-    )
     val schemaBase = AppConfig.CiWorker.rbRootUrl + "schema/"
 
     outDir.toFile.mkdirs()
@@ -59,7 +55,7 @@ object PackageSchemaCommand extends Command:
 
       // Save
       println(s"Saving $name")
-      for (ext, lang) <- formats do
+      for (ext, format) <- Constants.outputFormats do
         val outPath = outDir.resolve(s"$name.$ext")
-        RDFDataMgr.write(new FileOutputStream(outPath.toFile), model, lang)
+        RDFDataMgr.write(new FileOutputStream(outPath.toFile), model, format)
   }

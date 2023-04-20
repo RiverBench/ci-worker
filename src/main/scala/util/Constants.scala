@@ -1,7 +1,15 @@
 package io.github.riverbench.ci_worker
 package util
 
+import org.apache.jena.riot.RDFFormat
+
 object Constants:
+  val outputFormats = Seq(
+    ("ttl", RDFFormat.TURTLE_PRETTY),
+    ("rdf", RDFFormat.RDFXML_PRETTY),
+    ("nt", RDFFormat.NTRIPLES_UTF8),
+  )
+
   val packageSizes = Seq[Long](
     10_000,
     100_000,
