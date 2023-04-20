@@ -2,6 +2,9 @@ package io.github.riverbench.ci_worker
 package util.io
 
 import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.*
+import akka.http.scaladsl.model.headers.Location
 import akka.stream.*
 import akka.stream.alpakka.file.TarArchiveMetadata
 import akka.stream.alpakka.file.scaladsl.Archive
@@ -18,23 +21,22 @@ import scala.concurrent.{ExecutionContext, Future}
 object FileHelper:
 
   /**
-   * Finds the source data file in the dataset directory.
-   * @param datasetDir the dataset directory
-   * @return the path to the data file
-   */
-  def findDataFile(datasetDir: Path): Path =
-    Seq("triples", "quads", "graphs")
-      .map(name => datasetDir.resolve(s"data/$name.tar.gz"))
-      .filter(Files.exists(_))
-      .head
-
-  /**
    * Reads a source data archive.
-   * @param file the path to the archive
+   * @param url the URL from which to download the archive
    * @return a source of the archive entries
    */
-  def readArchive(file: Path): Source[(TarArchiveMetadata, Source[ByteString, NotUsed]), Future[IOResult]] =
-    val source = FileIO.fromPath(file)
+  def readArchive(url: String)(implicit as: ActorSystem[_]):
+  Source[(TarArchiveMetadata, Source[ByteString, NotUsed]), Future[Any]] =
+    implicit val ec: ExecutionContext = as.executionContext
+    val response: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = url))
+      .flatMap {
+        // Follow redirects
+        case HttpResponse(StatusCodes.Redirection(_), headers, _, _) =>
+          val newUri = headers.collect { case Location(loc) => loc }.head
+          Http().singleRequest(HttpRequest(uri = newUri))
+        case r => Future { r }
+      }
+    val source = Source.futureSource(response.map(r => r.entity.dataBytes))
     source.via(Compression.gunzip())
       .via(Archive.tarReader())
       .filterNot((metadata, _) => metadata.isDirectory)

@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{MetadataInfo, MetadataReader}
+import util.{MetadataInfo, MetadataReader, ReleaseInfoParser}
 import util.io.FileHelper
 
 import akka.stream.scaladsl.Sink
@@ -21,10 +21,10 @@ object ValidateRepoCommand extends Command:
   override def name = "validate-repo"
 
   override def description = "Validates the dataset repository.\n" +
-    "Args: <repo dir> <path to metadata SHACL file>"
+    "Args: <repo dir> <source release info file> <path to metadata SHACL file>"
 
   override def validateArgs(args: Array[String]) =
-    args.length == 3
+    args.length == 4
 
   override def run(args: Array[String]): Future[Unit] = Future {
     val repoDir = FileSystems.getDefault.getPath(args(1))
@@ -32,7 +32,12 @@ object ValidateRepoCommand extends Command:
       println(s"Directory does not exist: $repoDir")
       System.exit(1)
 
-    val shaclFile = FileSystems.getDefault.getPath(args(2))
+    val sourceReleaseInfoFile = FileSystems.getDefault.getPath(args(2))
+    if !Files.exists(sourceReleaseInfoFile) then
+      println(s"Source release info file does not exist: $sourceReleaseInfoFile")
+      System.exit(1)
+
+    val shaclFile = FileSystems.getDefault.getPath(args(3))
     if !Files.exists(shaclFile) then
       println(s"SHACL file does not exist: $shaclFile")
       System.exit(1)
@@ -45,6 +50,23 @@ object ValidateRepoCommand extends Command:
 
     println("Directory structure is valid.")
 
+    val relInfo = ReleaseInfoParser.parse(sourceReleaseInfoFile)
+    if relInfo.isLeft then
+      println("Could not parse source release info file.")
+      System.exit(1)
+
+    val relAssets = relInfo.toOption.get.assets
+    val datasetSources = Seq("graphs", "quads", "triples")
+      .map(n => n + ".tar.gz")
+      .map(relAssets.map(_.name).contains)
+      .count(identity)
+
+    if datasetSources != 1 then
+      println(s"Exactly one dataset source must be present. There are $datasetSources.")
+      System.exit(1)
+
+    println("Dataset source is valid.")
+
     val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile)
     if metadataErrors.nonEmpty then
       println("Metadata is invalid:")
@@ -54,9 +76,9 @@ object ValidateRepoCommand extends Command:
     println("Metadata is valid.")
     println("Stream element type: " + metadataInfo.elementType)
     println("Stream element count: " + metadataInfo.elementCount)
-    (repoDir, metadataInfo)
-  } flatMap { (repoDir, metadataInfo) =>
-    validatePackage(repoDir, metadataInfo) map { packageErrors =>
+    (sourceReleaseInfoFile, metadataInfo)
+  } flatMap { (relFile, metadataInfo) =>
+    validatePackage(relFile, metadataInfo) map { packageErrors =>
       if packageErrors.nonEmpty then
         println("Package is invalid:")
         packageErrors.foreach(println)
@@ -75,15 +97,6 @@ object ValidateRepoCommand extends Command:
         Some(s"File with spaces found: $path")
       case _ => None
     }
-
-    val datasetSources = Seq("graphs", "quads", "triples")
-      .map(n => "data/" + n + ".tar.gz")
-      .map(repoDir.resolve)
-      .map(files.contains)
-      .count(identity)
-
-    if datasetSources != 1 then
-      errors += s"Exactly one dataset source must be present. There are $datasetSources."
 
     errors ++= Seq("LICENSE", "README.md", "metadata.ttl",
       ".github/workflows/validate.yaml", ".github/workflows/release.yaml"
@@ -132,10 +145,9 @@ object ValidateRepoCommand extends Command:
 
     (errors.toSeq, mi)
 
-  private def validatePackage(repoDir: Path, metadataInfo: MetadataInfo): Future[Seq[String]] =
-    val dataFile = FileHelper.findDataFile(repoDir)
-
-    val filesFuture = FileHelper.readArchive(dataFile)
+  private def validatePackage(relInfoFile: Path, metadataInfo: MetadataInfo): Future[Seq[String]] =
+    val dataFileUrl = ReleaseInfoParser.getDatasetUrl(relInfoFile)
+    val filesFuture = FileHelper.readArchive(dataFileUrl)
       .map((tarMeta, byteStream) => {
         byteStream.runWith(Sink.ignore)
         tarMeta.filePath.split('/').last
