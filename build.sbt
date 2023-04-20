@@ -2,7 +2,9 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.2.2"
 
 lazy val akkaV = "2.6.19"
+lazy val akkaHttpV = "10.2.10"
 lazy val alpakkaV = "3.0.4"
+lazy val circeV = "0.14.5"
 lazy val jenaV = "4.7.0"
 lazy val rdf4jV = "4.2.3"
 
@@ -14,6 +16,9 @@ lazy val root = (project in file("."))
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
       "com.google.guava" % "guava" % "31.1-jre",
+      "io.circe" %% "circe-core" % circeV,
+      "io.circe" %% "circe-generic" % circeV,
+      "io.circe" %% "circe-parser" % circeV,
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,
@@ -27,6 +32,8 @@ lazy val root = (project in file("."))
       "com.lightbend.akka" %% "akka-stream-alpakka-file" % alpakkaV,
       "com.typesafe.akka" %% "akka-actor-typed" % akkaV,
       "com.typesafe.akka" %% "akka-stream-typed" % akkaV,
+      "com.typesafe.akka" %% "akka-http" % akkaHttpV,
+      "com.typesafe.akka" %% "akka-http-core" % akkaHttpV,
     ).map(_.cross(CrossVersion.for3Use2_13)),
 
     // Discard module-info.class files
