@@ -5,6 +5,7 @@ import util.{MetadataInfo, MetadataReader, ReleaseInfoParser}
 import util.io.FileHelper
 
 import akka.stream.scaladsl.Sink
+import io.github.riverbench.ci_worker.util.ReleaseInfoParser.ReleaseInfo
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
@@ -67,7 +68,7 @@ object ValidateRepoCommand extends Command:
 
     println("Dataset source is valid.")
 
-    val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile)
+    val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile, relInfo.toOption.get)
     if metadataErrors.nonEmpty then
       println("Metadata is invalid:")
       metadataErrors.foreach(println)
@@ -106,7 +107,7 @@ object ValidateRepoCommand extends Command:
 
     errors.toSeq
 
-  private def validateMetadata(repoDir: Path, shaclFile: Path): (Seq[String], MetadataInfo) =
+  private def validateMetadata(repoDir: Path, shaclFile: Path, relInfo: ReleaseInfo): (Seq[String], MetadataInfo) =
     val errors = mutable.ArrayBuffer[String]()
 
     def loadRdf(p: Path): Model = try
@@ -139,8 +140,8 @@ object ValidateRepoCommand extends Command:
     errors ++= mi.conformance.checkConsistency()
 
     // Check if the data file exists for the specified stream element type
-    val dataFile = repoDir.resolve("data").resolve(mi.elementType + ".tar.gz")
-    if !Files.exists(dataFile) then
+    val dataFile = mi.elementType + ".tar.gz"
+    if !relInfo.assets.map(_.name).contains(dataFile) then
       errors += s"Data file does not exist: $dataFile"
 
     (errors.toSeq, mi)
