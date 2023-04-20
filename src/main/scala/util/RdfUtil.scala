@@ -10,11 +10,11 @@ object RdfUtil:
   val m = ModelFactory.createDefaultModel()
 
   // Prefix for RiverBench
-  val pRb = "https://riverbench.github.io/schema/metadata#"
+  val pRb = "https://w3id.org/riverbench/schema/metadata#"
   // Prefix for RiverBench documentation schema
-  val pRbDoc = "https://riverbench.github.io/schema/documentation#"
+  val pRbDoc = "https://w3id.org/riverbench/schema/documentation#"
   // Prefix for temporary resources
-  val pTemp = "https://riverbench.github.io/temp#"
+  val pTemp = "https://w3id.org/riverbench/temp#"
   // Prefix for DCAT
   val pDcat = "http://www.w3.org/ns/dcat#"
   // Prefix for DCTERMS
