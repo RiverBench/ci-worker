@@ -9,15 +9,16 @@ object Command:
   implicit private val ec: ExecutionContext = Global.actorSystem.executionContext
 
   val commands: Seq[Command] = Seq(
-    HelpCommand,
-    ValidateRepoCommand,
-    PackageCommand,
-    SelfTestCommand,
-    MergeMetadataCommand,
     DatasetDocGenCommand,
-    PackageMainCommand,
+    HelpCommand,
     MainDocGenCommand,
+    MergeMetadataCommand,
+    NavGenCommand,
+    PackageCommand,
+    PackageMainCommand,
     PackageSchemaCommand,
+    SelfTestCommand,
+    ValidateRepoCommand,
   )
 
   def getCommand(name: Option[String]): Command =
