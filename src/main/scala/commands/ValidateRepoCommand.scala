@@ -105,6 +105,13 @@ object ValidateRepoCommand extends Command:
       .filter(f => !files.contains(f))
       .map(f => s"Missing file: $f")
 
+    if errors.nonEmpty then return errors.toSeq
+
+    Files.readString(repoDir.resolve("LICENSE")) match
+      case s if s.length < 150 || s.startsWith("PLACE HERE YOUR LICENSING INFORMATION") =>
+        errors += "LICENSE file does not contain a valid license"
+      case _ =>
+
     errors.toSeq
 
   private def validateMetadata(repoDir: Path, shaclFile: Path, relInfo: ReleaseInfo): (Seq[String], MetadataInfo) =
