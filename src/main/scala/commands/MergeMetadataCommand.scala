@@ -45,12 +45,8 @@ object MergeMetadataCommand extends Command:
     val tempDatasetRes = repoMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
     val newDatasetRes = repoMetadata.createResource(AppConfig.CiWorker.baseDatasetUrl + mi.identifier + "/" + version)
     repoMetadata.add(packageMetadata)
-    val tempStatements = repoMetadata.listStatements(RdfUtil.tempDataset, null, null).asScala.toSet
-      ++ repoMetadata.listStatements(tempDatasetRes, null, null).asScala.toSet
-
-    for tempS <- tempStatements do
-      repoMetadata.add(newDatasetRes, tempS.getPredicate, tempS.getObject)
-      repoMetadata.remove(tempS)
+    RdfUtil.renameResource(RdfUtil.tempDataset, newDatasetRes, repoMetadata)
+    RdfUtil.renameResource(tempDatasetRes, newDatasetRes, repoMetadata)
 
     repoMetadata.removeNsPrefix("")
 
@@ -65,3 +61,7 @@ object MergeMetadataCommand extends Command:
       val fileName = distRes.getProperty(RdfUtil.hasFileName).getObject.asLiteral.getString
       val downloadUrl = baseUrl + "/files/" + fileName
       distRes.addProperty(RdfUtil.dcatDownloadURL, m.createResource(downloadUrl))
+      val distId = distRes.getProperty(RdfUtil.dctermsIdentifier).getObject.asLiteral.getString
+      println(distId)
+      val newDistRes = m.createResource(datasetRes.getURI + "#" + distId)
+      RdfUtil.renameResource(distRes, newDistRes, m)

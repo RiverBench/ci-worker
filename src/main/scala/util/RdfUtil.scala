@@ -14,7 +14,7 @@ object RdfUtil:
   // Prefix for RiverBench documentation schema
   val pRbDoc = "https://w3id.org/riverbench/schema/documentation#"
   // Prefix for temporary resources
-  val pTemp = "https://w3id.org/riverbench/temp#"
+  val pTemp = "https://w3id.org/riverbench/temp/"
   // Prefix for DCAT
   val pDcat = "http://www.w3.org/ns/dcat#"
   // Prefix for DCTERMS

@@ -9,8 +9,11 @@ import org.apache.jena.vocabulary.RDF
 import scala.jdk.CollectionConverters.*
 
 object DocBuilder:
-  case class Options(titleProps: Seq[Property] = Seq(), nestedSectionProps: Seq[Property] = Seq(),
-                     hidePropsInLevel: Seq[(Int, Property)] = Seq())
+  case class Options(
+    titleProps: Seq[Property] = Seq(),
+    nestedSectionProps: Seq[Property] = Seq(),
+    hidePropsInLevel: Seq[(Int, Property)] = Seq()
+  )
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
   private val groups = new DocGroupRegistry(ontologies)
@@ -39,7 +42,10 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
           for node <- nodes do
             val itemSection = nestedSection.addSubsection()
             node match
-              case res: Resource => buildSection(res, itemSection)
+              case res: Resource =>
+                if res.isURIResource && res.getURI.contains('#') then
+                  itemSection.setAnchor(res.getURI.split('#').last)
+                buildSection(res, itemSection)
               case _ => println("WARNING: nested section node is not a resource")
         None
       else

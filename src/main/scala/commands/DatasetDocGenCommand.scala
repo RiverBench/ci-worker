@@ -31,10 +31,9 @@ object DatasetDocGenCommand extends Command:
 
     val metadata = RDFDataMgr.loadModel(metadataPath.toString)
     val mi = MetadataReader.fromModel(metadata)
-    val datasetRes = metadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
-    val landingPage = datasetRes.listProperties(RdfUtil.dcatLandingPage)
+    val landingPage = mi.datasetRes.listProperties(RdfUtil.dcatLandingPage)
       .asScala.toSeq.head.getResource.getURI
-    val version = datasetRes.listProperties(RdfUtil.hasVersion)
+    val version = mi.datasetRes.listProperties(RdfUtil.hasVersion)
       .asScala.toSeq.head.getLiteral.getString
 
     val readableVersion = version match
@@ -62,7 +61,7 @@ object DatasetDocGenCommand extends Command:
       )
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
-    val docIndex = docBuilderIndex.build(title, mi.description, datasetRes)
+    val docIndex = docBuilderIndex.build(title, mi.description, mi.datasetRes)
     Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
     println("Generated index.md")
 
@@ -74,7 +73,7 @@ object DatasetDocGenCommand extends Command:
         )
       )
       val docBuilderReadme = new DocBuilder(ontologies, optReadme)
-      val docReadme = docBuilderReadme.build(title, mi.description + readmeIntro(landingPage), datasetRes)
+      val docReadme = docBuilderReadme.build(title, mi.description + readmeIntro(landingPage), mi.datasetRes)
       Files.writeString(
         outputDir.resolve("README.md"),
         readmeHeader(mi.identifier) + "\n\n" + docReadme.toMarkdown

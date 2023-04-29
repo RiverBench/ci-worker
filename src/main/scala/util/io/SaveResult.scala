@@ -9,9 +9,12 @@ import org.apache.jena.rdf.model.Resource
 import org.apache.jena.vocabulary.RDF
 
 case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1: String):
+  def getLocalId: String = name.split('.').head.toLowerCase.replace('_', '-')
+
   def addToRdf(distRes: Resource, mi: MetadataInfo, flat: Boolean): Unit =
     distRes.addProperty(RdfUtil.dcatByteSize, size.toString, XSDinteger)
     distRes.addProperty(RdfUtil.dcatCompressFormat, "application/gzip")
+    distRes.addProperty(RdfUtil.dctermsIdentifier, getLocalId)
 
     if flat then
       if mi.elementType == "triples" then

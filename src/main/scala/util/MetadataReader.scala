@@ -1,14 +1,21 @@
 package io.github.riverbench.ci_worker
 package util
 
-import org.apache.jena.rdf.model.Model
+import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.riot.RDFDataMgr
+import org.apache.jena.vocabulary.RDF
 
 import java.nio.file.Path
 import scala.jdk.CollectionConverters.*
 
-case class MetadataInfo(identifier: String = "", description: String = "", elementType: String = "",
-                        elementCount: Long = 0, conformance: ConformanceInfo = ConformanceInfo())
+case class MetadataInfo(
+  identifier: String = "",
+  description: String = "",
+  elementType: String = "",
+  elementCount: Long = 0,
+  conformance: ConformanceInfo = ConformanceInfo(),
+  datasetRes: Resource = null,
+)
 
 case class ConformanceInfo(conformsToRdf11: Boolean = false, conformsToRdfStarDraft_20211217: Boolean = false,
                            usesGeneralizedRdfDatasets: Boolean = false, usesGeneralizedTriples: Boolean = false,
@@ -36,21 +43,22 @@ object MetadataReader:
     fromModel(model)
 
   def fromModel(model: Model): MetadataInfo =
-    val types = model.listObjectsOfProperty(RdfUtil.hasStreamElementType)
-      .asScala.toSeq
-
     def getBool(prop: String): Boolean =
       model.listObjectsOfProperty(model.createProperty(RdfUtil.pRb + prop))
         .asScala.toSeq.head.asLiteral.getBoolean
 
+    val dataset = model.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
+    val types = dataset.listProperties(RdfUtil.hasStreamElementType)
+      .asScala.toSeq
+
     MetadataInfo(
-      identifier = model.listObjectsOfProperty(RdfUtil.dctermsIdentifier)
-        .asScala.toSeq.head.asLiteral.getString.strip,
-      description = model.listObjectsOfProperty(RdfUtil.dctermsDescription)
-        .asScala.toSeq.head.asLiteral.getString.strip,
-      elementType = types.head.asResource.getURI.split('#').last,
-      elementCount = model.listObjectsOfProperty(RdfUtil.hasStreamElementCount)
-        .asScala.toSeq.head.asLiteral.getLong,
+      identifier = dataset.listProperties(RdfUtil.dctermsIdentifier)
+        .asScala.toSeq.head.getLiteral.getString.strip,
+      description = dataset.listProperties(RdfUtil.dctermsDescription)
+        .asScala.toSeq.head.getLiteral.getString.strip,
+      elementType = types.head.getResource.getURI.split('#').last,
+      elementCount = dataset.listProperties(RdfUtil.hasStreamElementCount)
+        .asScala.toSeq.head.getLiteral.getLong,
       conformance = ConformanceInfo(
         conformsToRdf11 = getBool("conformsToRdf11"),
         conformsToRdfStarDraft_20211217 = getBool("conformsToRdfStarDraft_20211217"),
@@ -58,4 +66,5 @@ object MetadataReader:
         usesGeneralizedTriples = getBool("usesGeneralizedTriples"),
         usesRdfStar = getBool("usesRdfStar"),
       ),
+      datasetRes = dataset,
     )

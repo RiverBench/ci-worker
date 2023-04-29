@@ -32,7 +32,7 @@ object PackageCommand extends Command:
 
   override def validateArgs(args: Array[String]) = args.length == 4
 
-  override def run(args: Array[String]): Future[Unit] =
+  override def run(args: Array[String]): Future[Unit] = Future {
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val sourceRelInfoFile = FileSystems.getDefault.getPath(args(2))
     val outDir = FileSystems.getDefault.getPath(args(3))
@@ -101,7 +101,9 @@ object PackageCommand extends Command:
 
     val datasetRes = m.createResource(RdfUtil.tempDataset.getURI)
 
-    g.run() map { pResults =>
+    (g.run(), m, datasetRes, outDir, metadata)
+  } flatMap { (pResultsF, m, datasetRes, outDir, metadata) =>
+    pResultsF map { pResults =>
       for pResult <- pResults do
         distributionToRdf(datasetRes, metadata, pResult)
 
@@ -111,6 +113,7 @@ object PackageCommand extends Command:
       m.write(os, "TURTLE")
       println("Done.")
     }
+  }
 
   /**
    * Adds RDF metadata for a given distribution
@@ -121,7 +124,7 @@ object PackageCommand extends Command:
   private def distributionToRdf(datasetRes: Resource, mi: MetadataInfo, pResult: PartialResult):
   Unit =
     val m = datasetRes.getModel
-    val distRes = m.createResource()
+    val distRes = m.createResource(RdfUtil.tempDataset.getURI + "#" + pResult.saveRes.getLocalId)
     datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
     distRes.addProperty(RdfUtil.hasFileName, pResult.saveRes.name)
     pResult.stats.addToRdf(distRes, mi, pResult.size, pResult.flat)

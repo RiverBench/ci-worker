@@ -9,11 +9,13 @@ class DocSection(val level: Int):
 
   private var title = "(empty)"
   private var content = ""
+  private var anchor: Option[String] = None
   private var weight: Option[Double] = None
 
   // Accessors set and get
   def setTitle(title: String): Unit = this.title = title
   def setContent(content: String): Unit = this.content = content
+  def setAnchor(anchor: String): Unit = this.anchor = Some(anchor)
   def setWeight(weight: Double): Unit = this.weight = Some(weight)
   def getTitle: String = title
 
@@ -47,7 +49,8 @@ class DocSection(val level: Int):
 
   def toMarkdown: String =
     val sb = new StringBuilder()
-    sb.append(s"${"#"*level} $title\n\n")
+    val anchorMd = anchor.map(a => s" <a name=\"$a\"></a>").getOrElse("")
+    sb.append(s"${"#"*level}$anchorMd $title\n\n")
     if content.nonEmpty then
       sb.append(s"$content\n\n")
 
