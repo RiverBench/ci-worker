@@ -15,6 +15,7 @@ object DocValue:
 
   case class Text(value: String) extends DocValue:
     def toMarkdown: String = value.strip
+    def getSortKey = value.strip
 
   case class Literal(value: model.Literal) extends DocValue:
     def toMarkdown: String = value.getDatatype match
@@ -24,6 +25,8 @@ object DocValue:
         // Heuristic for hash-like strings
         if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) then
           f"`$str`" else str
+
+    def getSortKey = value.getLexicalForm.strip
 
   case class RdfNamedThing(value: model.Resource, ontologies: Model) extends DocValue:
     private val label = RdfUtil.getPrettyLabel(value, Some(ontologies))
@@ -36,6 +39,8 @@ object DocValue:
       f"${MarkdownUtil.toPrettyString(label, comment)} ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"
 
     override def getTitle: Option[String] = Some(label)
+
+    override def getSortKey: String = label
 
   object InternalLink:
     def apply(value: model.Resource): InternalLink | Link =
@@ -57,9 +62,12 @@ object DocValue:
 
   case class InternalLink(uri: String, name: String) extends DocValue:
     def toMarkdown: String = f"[$name]($uri)"
+    def getSortKey = name
 
   case class Link(value: model.Resource) extends DocValue:
     def toMarkdown: String = f"[${value.getURI}](${value.getURI})"
+
+    override def getSortKey = value.getURI
 
   case class BlankNode(values: Iterable[(DocProp, DocValue)], name: Option[String]) extends DocValue:
     override val isNestedList = true
@@ -75,12 +83,14 @@ object DocValue:
 
     override def getTitle = name
 
+    override def getSortKey = name.getOrElse("")
+
   case class List(values: Iterable[DocValue], baseName: Option[String]) extends DocValue:
     override val isNestedList = true
 
     def toMarkdown: String =
       val baseItemName = baseName.getOrElse("Item").strip
-      val valuesSorted = values.toSeq.sortBy(_.getTitle.getOrElse(baseItemName))
+      val valuesSorted = values.toSeq.sortBy(_.getSortKey)
       val items = for (value, i) <- valuesSorted.zipWithIndex yield
         if value.isNestedList then
           f"$indent- **${value.getTitle.getOrElse(baseItemName)} (${i + 1})**" +
@@ -88,9 +98,13 @@ object DocValue:
         else f"$indent- ${value.toMarkdown}"
       "\n" + items.mkString("\n")
 
+    override def getSortKey = baseName.getOrElse("")
+
 trait DocValue:
   val isNestedList = false
 
   def toMarkdown: String
 
   def getTitle: Option[String] = None
+
+  def getSortKey: String
