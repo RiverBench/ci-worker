@@ -63,6 +63,7 @@ object RdfUtil:
   val dctermsDescription = m.createProperty(pDcterms, "description")
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
   val dctermsTitle = m.createProperty(pDcterms, "title")
+  val dctermsModified = m.createProperty(pDcterms, "modified")
 
   val foafHomepage = m.createProperty(pFoaf, "homepage")
 

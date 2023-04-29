@@ -3,12 +3,14 @@ package commands
 
 import util.*
 
+import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.apache.jena.vocabulary.RDF
 
 import java.io.FileOutputStream
 import java.nio.file.{FileSystems, Path}
+import java.time.LocalDate
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
@@ -56,12 +58,12 @@ object MergeMetadataCommand extends Command:
     datasetRes.addProperty(RdfUtil.hasVersion, version)
     val baseUrl = datasetRes.getURI
     datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
+    datasetRes.addProperty(RdfUtil.dctermsModified, m.createTypedLiteral(LocalDate.now.toString, XSDdate))
 
     for distRes <- datasetRes.listProperties(RdfUtil.dcatDistribution).asScala.map(_.getObject.asResource).toSeq do
       val fileName = distRes.getProperty(RdfUtil.hasFileName).getObject.asLiteral.getString
       val downloadUrl = baseUrl + "/files/" + fileName
       distRes.addProperty(RdfUtil.dcatDownloadURL, m.createResource(downloadUrl))
       val distId = distRes.getProperty(RdfUtil.dctermsIdentifier).getObject.asLiteral.getString
-      println(distId)
       val newDistRes = m.createResource(datasetRes.getURI + "#" + distId)
       RdfUtil.renameResource(distRes, newDistRes, m)
