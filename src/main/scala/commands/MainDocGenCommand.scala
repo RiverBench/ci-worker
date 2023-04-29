@@ -58,10 +58,15 @@ object MainDocGenCommand extends Command:
     val mainDocBuilder = new DocBuilder(ontologies, mainDocOpt)
     val mainDoc = mainDocBuilder.build(
       "RiverBench" + (if version == "dev" then "" else f" ($version)"),
-      Files.readString(repoDir.resolve("doc/index.md")),
+      Files.readString(repoDir.resolve("doc/index_body.md")),
       rootRes
     )
-    Files.writeString(outDir.resolve("index.md"), mainDoc.toMarkdown)
+    Files.writeString(
+      outDir.resolve("index.md"),
+      Files.readString(repoDir.resolve("doc/index_header.md")) ++ "\n" ++
+        mainDoc.toMarkdown ++ "\n" ++
+        Files.readString(repoDir.resolve("doc/index_footer.md"))
+    )
 
     if version == "dev" then
       println("Generating README...")
