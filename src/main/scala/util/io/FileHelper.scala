@@ -11,6 +11,8 @@ import akka.stream.alpakka.file.scaladsl.Archive
 import akka.stream.scaladsl.*
 import akka.util.ByteString
 import akka.{Done, NotUsed}
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.io.IOUtils
 
 import java.io.BufferedInputStream
 import java.nio.file.{Files, Path}
@@ -26,7 +28,7 @@ object FileHelper:
    * @return a source of the archive entries
    */
   def readArchive(url: String)(implicit as: ActorSystem[_]):
-  Source[(TarArchiveMetadata, Source[ByteString, NotUsed]), Future[Any]] =
+  Source[(TarArchiveMetadata, ByteString), NotUsed] =
     implicit val ec: ExecutionContext = as.executionContext
     val response: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = url))
       .flatMap {
@@ -36,11 +38,31 @@ object FileHelper:
           Http().singleRequest(HttpRequest(uri = newUri))
         case r => Future { r }
       }
-    val source = Source.futureSource(response.map(r => r.entity.dataBytes))
-    source.via(Compression.gunzip())
-      .via(Archive.tarReader())
-      .filterNot((metadata, _) => metadata.isDirectory)
-      .map((metadata, stream) => (metadata, stream))
+
+    // Unfortunately, Alpakka untar stage is glitchy with large archives, so we have to
+    // used the non-reactive Apache Commons implementation instead.
+    val tarIs = Source.futureSource(response.map(r => r.entity.dataBytes))
+      .via(Compression.gunzip())
+      .toMat(StreamConverters.asInputStream())(Keep.right)
+      .mapMaterializedValue(bytesIs => TarArchiveInputStream(bytesIs))
+      .run()
+
+    val tarIterator = Iterator
+      .continually(tarIs.getNextTarEntry)
+      .takeWhile(_ != null)
+      .filter(tarIs.canReadEntryData)
+      .filter(_.isFile)
+      .map(entry => (
+        TarArchiveMetadata(
+          filePathPrefix = "",
+          filePathName = entry.getName,
+          size = entry.getSize,
+          lastModification = Instant.ofEpochMilli(entry.getModTime.getTime),
+        ),
+        ByteString.fromArray(IOUtils.toByteArray(tarIs))
+      ))
+
+    Source.fromIterator(() => tarIterator)
 
   /**
    * Reusable sink for files that calculates the size, md5 and sha1 checksums.

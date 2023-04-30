@@ -19,6 +19,7 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-core" % circeV,
       "io.circe" %% "circe-generic" % circeV,
       "io.circe" %% "circe-parser" % circeV,
+      "org.apache.commons" % "commons-compress" % "1.23.0",
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,

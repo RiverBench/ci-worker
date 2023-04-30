@@ -56,11 +56,7 @@ object PackageCommand extends Command:
       (sStats, sStreamPackage, sFlatPackage, sChecks) =>
       import GraphDSL.Implicits.*
       val in = FileHelper.readArchive(dataFileUrl)
-        .mapAsync(1)((name, byteStream) => {
-          byteStream
-            .runFold(String())((acc, bs) => acc + bs.utf8String)
-            .map(data => (name, data))
-        })
+        .map((name, bytes) => (name, bytes.utf8String))
       val inBroad = builder.add(Broadcast[(TarArchiveMetadata, String)](2))
       val parseJenaBuffered = parseJenaFlow
         .zipWithIndex
