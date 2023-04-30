@@ -135,16 +135,22 @@ object PackageCommand extends Command:
       val name = tarMeta.filePathName
       val lang = if name.endsWith(".ttl") then Lang.TTL else Lang.TRIG
       val ds = DatasetGraphFactory.create()
-      // Parse the dataset in Jena
-      RDFParser.create()
-        // most strict parsing settings possible
-        .checking(true)
-        .errorHandler(ErrorHandlerFactory.errorHandlerStrict)
-        .fromString(data)
-        .lang(lang)
-        .parse(ds)
 
-      ds
+      // Parse the dataset in Jena
+      try {
+        RDFParser.create()
+          // most strict parsing settings possible
+          .checking(true)
+          .errorHandler(ErrorHandlerFactory.errorHandlerStrict)
+          .fromString(data)
+          .lang(lang)
+          .parse(ds)
+        ds
+      } catch {
+        case e =>
+          println(s"Error parsing $name")
+          throw e
+      }
     })
 
   /**
