@@ -162,7 +162,7 @@ object PackageCommand extends Command:
   Flow[(DatasetGraph, Long), (Long, StatCounterSuite.Result), NotUsed] =
     Flow[(DatasetGraph, Long)]
       .async
-      .wireTap((_, num) => if num + 1 % 100_000 == 0 then println(s"Stats stream at: ${num + 1}"))
+      .wireTap((_, num) => if (num + 1) % 100_000 == 0 then println(s"Stats stream at: ${num + 1}"))
       .splitAfter(SubstreamCancelStrategy.propagate)((_, num) =>
         val shouldSplit = Constants.packageSizes.contains(num + 1)
         if shouldSplit then println(s"Splitting stats stream at ${num + 1}")
