@@ -141,4 +141,5 @@ object FileHelper:
       })
       .via(Archive.tar())
       .via(Compression.gzip)
+      .async
       .toMat(fileSink(file))(Keep.right)

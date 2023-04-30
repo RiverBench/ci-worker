@@ -57,17 +57,19 @@ object PackageCommand extends Command:
       import GraphDSL.Implicits.*
       val in = FileHelper.readArchive(dataFileUrl)
         .map((name, bytes) => (name, bytes.utf8String))
+        .async
+        .buffer(16, OverflowStrategy.backpressure)
       val inBroad = builder.add(Broadcast[(TarArchiveMetadata, String)](2))
       val parseJenaBuffered = parseJenaFlow
         .zipWithIndex
-        .buffer(50, OverflowStrategy.backpressure)
+        .buffer(32, OverflowStrategy.backpressure)
       val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](4))
       val checksMerge = builder.add(Merge[Unit](2))
 
       in ~> inBroad
-      inBroad ~> checkRdf4jFlow(metadata) ~> checksMerge ~> sChecks
+      inBroad ~> checkRdf4jFlow(metadata).async ~> checksMerge ~> sChecks
       inBroad ~> parseJenaBuffered.async ~> dsBroad ~> checkStructureFlow(metadata).async ~> checksMerge
-      dsBroad ~> statsFlow(stats) ~> sStats
+      dsBroad ~> statsFlow(stats).async ~> sStats
       dsBroad ~> sStreamPackage
       dsBroad ~> sFlatPackage
 
@@ -161,7 +163,6 @@ object PackageCommand extends Command:
   private def statsFlow(stats: StatCounterSuite):
   Flow[(DatasetGraph, Long), (Long, StatCounterSuite.Result), NotUsed] =
     Flow[(DatasetGraph, Long)]
-      .async
       .wireTap((_, num) => if (num + 1) % 100_000 == 0 then println(s"Stats stream at: ${num + 1}"))
       .splitAfter(SubstreamCancelStrategy.propagate)((_, num) =>
         val shouldSplit = Constants.packageSizes.contains(num + 1)
@@ -188,7 +189,6 @@ object PackageCommand extends Command:
         if mi.conformance.usesRdfStar then rio.RDFFormat.TRIGSTAR else rio.RDFFormat.TRIG
 
     Flow[(TarArchiveMetadata, String)]
-      .async
       .map((_, data) => {
         val rioErrListener = new rio.helpers.ParseErrorCollector()
         val parser = rio.Rio.createParser(format)
@@ -221,7 +221,6 @@ object PackageCommand extends Command:
       sinkList =>
       import GraphDSL.Implicits.*
       val writerFlow = Flow[(DatasetGraph, Long)]
-        .async
         .map((ds, num) => {
           if metadata.elementType == "triples" then
             val data = RDFWriter.create()
@@ -269,7 +268,6 @@ object PackageCommand extends Command:
       sinkList =>
       import GraphDSL.Implicits.*
       val serializeFlow = Flow[(DatasetGraph, Long)]
-        .async
         .map((ds, _) => {
           if metadata.elementType == "triples" then
             RDFWriter.create()
