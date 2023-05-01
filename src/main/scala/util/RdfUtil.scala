@@ -40,6 +40,7 @@ object RdfUtil:
   val hasVersion = m.createProperty(pRb, "hasVersion")
   val hasRestriction = m.createProperty(pRb, "hasRestriction")
   val hasProfile = m.createProperty(pRb, "hasProfile")
+  val hasTemporalProperty = m.createProperty(pRb, "hasTemporalProperty")
   val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
   val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
 

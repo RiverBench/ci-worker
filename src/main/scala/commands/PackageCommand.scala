@@ -312,8 +312,16 @@ object PackageCommand extends Command:
         return Some("There are named graphs in a triples dataset")
     else if metadata.elementType == "graphs" then
       // One named graph is allowed + the default graph
-      if ds.listGraphNodes().asScala.toSeq.size != 1 then
+      val graphs = ds.listGraphNodes().asScala.toSeq
+      if graphs.size != 1 then
         return Some("There must be exactly one named graph in a graphs dataset")
+
+      metadata.temporalProp match
+        case Some(tProp) =>
+          ds.getDefaultGraph.find(graphs.head, tProp, null).asScala.toSeq match
+            case Seq() => return Some(s"The temporal property $tProp is not present in the dataset")
+            case Seq(_) => ()
+            case _ => return Some(s"The temporal property $tProp is present multiple times in the dataset")
 
     if !metadata.conformance.usesGeneralizedRdfDatasets &&
       ds.listGraphNodes().asScala.exists(n => n.isLiteral) then

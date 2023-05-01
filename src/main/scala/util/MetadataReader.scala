@@ -13,23 +13,29 @@ case class MetadataInfo(
   description: String = "",
   elementType: String = "",
   elementCount: Long = 0,
+  temporalProp: Option[Resource] = None,
   conformance: ConformanceInfo = ConformanceInfo(),
   datasetRes: Resource = null,
-)
+):
+  def checkConsistency(): Seq[String] =
+    val c = conformance
+    val errors = Seq.newBuilder[String]
+    if c.conformsToRdf11 && (c.usesGeneralizedRdfDatasets || c.usesGeneralizedTriples || c.usesRdfStar) then
+      errors += "Dataset conforms to RDF1.1, but also uses a non-standard feature"
+    if !c.conformsToRdf11 && c.conformsToRdfStarDraft_20211217 && !c.usesRdfStar then
+      errors += "Dataset does not use RDF-star and does not conform to RDF1.1, " +
+        "but conforms to RDF-star draft 2021-12-17"
+    if c.conformsToRdf11 && !c.conformsToRdfStarDraft_20211217 then
+      errors += "Dataset conforms to RDF1.1, but not to RDF-star draft 2021-12-17, which is a superset of RDF1.1"
+    if c.usesGeneralizedRdfDatasets && elementType == "triples" then
+      errors += "Dataset uses generalized RDF datasets, but has element type 'triples'"
+    if elementCount <= 0 then
+      errors += "Dataset has an invalid element count"
+    errors.result()
 
 case class ConformanceInfo(conformsToRdf11: Boolean = false, conformsToRdfStarDraft_20211217: Boolean = false,
                            usesGeneralizedRdfDatasets: Boolean = false, usesGeneralizedTriples: Boolean = false,
-                           usesRdfStar: Boolean = false):
-  def checkConsistency(): Seq[String] =
-    val errors = Seq.newBuilder[String]
-    if conformsToRdf11 && (usesGeneralizedRdfDatasets || usesGeneralizedTriples || usesRdfStar) then
-      errors += "Dataset conforms to RDF1.1, but also uses a non-standard feature"
-    if !conformsToRdf11 && conformsToRdfStarDraft_20211217 && !usesRdfStar then
-      errors += "Dataset does not use RDF-star and does not conform to RDF1.1, " +
-        "but conforms to RDF-star draft 2021-12-17"
-    if conformsToRdf11 && !conformsToRdfStarDraft_20211217 then
-      errors += "Dataset conforms to RDF1.1, but not to RDF-star draft 2021-12-17, which is a superset of RDF1.1"
-    errors.result()
+                           usesRdfStar: Boolean = false)
 
 object MetadataReader:
   /**
@@ -59,6 +65,8 @@ object MetadataReader:
       elementType = types.head.getResource.getURI.split('#').last,
       elementCount = dataset.listProperties(RdfUtil.hasStreamElementCount)
         .asScala.toSeq.head.getLiteral.getLong,
+      temporalProp = dataset.listProperties(RdfUtil.hasTemporalProperty)
+        .asScala.toSeq.headOption.map(_.getResource),
       conformance = ConformanceInfo(
         conformsToRdf11 = getBool("conformsToRdf11"),
         conformsToRdfStarDraft_20211217 = getBool("conformsToRdfStarDraft_20211217"),
