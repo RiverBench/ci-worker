@@ -260,6 +260,8 @@ object PackageCommand extends Command:
     val sinks = packages.map { case (size, name) =>
       Flow[ByteString]
         .take(size)
+        .groupedWeighted(2 * 1024 * 1024)(_.size)
+        .map(_.reduce(_ ++ _))
         .via(Compression.gzip)
         .toMat(FileHelper.fileSink(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
     }

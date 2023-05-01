@@ -140,6 +140,8 @@ object FileHelper:
         )
       })
       .via(Archive.tar())
+      .groupedWeighted(2 * 1024 * 1024)(_.size)
+      .map(_.reduce(_ ++ _))
       .via(Compression.gzip)
       .async
       .toMat(fileSink(file))(Keep.right)
