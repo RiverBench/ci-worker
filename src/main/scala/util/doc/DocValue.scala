@@ -4,6 +4,7 @@ package util.doc
 import util.{AppConfig, RdfUtil}
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
+import org.apache.jena.datatypes.xsd.impl.XSDBaseNumericType
 import org.apache.jena.rdf.model
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
@@ -20,6 +21,14 @@ object DocValue:
   case class Literal(value: model.Literal) extends DocValue:
     def toMarkdown: String = value.getDatatype match
       case XSDboolean => if value.getBoolean then "yes" else "no"
+      case dt: XSDBaseNumericType =>
+        val dtName = dt.getURI.toLowerCase
+        if dtName.contains("int") || dtName.contains("long") then
+          MarkdownUtil.formatInt(value.getLexicalForm)
+        else if dtName.contains("float") || dtName.contains("double") || dtName.contains("decimal") then
+          MarkdownUtil.formatDouble(value.getLexicalForm)
+        else
+          value.getLexicalForm.strip
       case _ =>
         val str = value.getLexicalForm.strip
         // Heuristic for hash-like strings
@@ -27,6 +36,13 @@ object DocValue:
           f"`$str`" else str
 
     def getSortKey = value.getLexicalForm.strip
+    
+  case class SizeLiteral(value: String) extends DocValue:
+    def toMarkdown: String =
+      value.strip.toLongOption match
+        case Some(long) => MarkdownUtil.formatSize(long)
+        case None => value.strip
+    def getSortKey = value.strip
 
   case class RdfNamedThing(value: model.Resource, ontologies: Model) extends DocValue:
     private val label = RdfUtil.getPrettyLabel(value, Some(ontologies))

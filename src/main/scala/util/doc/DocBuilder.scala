@@ -75,6 +75,8 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
 
   private def makeValue(docProp: DocProp, objects: Iterable[RDFNode]): DocValue =
     val values = objects.map {
+      case lit: Literal if docProp.prop.getURI == RdfUtil.dcatByteSize.getURI =>
+        DocValue.SizeLiteral(lit.getLexicalForm)
       case lit: Literal => DocValue.Literal(lit)
       case res: Resource if res.isAnon =>
         val nestedValues = getDocValuesForRes(res)

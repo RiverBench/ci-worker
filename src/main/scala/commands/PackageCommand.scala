@@ -318,7 +318,7 @@ object PackageCommand extends Command:
 
       metadata.temporalProp match
         case Some(tProp) =>
-          ds.getDefaultGraph.find(graphs.head, tProp, null).asScala.toSeq match
+          ds.getDefaultGraph.find(graphs.head, tProp.asNode, null).asScala.toSeq match
             case Seq() => return Some(s"The temporal property $tProp is not present in the dataset")
             case Seq(_) => ()
             case _ => return Some(s"The temporal property $tProp is present multiple times in the dataset")
