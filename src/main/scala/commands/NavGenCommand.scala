@@ -91,7 +91,7 @@ object NavGenCommand extends Command:
         YamlMap("Profiles", YamlList(
           YamlString("profiles/index.md") +: profiles
         )),
-        YamlMap("Suite versions", YamlList(suites)),
+        YamlMap("Suite releases", YamlList(suites)),
         YamlMap("Schemas & ontologies", YamlList(Seq(
           YamlString("schema/index.md"),
         ))),
