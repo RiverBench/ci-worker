@@ -106,10 +106,15 @@ object PackageMainCommand extends Command:
       })
       .toSeq
 
-    for ((_, dsModel) <- datasetCollection.datasets) do
-      val dsRes = dsModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
-      if datasetMatchesRestrictions(dsRes, restrictions) then
-        profile.add(profileRes, RdfUtil.dcatSeriesMember, dsRes)
+    for ((name, dsModel) <- datasetCollection.datasets) do
+      if dsModel.isEmpty then
+        throw new Exception(f"Dataset $name is empty – does it have a matching release?")
+      val dsRes = dsModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).asScala.toSeq.headOption
+      dsRes match
+        case None => throw new Exception(f"Could not find the root resource for dataset $name")
+        case Some(dsRes) =>
+          if datasetMatchesRestrictions(dsRes, restrictions) then
+            profile.add(profileRes, RdfUtil.dcatSeriesMember, dsRes)
 
   private def datasetMatchesRestrictions(dsRes: Resource, rs: Seq[Seq[(Property, RDFNode)]]): Boolean =
     val andMatches = for r <- rs yield
