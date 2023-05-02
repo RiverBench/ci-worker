@@ -26,7 +26,7 @@ object StatCounterSuite:
         "IriCountStatistics" -> iris,
         "BlankNodeCountStatistics" -> blankNodes,
         "LiteralCountStatistics" -> literals,
-        "PlainLiteralCountStatistics" -> plainLiterals,
+        "SimpleLiteralCountStatistics" -> plainLiterals,
         "DatatypeLiteralCountStatistics" -> dtLiterals,
         "LanguageLiteralCountStatistics" -> langLiterals,
         "QuotedTripleCountStatistics" -> quotedTriples,
@@ -118,7 +118,7 @@ class StatCounterSuite(val size: Long):
     val iris = mutable.Set[String]()
     val blankNodes = mutable.Set[String]()
     val literals = mutable.Set[String]()
-    val plainliterals = mutable.Set[String]()
+    val simpleLiterals = mutable.Set[String]()
     val dtLiterals = mutable.Set[String]()
     val langLiterals = mutable.Set[String]()
     var quotedTripleCount = 0
@@ -143,10 +143,12 @@ class StatCounterSuite(val size: Long):
         literals += lit
         if n.getLiteralLanguage != "" then
           langLiterals += lit
+        else if n.getLiteralDatatypeURI == XSDstring.getURI then
+          simpleLiterals += n.getLiteralLexicalForm
         else if n.getLiteralDatatypeURI != null then
           dtLiterals += lit
         else
-          plainliterals += n.getLiteralLexicalForm
+          simpleLiterals += n.getLiteralLexicalForm
       else if n.isNodeTriple then
         // isomorphism in RDF-star is a pain...
         quotedTripleCount += 1
@@ -155,7 +157,7 @@ class StatCounterSuite(val size: Long):
     cIris.addUnique(iris)
     cBlankNodes.addUnique(blankNodes)
     cLiterals.addUnique(literals)
-    cPlainLiterals.addUnique(plainliterals)
+    cPlainLiterals.addUnique(simpleLiterals)
     cDtLiterals.addUnique(dtLiterals)
     cLangLiterals.addUnique(langLiterals)
 
