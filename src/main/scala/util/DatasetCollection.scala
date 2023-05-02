@@ -27,6 +27,13 @@ object DatasetCollection:
 class DatasetCollection(namesToUris: Iterable[(String, String)]):
   val datasets = namesToUris
     .map((name, uri) => {
-      (name, RDFDataMgr.loadModel(uri))
+      try {
+        (name, RDFDataMgr.loadModel(uri))
+      }
+      catch {
+        case e: Exception =>
+          println(f"Failed to load metadata for dataset $name from $uri")
+          throw e
+      }
     })
     .toMap
