@@ -2,6 +2,7 @@ package io.github.riverbench.ci_worker
 package util
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
+import org.apache.jena.graph.{Node, Triple}
 import org.apache.jena.query.Dataset
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.sparql.core.DatasetGraph
@@ -124,11 +125,19 @@ class StatCounterSuite(val size: Long):
     var quotedTripleCount = 0
     var stCount = 0
 
+    // Find triples recursively – needed for RDF-star
+    def getTriples(t: Triple): List[Triple] =
+      t +: (t.getSubject :: t.getPredicate :: t.getObject :: Nil)
+        .filter(_.isNodeTriple)
+        .flatMap(n => getTriples(n.getTriple))
+
     val allNodes = ds.find().asScala.flatMap(t => {
+      stCount += 1
+      getTriples(t.asTriple)
+    }).flatMap(t => {
       subjects += t.getSubject.toString(false)
       predicates += t.getPredicate.toString(false)
       objects += t.getObject.toString(false)
-      stCount += 1
 
       t.getSubject :: t.getPredicate :: t.getObject :: Nil
     }) ++ ds.listGraphNodes().asScala
