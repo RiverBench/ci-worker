@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{MetadataReader, RdfIoUtil, RdfUtil}
+import util.{MetadataInfo, MetadataReader, RdfIoUtil, RdfUtil}
 import util.doc.DocBuilder
 
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
@@ -61,7 +61,11 @@ object DatasetDocGenCommand extends Command:
       )
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
-    val docIndex = docBuilderIndex.build(title, mi.description, mi.datasetRes)
+    val docIndex = docBuilderIndex.build(
+      title,
+      mi.description + indexIntro(mi, landingPage),
+      mi.datasetRes
+    )
     Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
     println("Generated index.md")
 
@@ -121,5 +125,16 @@ object DatasetDocGenCommand extends Command:
        |
        |*This README is a snapshot of documentation for the latest development version of the dataset.
        |Full documentation for all versions can be found [on the website]($websiteLink).*
+       |""".stripMargin
+
+  private def indexIntro(mi: MetadataInfo, websiteLink: String): String =
+    val rdfLinks = f"**[Turtle]($websiteLink.ttl)**, **[N-Triples]($websiteLink.nt)**, **[RDF/XML]($websiteLink.rdf)**"
+    f"""
+       |
+       |!!! info
+       |
+       |    Download this metadata in RDF: $rdfLinks
+       |    <br>Source repository: **[${mi.identifier}]($baseRepoUrl/dataset-${mi.identifier})**
+       |
        |""".stripMargin
 
