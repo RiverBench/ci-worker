@@ -42,6 +42,14 @@ object StatCounterSuite:
       distRes.addProperty(RDF.`type`, RdfUtil.Distribution)
       distRes.addProperty(RDF.`type`, RdfUtil.DcatDistribution)
 
+      val weight = (if flat then 1 else 0) + (
+        if size == mi.elementCount then
+          0
+        else
+          (mi.elementCount.toString.length - size.toString.length + 1) * 2
+      )
+      distRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
+
       val sizeString = if size == mi.elementCount then
         distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.fullDistribution)
         "Full"
@@ -67,12 +75,16 @@ object StatCounterSuite:
       distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
 
       // Stats
-      toAdd.foreach((name, stat) => {
-        val statRes = m.createResource()
-        statRes.addProperty(RDF.`type`, m.createResource(RdfUtil.pRb + name))
-        stat.addToRdf(statRes)
-        distRes.addProperty(RdfUtil.hasStatistics, statRes)
-      })
+      toAdd
+        .zipWithIndex
+        .foreach((el, i) => {
+          val (name, stat) = el
+          val statRes = m.createResource()
+          statRes.addProperty(RDF.`type`, m.createResource(RdfUtil.pRb + name))
+          statRes.addProperty(RdfUtil.hasDocWeight, i.toString, XSDinteger)
+          stat.addToRdf(statRes)
+          distRes.addProperty(RdfUtil.hasStatistics, statRes)
+        })
 
 /**
  * A set of stat counters for a stream.

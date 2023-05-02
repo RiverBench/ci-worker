@@ -1,6 +1,8 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
+import io.github.riverbench.ci_worker.util.RdfUtil
+
 import scala.collection.mutable
 
 class DocSection(val level: Int):
@@ -20,7 +22,14 @@ class DocSection(val level: Int):
   def getTitle: String = title
 
   def addEntry(prop: DocProp, value: DocValue): Unit =
-    if level == 1 && prop.group.isDefined then
+    if prop.prop.getURI == RdfUtil.hasDocWeight.getURI then
+      value match
+        case DocValue.Literal(l) =>
+          l.getLexicalForm.toIntOption match
+            case Some(i) => setWeight(i)
+            case None => ()
+        case _ => ()
+    else if level == 1 && prop.group.isDefined then
       if !subsections.exists(_.title == prop.group.get) then
         val subSec = addSubsection()
         subSec.setTitle(prop.group.get)
@@ -35,9 +44,10 @@ class DocSection(val level: Int):
     section
 
   private def getWeight: Double =
-    val selfWeight = if weight.isDefined then
-      weight.get
-    else if entries.isEmpty then
+    if weight.isDefined then
+      return weight.get
+
+    val selfWeight = if entries.isEmpty then
       0.0
     else
       entries.map(_._1.weight.toDouble).filter(_ < 3_000_000.0).sum / entries.size
@@ -60,10 +70,9 @@ class DocSection(val level: Int):
     if entries.nonEmpty && subsections.nonEmpty then
       sb.append("\n")
 
-    val sortedSections = if level == 1 then
-      subsections.sortBy(_.getWeight)
-    else
-      subsections.sortBy(_.title)
+    val sortedSections = subsections
+      .sortBy(_.title)
+      .sortBy(_.getWeight)
 
     for sub <- sortedSections do
       sb.append(s"${sub.toMarkdown.strip}\n\n")

@@ -62,10 +62,7 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     val grouped = resource.listProperties().asScala.toSeq.groupBy(_.getPredicate)
     grouped.flatMap { (prop, statements) =>
       val docProp = DocProp(prop, ontologies, groups)
-      if docProp.hidden then
-        None
-      else
-        Some(docProp, statements.map(_.getObject))
+      Some(docProp, statements.map(_.getObject))
     }
 
   private def getDocValuesForRes(resource: Resource): Iterable[(DocProp, DocValue)] =

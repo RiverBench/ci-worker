@@ -93,6 +93,7 @@ object PackageCommand extends Command:
 
     val m = ModelFactory.createDefaultModel()
     m.setNsPrefix("rb", RdfUtil.pRb)
+    m.setNsPrefix("rbdoc", RdfUtil.pRbDoc)
     m.setNsPrefix("dcat", RdfUtil.pDcat)
     m.setNsPrefix("xsd", XSD.NAMESPACE)
     m.setNsPrefix("spdx", RdfUtil.pSpdx)

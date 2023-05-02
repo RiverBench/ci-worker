@@ -89,6 +89,7 @@ object DocValue:
     override val isNestedList = true
     override def toMarkdown: String = values
       .toSeq
+      .filter(!_._1.hidden)
       .sortBy(_._1.weight)
       .map { case (prop, value) =>
         val vMd = if value.isNestedList then
@@ -99,7 +100,17 @@ object DocValue:
 
     override def getTitle = name
 
-    override def getSortKey = name.getOrElse("")
+    override def getSortKey = values
+      .filter(_._1.prop.getURI == RdfUtil.hasDocWeight.getURI)
+      .flatMap((_, dv) => { dv match
+        case Literal(lit) => lit.getLexicalForm
+          .toIntOption
+          .map(i => f"$i%05d")
+        case _ => None
+      })
+      .headOption
+      .orElse(name)
+      .getOrElse("")
 
   case class List(values: Iterable[DocValue], baseName: Option[String]) extends DocValue:
     override val isNestedList = true
