@@ -31,6 +31,9 @@ case class MetadataInfo(
       errors += "Dataset uses generalized RDF datasets, but has element type 'triples'"
     if elementCount <= 0 then
       errors += "Dataset has an invalid element count"
+    if temporalProp.isEmpty && elementType == "graphs" then
+      println("Warning: Dataset has no temporal property, but element type is 'graphs'. " +
+        "Assuming it's a non-temporal dataset.")
     errors.result()
 
 case class ConformanceInfo(conformsToRdf11: Boolean = false, conformsToRdfStarDraft_20211217: Boolean = false,
@@ -65,8 +68,8 @@ object MetadataReader:
       elementType = types.head.getResource.getURI.split('#').last,
       elementCount = dataset.listProperties(RdfUtil.hasStreamElementCount)
         .asScala.toSeq.head.getLiteral.getLong,
-      temporalProp = dataset.listProperties(RdfUtil.hasTemporalProperty)
-        .asScala.toSeq.headOption.map(_.getResource),
+      temporalProp = model.listObjectsOfProperty(RdfUtil.hasTemporalProperty)
+        .asScala.toSeq.headOption.map(_.asResource),
       conformance = ConformanceInfo(
         conformsToRdf11 = getBool("conformsToRdf11"),
         conformsToRdfStarDraft_20211217 = getBool("conformsToRdfStarDraft_20211217"),

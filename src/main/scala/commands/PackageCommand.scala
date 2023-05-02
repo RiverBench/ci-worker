@@ -299,10 +299,10 @@ object PackageCommand extends Command:
    * @return a flow that checks the structure of the dataset
    */
   private def checkStructureFlow(metadata: MetadataInfo): Flow[(DatasetGraph, Long), Unit, NotUsed] =
-    Flow[(DatasetGraph, Long)].map((ds, _) => checkStructure(metadata, ds))
+    Flow[(DatasetGraph, Long)].map((ds, num) => (checkStructure(metadata, ds), num))
       .map({
-        case Some(msg) => throw new Exception(msg)
-        case None => ()
+        case (Some(msg), num) => throw new Exception(f"Element $num:\n" + msg)
+        case (None, _) => ()
       })
 
   private def checkStructure(metadata: MetadataInfo, ds: DatasetGraph): Option[String] =
@@ -322,6 +322,7 @@ object PackageCommand extends Command:
             case Seq() => return Some(s"The temporal property $tProp is not present in the dataset")
             case Seq(_) => ()
             case _ => return Some(s"The temporal property $tProp is present multiple times in the dataset")
+        case None => ()
 
     if !metadata.conformance.usesGeneralizedRdfDatasets &&
       ds.listGraphNodes().asScala.exists(n => n.isLiteral) then
