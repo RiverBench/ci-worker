@@ -16,20 +16,27 @@ import scala.util.matching.Regex
 object SchemaDocGenCommand extends Command:
   def name: String = "schema-doc-gen"
 
-  def description: String = "Generates documentation for the schema repo.\n" +
-    "Args: <ont file> <version> <in file> <out file>"
+  def description: String = "Post-processes documentation for the schema repo.\n" +
+    "Args: <version> <in dir> <out dir>"
 
-  def validateArgs(args: Array[String]): Boolean = args.length == 5
+  def validateArgs(args: Array[String]): Boolean = args.length == 4
 
   def run(args: Array[String]): Future[Unit] = Future {
-    val ontFile = FileSystems.getDefault.getPath(args(1))
-    val version = args(2)
-    val inFile = FileSystems.getDefault.getPath(args(3))
-    val outFile = FileSystems.getDefault.getPath(args(4))
+    val version = args(1)
+    val inDir = FileSystems.getDefault.getPath(args(2))
+    val outDir = FileSystems.getDefault.getPath(args(3))
 
-    val m = RDFDataMgr.loadModel(ontFile.toString)
+    val mdFiles = Files.list(inDir)
+      .iterator()
+      .asScala
+      .filter(_.toString.endsWith(".md"))
 
-    postProcessFile(m, version, inFile, outFile)
+    for mdFile <- mdFiles do
+      println(f"Processing ${mdFile.getFileName}...")
+      val ontFile = inDir.resolve(mdFile.getFileName.toString.replace(".md", ".ttl"))
+      val outFile = outDir.resolve(mdFile.getFileName.toString)
+      val m = RDFDataMgr.loadModel(ontFile.toString)
+      postProcessFile(m, version, mdFile, outFile)
   }
 
   private val rxUri = """(?sm)\* \*\*URI\*\*.*?`(.*?)`""".r
