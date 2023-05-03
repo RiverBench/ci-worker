@@ -17,6 +17,8 @@ object Command:
     PackageCommand,
     PackageMainCommand,
     PackageSchemaCommand,
+    SchemaDocGenOneCommand,
+    SchemaDocGenTwoCommand,
     SelfTestCommand,
     ValidateRepoCommand,
   )
