@@ -3,12 +3,14 @@ package commands
 
 import util.{AppConfig, Constants, DatasetCollection, ProfileCollection, RdfUtil}
 
+import io.github.riverbench.ci_worker.util.doc.MarkdownUtil
 import org.apache.jena.rdf.model.{Model, Property, RDFNode, Resource}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.apache.jena.vocabulary.RDF
 
 import java.io.FileOutputStream
-import java.nio.file.{FileSystems, Path}
+import java.nio.file.{FileSystems, Files, Path}
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
@@ -42,6 +44,7 @@ object PackageMainCommand extends Command:
     val newMainRes = mainModel.createResource(AppConfig.CiWorker.rbRootUrl + mainVer)
 
     println("Processing profiles...")
+    outDir.resolve("profiles/doc").toFile.mkdirs()
     val subSupModel = profileCollection.getSubSuperAssertions
 
     def getProfileUri(name: String) = AppConfig.CiWorker.baseProfileUrl + name + "/" + version
@@ -62,7 +65,7 @@ object PackageMainCommand extends Command:
       profileModel.add(res, RdfUtil.hasVersion, version)
       profileModel.add(res, RdfUtil.dcatInCatalog, newMainRes)
       // Link datasets to profiles
-      linkProfileAndDatasets(profileModel, res, datasetCollection)
+      linkProfileAndDatasets(name, profileModel, res, datasetCollection, outDir)
       // Prettify
       profileModel.removeNsPrefix("")
 
@@ -81,7 +84,6 @@ object PackageMainCommand extends Command:
 
     // Write to files
     println("Writing profiles...")
-    outDir.resolve("profiles").toFile.mkdirs()
     for (name, profileModel) <- profileCollection.profiles do
       for (ext, format) <- Constants.outputFormats do
         val outFile = outDir.resolve(f"profiles/$name.$ext").toFile
@@ -95,7 +97,9 @@ object PackageMainCommand extends Command:
     println("Done.")
   }
 
-  private def linkProfileAndDatasets(profile: Model, profileRes: Resource, datasetCollection: DatasetCollection): Unit =
+  private def linkProfileAndDatasets(
+    name: String, profile: Model, profileRes: Resource, datasetCollection: DatasetCollection, outDir: Path
+  ): Unit =
     val restrictions = profile.listObjectsOfProperty(profileRes, RdfUtil.hasRestriction).asScala
       .map(rNode => {
         val rRes = rNode.asResource()
@@ -106,6 +110,16 @@ object PackageMainCommand extends Command:
       })
       .toSeq
 
+    val distTypes = restrictions.flatten.filter(_._1 == RdfUtil.hasDistributionType)
+      .map(_._2.asResource())
+
+    if distTypes.isEmpty then
+      throw new Exception(s"No distribution types specified in profile $name")
+
+    val profileTableSb = StringBuilder()
+    // name, dataset uri, Seq(dist download url, size, byte size)
+    val datasets: mutable.ArrayBuffer[(String, Resource, Seq[(String, Long, Long)])] = mutable.ArrayBuffer()
+
     for ((name, dsModel) <- datasetCollection.datasets) do
       if dsModel.isEmpty then
         throw new Exception(f"Dataset $name is empty – does it have a matching release?")
@@ -115,6 +129,44 @@ object PackageMainCommand extends Command:
         case Some(dsRes) =>
           if datasetMatchesRestrictions(dsRes, restrictions) then
             profile.add(profileRes, RdfUtil.dcatSeriesMember, dsRes)
+            val distributions = dsRes.listProperties(RdfUtil.dcatDistribution).asScala
+              .map(_.getObject.asResource())
+              .filter(d => distTypes.exists(dt => d.hasProperty(RdfUtil.hasDistributionType, dt)))
+              .map(distRes => {
+                val downloadUrl = distRes.getProperty(RdfUtil.dcatDownloadURL).getObject.asResource().getURI
+                val size = distRes.getProperty(RdfUtil.hasStreamElementCount).getObject.asLiteral().getLong
+                val byteSize = distRes.getProperty(RdfUtil.dcatByteSize).getObject.asLiteral().getLong
+                (downloadUrl, size, byteSize)
+              })
+              .toSeq
+              .sortBy(_._2)
+            datasets.append((name, dsRes, distributions))
+
+    val columns = datasets
+      .flatMap(_._3.map(_._2))
+      .map(c => {
+        if Constants.packageSizes.contains(c) then
+          (c, Constants.packageSizeToHuman(c))
+        else
+          (Long.MaxValue, "Full")
+      })
+      .distinct
+      .sortBy(_._1)
+
+    profileTableSb.append("Dataset")
+    for col <- columns do
+      profileTableSb.append(f" | ${col._2}")
+    profileTableSb.append("\n---")
+    profileTableSb.append(" | ---" * columns.size)
+
+    for (dsName, dsUri, dists) <- datasets.sortBy(_._1) do
+      profileTableSb.append(f"\n[$dsName]($dsUri)")
+      for col <- columns do
+        val (distUrl, distSize, distByteSize) = dists.filter(_._2 <= col._1).last
+        profileTableSb.append(f" | [${Constants.packageSizeToHuman(distSize, true)} " +
+          f"(${MarkdownUtil.formatSize(distByteSize)})]($distUrl)")
+
+    Files.writeString(outDir.resolve(f"profiles/doc/${name}_table.md"), profileTableSb.toString())
 
   private def datasetMatchesRestrictions(dsRes: Resource, rs: Seq[Seq[(Property, RDFNode)]]): Boolean =
     val andMatches = for r <- rs yield

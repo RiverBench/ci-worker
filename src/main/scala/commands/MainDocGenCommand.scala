@@ -29,7 +29,7 @@ object MainDocGenCommand extends Command:
     println("Generating profile documentation...")
     val profileCollection = new ProfileCollection(mainMetadataOutDir.resolve("profiles"))
     val ontologies = RdfIoUtil.loadOntologies(schemaRepoDir)
-    profileDocGen(profileCollection, ontologies, outDir, version)
+    profileDocGen(profileCollection, ontologies, mainMetadataOutDir, outDir, version)
 
     println("Generating main documentation...")
     val mainMetadata = RDFDataMgr.loadModel(mainMetadataOutDir.resolve("metadata.ttl").toString)
@@ -84,7 +84,9 @@ object MainDocGenCommand extends Command:
       )
   }
 
-  private def profileDocGen(profileCollection: ProfileCollection, ontologies: Model, outDir: Path, version: String):
+  private def profileDocGen(
+    profileCollection: ProfileCollection, ontologies: Model, metadataOutDir: Path, outDir: Path, version: String
+  ):
   Unit =
     val profileDocOpt = DocBuilder.Options(
       titleProps = Seq(
@@ -108,8 +110,20 @@ object MainDocGenCommand extends Command:
         description + rdfInfo(s"${AppConfig.CiWorker.baseProfileUrl}$name/$version"),
         profileRes
       )
+      val tableSection =
+        """
+          |## Download links
+          |
+          |Below you will find links to download the profile's datasets in different lengths.
+          |
+          |!!! warning
+          |    Some datasets are shorter than others and a given distribution may not be available for all datasets.
+          |    In that case, a link to the longest available distribution of the dataset is provided.
+          |
+          |""".stripMargin +
+        Files.readString(metadataOutDir.resolve(f"profiles/doc/${name}_table.md"))
       val profileDocPath = outDir.resolve(s"profiles/$name.md")
-      Files.writeString(profileDocPath, profileDoc.toMarkdown)
+      Files.writeString(profileDocPath, profileDoc.toMarkdown + tableSection)
 
   private def readableVersion(v: String) =
     if v == "dev" then "development version" else v
