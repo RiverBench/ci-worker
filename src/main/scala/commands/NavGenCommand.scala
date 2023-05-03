@@ -77,6 +77,21 @@ object NavGenCommand extends Command:
       .sortBy(_.v.keys.head)
       .toSeq
 
+    val schemaDir = rootDir.resolve("schema")
+    val schemas = YamlMap(
+      "Development version",
+      YamlList(listDir(rootDir, f"schema/dev"))
+    ) +: schemaDir.toFile.listFiles()
+      .filter(_.isDirectory)
+      .filter(_.getName != "dev")
+      .map(vDir => YamlMap(
+        vDir.getName,
+        YamlList(listDir(rootDir, f"schema/${vDir.getName}"))
+      ))
+      .sortBy(m => Version.parse(m.v.keys.head))
+      .reverse
+      .toSeq
+
     println("Serializing...")
     val nav = YamlDocBuilder.build(YamlMap(Map(
       "nav" -> YamlList(Seq(
@@ -92,9 +107,9 @@ object NavGenCommand extends Command:
           YamlString("profiles/index.md") +: profiles
         )),
         YamlMap("Suite releases", YamlList(suites)),
-        YamlMap("Schemas & ontologies", YamlList(Seq(
-          YamlString("schema/index.md"),
-        ))),
+        YamlMap("Schemas & ontologies", YamlList(
+          YamlString("schema/index.md") +: schemas,
+        )),
       ))
     )))
 
@@ -125,9 +140,10 @@ object NavGenCommand extends Command:
       path.getFileName.toString.stripSuffix(".md")
     else
       val fallback = prettifyName(path.getFileName.toString)
-      Files.lines(path).findFirst()
+      Files.lines(path).limit(2)
         .filter(_.startsWith("# "))
         .map(_.stripPrefix("# ").strip)
+        .findFirst()
         .orElse(fallback)
 
   private def prettifyName(s: String): String =
