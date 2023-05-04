@@ -77,19 +77,27 @@ object NavGenCommand extends Command:
       .sortBy(_.v.keys.head)
       .toSeq
 
+    val schemaNames = Map(
+      "documentation" -> "Documentation ontology",
+      "metadata" -> "Metadata ontology",
+      "theme" -> "Topic scheme",
+    )
     val schemaDir = rootDir.resolve("schema")
-    val schemas = YamlMap(
-      "Development version",
-      YamlList(listDir(rootDir, f"schema/dev"))
-    ) +: schemaDir.toFile.listFiles()
+    val schemas = schemaDir.toFile.listFiles()
       .filter(_.isDirectory)
-      .filter(_.getName != "dev")
-      .map(vDir => YamlMap(
-        vDir.getName,
-        YamlList(listDir(rootDir, f"schema/${vDir.getName}"))
+      .map(pDir => YamlMap(
+        schemaNames.getOrElse(pDir.getName, pDir.getName),
+        YamlList(
+          YamlMap("Development version", f"schema/${pDir.getName}/dev.md") +:
+            listDir(rootDir, f"schema/${pDir.getName}", false)
+              .filter(v => v.isInstanceOf[YamlMap])
+              .map(_.asInstanceOf[YamlMap])
+              .filter(_.v.keys.head != "dev")
+              .sortBy(m => Version.parse(m.v.keys.head))
+              .reverse
+        )
       ))
-      .sortBy(m => Version.parse(m.v.keys.head))
-      .reverse
+      .sortBy(_.v.keys.head)
       .toSeq
 
     println("Serializing...")
