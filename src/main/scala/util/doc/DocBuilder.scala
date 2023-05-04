@@ -12,14 +12,15 @@ object DocBuilder:
   case class Options(
     titleProps: Seq[Property] = Seq(),
     nestedSectionProps: Seq[Property] = Seq(),
-    hidePropsInLevel: Seq[(Int, Property)] = Seq()
+    hidePropsInLevel: Seq[(Int, Property)] = Seq(),
+    defaultPropGroup: Option[String] = None,
   )
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
   private val groups = new DocGroupRegistry(ontologies)
 
   def build(title: String, content: String, rootResource: Resource): DocSection =
-    val rootSection = new DocSection(1)
+    val rootSection = new DocSection(1, opt.defaultPropGroup)
     rootSection.setContent(content)
     buildSection(rootResource, rootSection)
     // Override title

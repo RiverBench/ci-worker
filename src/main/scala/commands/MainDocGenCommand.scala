@@ -97,7 +97,8 @@ object MainDocGenCommand extends Command:
       hidePropsInLevel = Seq(
         (1, RdfUtil.dctermsDescription), // shown as content below the header
         (1, RDF.`type`), // Always the same
-      )
+      ),
+      defaultPropGroup = Some("General information"),
     )
     val profileDocBuilder = new DocBuilder(ontologies, profileDocOpt)
     outDir.resolve("profiles").toFile.mkdirs()

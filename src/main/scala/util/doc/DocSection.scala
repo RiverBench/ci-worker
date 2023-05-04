@@ -5,7 +5,7 @@ import io.github.riverbench.ci_worker.util.RdfUtil
 
 import scala.collection.mutable
 
-class DocSection(val level: Int):
+class DocSection(val level: Int, defaultPropGroup: Option[String] = None):
   private val entries = mutable.ListBuffer[(DocProp, DocValue)]()
   private val subsections = mutable.ListBuffer[DocSection]()
 
@@ -22,6 +22,7 @@ class DocSection(val level: Int):
   def getTitle: String = title
 
   def addEntry(prop: DocProp, value: DocValue): Unit =
+    val group = prop.group.orElse(defaultPropGroup)
     if prop.prop.getURI == RdfUtil.hasDocWeight.getURI then
       value match
         case DocValue.Literal(l) =>
@@ -29,11 +30,11 @@ class DocSection(val level: Int):
             case Some(i) => setWeight(i)
             case None => ()
         case _ => ()
-    else if level == 1 && prop.group.isDefined then
-      if !subsections.exists(_.title == prop.group.get) then
+    else if level == 1 && group.isDefined then
+      if !subsections.exists(_.title == group.get) then
         val subSec = addSubsection()
-        subSec.setTitle(prop.group.get)
-      val sub = subsections.find(_.title == prop.group.get).get
+        subSec.setTitle(group.get)
+      val sub = subsections.find(_.title == group.get).get
       sub.addEntry(prop.copy(group = None), value)
     else
       entries.addOne((prop, value))

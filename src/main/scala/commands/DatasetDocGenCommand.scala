@@ -58,7 +58,8 @@ object DatasetDocGenCommand extends Command:
         (1, RdfUtil.dctermsDescription), // shown as content below the header
         (1, RDF.`type`), // Always the same
         (3, RDF.`type`), // for distributions
-      )
+      ),
+      defaultPropGroup = Some("Technical metadata"),
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
     val docIndex = docBuilderIndex.build(
