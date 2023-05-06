@@ -109,7 +109,7 @@ object FileHelper:
    */
   def writeArchive(file: Path, len: Long)(implicit ec: ExecutionContext):
   Sink[(String, String), Future[SaveResult]] =
-    val dirLevels = Math.floor(Math.log10(len.toDouble) / 3).toInt
+    val dirLevels = Math.floor(Math.log10(len.toDouble - 1) / 3).toInt
 
     def makePathForFile(name: String): (String, Iterable[String]) =
       val num = name.split('.').head
