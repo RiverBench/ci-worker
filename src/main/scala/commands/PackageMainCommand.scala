@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, Constants, DatasetCollection, ProfileCollection, RdfUtil}
+import util.{AppConfig, Constants, DatasetCollection, MetadataReader, ProfileCollection, RdfUtil}
 
 import io.github.riverbench.ci_worker.util.doc.MarkdownUtil
 import org.apache.jena.rdf.model.{Model, Property, RDFNode, Resource}
@@ -81,6 +81,11 @@ object PackageMainCommand extends Command:
     for ((_, dsModel) <- datasetCollection.datasets) do
       val dsRes = dsModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
       newMainRes.addProperty(RdfUtil.dcatDataset, dsRes)
+
+    if version == "dev" then
+      // Generate dataset overview
+      println("Generating dataset overview...")
+      generateDatasetOverview(datasetCollection, outDir)
 
     // Write to files
     println("Writing profiles...")
@@ -180,3 +185,29 @@ object PackageMainCommand extends Command:
       val orMatchesFlat = orMatches.flatten
       orMatchesFlat.isEmpty || orMatchesFlat.contains(true)
     !andMatches.contains(false)
+
+  private def generateDatasetOverview(datasetCollection: DatasetCollection, outDir: Path): Unit =
+    val sb = new StringBuilder()
+    sb.append("Dataset | <abbr title=\"Stream element type\">El. type</abbr> | " +
+      "<abbr title=\"Stream element count\">El. count</abbr> | " +
+      "<abbr title=\"Does the dataset use RDF-star?\">RDF-star</abbr> | " +
+      "<abbr title=\"Does the dataset use generalized triples?\">Gen. triples</abbr> | " +
+      "<abbr title=\"Does the dataset use generalized RDF datasets?\">Gen. datasets</abbr>\n")
+    sb.append("--- | --- | --: | :-: | :-: | :-:\n")
+
+    for (name, model) <- datasetCollection.datasets.toSeq.sortBy(_._1) do
+      val mi = MetadataReader.fromModel(model)
+      sb.append(f"[$name]($name/dev) | ")
+      sb.append(f"${mi.elementType} | ")
+      sb.append(f"${MarkdownUtil.formatInt(mi.elementCount.toString)}")
+      for b <- Seq(
+        mi.conformance.usesRdfStar,
+        mi.conformance.usesGeneralizedTriples,
+        mi.conformance.usesGeneralizedRdfDatasets,
+      ) do
+        sb.append(" | ")
+        sb.append(if b then ":material-check:" else ":material-close:")
+      sb.append("\n")
+
+    outDir.resolve("doc").toFile.mkdirs()
+    Files.writeString(outDir.resolve(f"doc/dataset_table.md"), sb.toString())
