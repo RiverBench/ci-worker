@@ -110,6 +110,7 @@ object DocValue:
       })
       .headOption
       .orElse(name)
+      .orElse(values.headOption.map(_._1.label))
       .getOrElse("")
 
   case class List(values: Iterable[DocValue], baseName: Option[String]) extends DocValue:
