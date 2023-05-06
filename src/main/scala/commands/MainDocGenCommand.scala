@@ -30,6 +30,8 @@ object MainDocGenCommand extends Command:
     val profileCollection = new ProfileCollection(mainMetadataOutDir.resolve("profiles"))
     val ontologies = RdfIoUtil.loadOntologies(schemaRepoDir)
     profileDocGen(profileCollection, ontologies, mainMetadataOutDir, outDir, version)
+    if version == "dev" then
+      profileOverviewDocGen(profileCollection, outDir)
 
     println("Generating main documentation...")
     val mainMetadata = RDFDataMgr.loadModel(mainMetadataOutDir.resolve("metadata.ttl").toString)
@@ -125,6 +127,32 @@ object MainDocGenCommand extends Command:
         Files.readString(metadataOutDir.resolve(f"profiles/doc/${name}_table.md"))
       val profileDocPath = outDir.resolve(s"profiles/$name.md")
       Files.writeString(profileDocPath, profileDoc.toMarkdown + tableSection)
+
+  private def profileOverviewDocGen(profileCollection: ProfileCollection, outDir: Path): Unit =
+    val sb = new StringBuilder()
+    sb.append("Profile | Stream / flat | Element type | RDF-star | Non-standard extensions\n")
+    sb.append("--- | --- | --- | :-: | :-:\n")
+    for pName <- profileCollection.profiles.keys.toSeq.sorted do
+      val nameSplit = pName.split('-')
+      sb.append(f"[$pName]($pName/dev) | ")
+      sb.append(nameSplit.head)
+      sb.append(" | ")
+      sb.append(
+        (nameSplit(0), nameSplit(1)) match
+        case ("flat", "mixed") => "triple, quad"
+        case ("flat", t) => t.dropRight(1)
+        case ("stream", "mixed") => "triples, quads"
+        case ("stream", t) => t
+      )
+      for restriction <- Seq("rdfstar", "nonstandard") do
+        sb.append(" | ")
+        sb.append(
+          if pName.contains(restriction) then ":material-check:"
+          else ":material-close:"
+        )
+      sb.append("\n")
+
+    Files.writeString(outDir.resolve("profiles/table.md"), sb.toString())
 
   private def readableVersion(v: String) =
     if v == "dev" then "development version" else v
