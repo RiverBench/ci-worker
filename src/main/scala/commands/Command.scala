@@ -19,6 +19,7 @@ object Command:
     PackageSchemaCommand,
     SchemaDocGenCommand,
     SelfTestCommand,
+    TagDocumentationCommand,
     ValidateRepoCommand,
   )
 
