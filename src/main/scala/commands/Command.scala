@@ -17,6 +17,7 @@ object Command:
     PackageCommand,
     PackageMainCommand,
     PackageSchemaCommand,
+    ParseTestCommand,
     SchemaDocGenCommand,
     SelfTestCommand,
     TagDocumentationCommand,
