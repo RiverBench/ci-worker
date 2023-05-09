@@ -195,7 +195,15 @@ object PackageCommand extends Command:
         val parser = rio.Rio.createParser(format)
           .setParseErrorListener(rioErrListener)
           .setRDFHandler(Rdf4jUtil.BlackHoleRdfHandler)
-        parser.parse(new ByteArrayInputStream(data.getBytes()))
+
+        try {
+          parser.parse(new ByteArrayInputStream(data.getBytes()))
+        } catch {
+          case e =>
+            println(s"Error parsing $name")
+            throw e
+        }
+
         val messages = rioErrListener.getFatalErrors.asScala ++
           rioErrListener.getErrors.asScala ++
           rioErrListener.getWarnings.asScala
