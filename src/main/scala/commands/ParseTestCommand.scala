@@ -1,12 +1,12 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import akka.stream.scaladsl.Source
 import util.Rdf4jUtil
-import org.apache.jena.rdf.model.ModelFactory
-import org.apache.jena.riot.{Lang, RDFParser}
+
 import org.apache.jena.riot.system.ErrorHandlerFactory
+import org.apache.jena.riot.{Lang, RDFParser}
 import org.apache.jena.sparql.graph.GraphFactory
+import org.apache.pekko.stream.scaladsl.Source
 import org.eclipse.rdf4j.rio
 import org.eclipse.rdf4j.rio.RDFFormat
 

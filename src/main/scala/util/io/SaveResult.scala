@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.io
 
-import akka.stream.IOResult
+import org.apache.pekko.stream.IOResult
 import util.{MetadataInfo, RdfUtil}
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*

@@ -1,10 +1,10 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{MetadataInfo, MetadataReader, RdfIoUtil, RdfUtil}
 import util.doc.DocBuilder
+import util.{MetadataInfo, MetadataReader, RdfIoUtil, RdfUtil}
 
-import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
+import org.apache.jena.rdf.model.Property
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.sparql.vocabulary.FOAF
 import org.apache.jena.vocabulary.{RDF, RDFS}

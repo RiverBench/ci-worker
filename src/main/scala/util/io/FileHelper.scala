@@ -1,21 +1,20 @@
 package io.github.riverbench.ci_worker
 package util.io
 
-import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.*
-import akka.http.scaladsl.model.headers.Location
-import akka.stream.*
-import akka.stream.alpakka.file.TarArchiveMetadata
-import akka.stream.alpakka.file.scaladsl.Archive
-import akka.stream.scaladsl.*
-import akka.util.ByteString
-import akka.{Done, NotUsed}
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.io.IOUtils
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.*
+import org.apache.pekko.http.scaladsl.model.headers.Location
+import org.apache.pekko.stream.*
+import org.apache.pekko.stream.connectors.file.TarArchiveMetadata
+import org.apache.pekko.stream.connectors.file.scaladsl.Archive
+import org.apache.pekko.stream.scaladsl.*
+import org.apache.pekko.util.ByteString
 
-import java.io.BufferedInputStream
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import java.time.Instant
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,8 +38,8 @@ object FileHelper:
         case r => Future { r }
       }
 
-    // Unfortunately, Alpakka untar stage is glitchy with large archives, so we have to
-    // used the non-reactive Apache Commons implementation instead.
+    // Unfortunately, Pekko untar stage is glitchy with large archives, so we have to
+    // use the non-reactive Apache Commons implementation instead.
     val tarIs = Source.futureSource(response.map(r => r.entity.dataBytes))
       .via(Compression.gunzip())
       .toMat(StreamConverters.asInputStream())(Keep.right)

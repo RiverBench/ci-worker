@@ -1,12 +1,12 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.2.2"
+ThisBuild / scalaVersion := "3.3.0"
 
-lazy val akkaV = "2.6.19"
-lazy val akkaHttpV = "10.2.10"
-lazy val alpakkaV = "3.0.4"
+lazy val pekkoV = "1.0.1"
+lazy val pekkoHttpV = "1.0.0"
+lazy val pekkoConnV = "1.0.0"
 lazy val circeV = "0.14.5"
 lazy val jenaV = "4.7.0"
-lazy val rdf4jV = "4.2.3"
+lazy val rdf4jV = "4.3.0"
 
 lazy val root = (project in file("."))
   .settings(
@@ -23,19 +23,15 @@ lazy val root = (project in file("."))
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,
+      "org.apache.pekko" %% "pekko-connectors-file" % pekkoConnV,
+      "org.apache.pekko" %% "pekko-actor-typed" % pekkoV,
+      "org.apache.pekko" %% "pekko-stream-typed" % pekkoV,
+      "org.apache.pekko" %% "pekko-http" % pekkoHttpV,
+      "org.apache.pekko" %% "pekko-http-core" % pekkoHttpV,
       "org.eclipse.rdf4j" % "rdf4j-model" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-trig" % rdf4jV,
     ),
-
-    // Packages available only with Scala 2.13
-    libraryDependencies ++= Seq(
-      "com.lightbend.akka" %% "akka-stream-alpakka-file" % alpakkaV,
-      "com.typesafe.akka" %% "akka-actor-typed" % akkaV,
-      "com.typesafe.akka" %% "akka-stream-typed" % akkaV,
-      "com.typesafe.akka" %% "akka-http" % akkaHttpV,
-      "com.typesafe.akka" %% "akka-http-core" % akkaHttpV,
-    ).map(_.cross(CrossVersion.for3Use2_13)),
 
     // Discard module-info.class files
     // Just Java Things (tm), I guess

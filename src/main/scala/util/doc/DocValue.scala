@@ -7,9 +7,7 @@ import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.datatypes.xsd.impl.XSDBaseNumericType
 import org.apache.jena.rdf.model
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
-
-import scala.jdk.CollectionConverters.*
+import org.apache.jena.vocabulary.{RDFS, SKOS}
 
 object DocValue:
   import MarkdownUtil.indent

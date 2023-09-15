@@ -1,21 +1,20 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{MetadataInfo, MetadataReader, ReleaseInfoParser}
+import util.ReleaseInfoParser.ReleaseInfo
 import util.io.FileHelper
+import util.{MetadataInfo, MetadataReader, ReleaseInfoParser}
 
-import akka.stream.scaladsl.Sink
-import io.github.riverbench.ci_worker.util.ReleaseInfoParser.ReleaseInfo
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.shacl.lib.ShLib
 import org.apache.jena.shacl.{ShaclValidator, Shapes}
+import org.apache.pekko.stream.scaladsl.Sink
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
 object ValidateRepoCommand extends Command:

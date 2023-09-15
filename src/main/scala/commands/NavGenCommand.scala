@@ -7,7 +7,6 @@ import util.YamlDocBuilder.*
 import java.lang.module.ModuleDescriptor.Version
 import java.nio.file.{FileSystems, Files, Path}
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters.*
 
 object NavGenCommand extends Command:
   override def name: String = "nav-gen"

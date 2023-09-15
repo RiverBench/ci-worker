@@ -3,12 +3,10 @@ package util
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.graph.{Node, Triple}
-import org.apache.jena.query.Dataset
-import org.apache.jena.rdf.model.{Model, Resource}
+import org.apache.jena.rdf.model.Resource
 import org.apache.jena.sparql.core.DatasetGraph
 import org.apache.jena.vocabulary.RDF
 
-import scala.::
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 

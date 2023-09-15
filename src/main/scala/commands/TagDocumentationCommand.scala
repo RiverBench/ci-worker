@@ -3,8 +3,6 @@ package commands
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters.*
-import scala.util.matching.Regex
 
 object TagDocumentationCommand extends Command:
   def name: String = "tag-docs"

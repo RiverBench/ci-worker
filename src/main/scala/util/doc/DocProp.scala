@@ -3,7 +3,7 @@ package util.doc
 
 import util.RdfUtil
 
-import org.apache.jena.rdf.model.{Model, Property, Resource}
+import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.vocabulary.RDFS
 
 object DocProp:
