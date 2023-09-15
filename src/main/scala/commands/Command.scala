@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import akka.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.ActorSystem
 
 import scala.concurrent.{ExecutionContext, Future}
 

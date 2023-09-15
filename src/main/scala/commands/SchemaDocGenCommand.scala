@@ -4,9 +4,8 @@ package commands
 import util.AppConfig
 
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
+import org.apache.jena.riot.RDFDataMgr
 
-import java.io.FileOutputStream
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
 import scala.concurrent.Future

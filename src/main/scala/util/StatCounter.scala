@@ -3,10 +3,7 @@ package util
 
 import com.google.common.hash.{BloomFilter, Funnel, PrimitiveSink}
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
-import org.apache.jena.graph.NodeFactory
-import org.apache.jena.rdf.model.{Model, Resource}
-
-import java.util
+import org.apache.jena.rdf.model.Resource
 
 //noinspection UnstableApiUsage
 object StatCounter:

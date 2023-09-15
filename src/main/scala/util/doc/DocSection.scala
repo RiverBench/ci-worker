@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import io.github.riverbench.ci_worker.util.RdfUtil
+import util.RdfUtil
 
 import scala.collection.mutable
 

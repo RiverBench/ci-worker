@@ -19,11 +19,11 @@
 package io.github.riverbench.ci_worker
 package util.io
 
-import akka.stream.*
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.stream.stage.*
-import akka.util.ByteString
-import akka.{Done, NotUsed}
+import org.apache.pekko.stream.*
+import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source}
+import org.apache.pekko.stream.stage.*
+import org.apache.pekko.util.ByteString
+import org.apache.pekko.{Done, NotUsed}
 
 import scala.concurrent.Future
 import scala.util.{Success, Try}
@@ -41,7 +41,7 @@ object DigAlgorithm {
 }
 
 /**
- * The DigestCalculator transforms/digests a stream of akka.util.ByteString to a
+ * The DigestCalculator transforms/digests a stream of org.apache.pekko.util.ByteString to a
  * DigestResult according to a given Algorithm
  */
 object DigestCalculator {
@@ -53,7 +53,7 @@ object DigestCalculator {
     apply(algorithm)
 
   /**
-   * Returns the String encoded as Hex representation of the digested stream of [[akka.util.ByteString]]
+   * Returns the String encoded as Hex representation of the digested stream of [[org.apache.pekko.util.ByteString]]
    */
   def hexString(algorithm: DigAlgorithm): Flow[ByteString, String, NotUsed] =
     flow(algorithm).map(res => res.messageDigest.toArray.map("%02x".format(_)).mkString).fold("")(_ + _)

@@ -4,7 +4,7 @@ package commands
 import util.{AppConfig, Constants}
 
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.riot.{Lang, RDFDataMgr, RDFFormat}
+import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.apache.jena.vocabulary.{OWL, OWL2, RDF}
 
 import java.io.FileOutputStream

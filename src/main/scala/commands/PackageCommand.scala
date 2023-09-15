@@ -1,23 +1,22 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import akka.stream.*
-import akka.{Done, NotUsed}
-import akka.stream.scaladsl.*
 import util.*
 import util.io.*
 
-import akka.stream.alpakka.file.TarArchiveMetadata
-import akka.util.ByteString
-import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.system.ErrorHandlerFactory
-import org.apache.jena.riot.{Lang, RDFDataMgr, RDFParser, RDFWriter}
+import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
+import org.apache.pekko.stream.*
+import org.apache.pekko.stream.connectors.file.TarArchiveMetadata
+import org.apache.pekko.stream.scaladsl.*
+import org.apache.pekko.util.ByteString
+import org.apache.pekko.{Done, NotUsed}
 import org.eclipse.rdf4j.model.vocabulary.XSD
 import org.eclipse.rdf4j.rio
 
-import java.io.{ByteArrayInputStream, FileOutputStream, InputStream}
+import java.io.{ByteArrayInputStream, FileOutputStream}
 import java.nio.file.{FileSystems, Path}
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*

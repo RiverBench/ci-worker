@@ -1,8 +1,6 @@
 package io.github.riverbench.ci_worker
 package util
 
-import scala.annotation.tailrec
-
 object YamlDocBuilder:
   sealed trait YamlValue
   case class YamlString(v: String) extends YamlValue

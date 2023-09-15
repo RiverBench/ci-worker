@@ -1,11 +1,11 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, Constants, DatasetCollection, MetadataReader, ProfileCollection, RdfUtil}
+import util.doc.MarkdownUtil
+import util.*
 
-import io.github.riverbench.ci_worker.util.doc.MarkdownUtil
 import org.apache.jena.rdf.model.{Model, Property, RDFNode, Resource}
-import org.apache.jena.riot.{Lang, RDFDataMgr}
+import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.vocabulary.RDF
 
 import java.io.FileOutputStream
