@@ -4,6 +4,9 @@ package commands
 import util.*
 import util.io.*
 
+import eu.ostrzyciel.jelly.core.JellyOptions
+import eu.ostrzyciel.jelly.core.proto.v1.{RdfStreamOptions, RdfStreamType}
+import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.system.ErrorHandlerFactory
 import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
@@ -22,6 +25,8 @@ import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
 object PackageCommand extends Command:
+  import eu.ostrzyciel.jelly.convert.jena.*
+
   private case class PartialResult(size: Long, stats: StatCounterSuite.Result, saveRes: SaveResult, flat: Boolean)
 
   override def name: String = "package"
@@ -268,10 +273,7 @@ object PackageCommand extends Command:
     val sinks = packages.map { case (size, name) =>
       Flow[ByteString]
         .take(size)
-        .groupedWeighted(2 * 1024 * 1024)(_.size)
-        .map(_.reduce(_ ++ _))
-        .via(Compression.gzip)
-        .toMat(FileHelper.fileSink(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
+        .toMat(FileHelper.writeCompressed(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
     }
 
     Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
@@ -300,6 +302,54 @@ object PackageCommand extends Command:
 
       SinkShape(serializeFlowG.in)
     })
+
+  private def packageJellyFlatSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
+  Sink[(DatasetGraph, Long), Future[SaveResult]] =
+    val sinks = packages.map { case (size, name) =>
+      Flow[ByteString]
+        .take(size)
+        .toMat(FileHelper.writeCompressed(outDir.resolve(s"flat_$name.jelly.gz")))(Keep.right)
+    }
+
+    // Large target message size to avoid splitting
+    val sOpt = EncoderFlow.Options(100_000_000)
+    val jOpt = JellyOptions.bigStrict
+      .withGeneralizedStatements(
+        metadata.conformance.usesGeneralizedTriples || metadata.conformance.usesGeneralizedRdfDatasets
+      )
+      .withStreamType(
+        if metadata.elementType == "triples" then RdfStreamType.RDF_STREAM_TYPE_TRIPLES
+        else RdfStreamType.RDF_STREAM_TYPE_GRAPHS
+      )
+
+    Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
+      sinkList =>
+        // TODO: FIX
+        import GraphDSL.Implicits.*
+        val serializeFlow = Flow[(DatasetGraph, Long)]
+          .mapConcat((ds, _) => {
+            val default = ds.getDefaultGraph
+            val graphs = (if !default.isEmpty then Seq((null, default)) else Seq()) ++
+              ds.listGraphNodes().asScala.map(n => (n, ds.getGraph(n)))
+
+            graphs.map((n, g) => (
+              n,
+              Iterable
+            ))
+          })
+          .via(EncoderFlow.fromGraphs(sOpt, jOpt))
+          .map(f => f)
+
+        val serializeFlowG = builder.add(serializeFlow)
+        val serializeBroad = builder.add(Broadcast[ByteString](sinkList.size))
+        serializeFlowG.out ~> serializeBroad
+        for sink <- sinkList do
+          serializeBroad ~> sink
+
+        SinkShape(serializeFlowG.in)
+    })
+
+    ???
 
   /**
    * Checks the structure of the dataset

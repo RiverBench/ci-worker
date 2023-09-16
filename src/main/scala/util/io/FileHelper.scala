@@ -139,6 +139,16 @@ object FileHelper:
         )
       })
       .via(Archive.tar())
+      .toMat(writeCompressed(file))(Keep.right)
+
+  /**
+   * Sink for writing a compressed file. It does not calculate the size or checksums.
+   * @param file the path to the file
+   * @param ec the execution context
+   * @return a sink that writes to the file
+   */
+  def writeCompressed(file: Path)(implicit ec: ExecutionContext): Sink[ByteString, Future[SaveResult]] =
+    Flow[ByteString]
       .groupedWeighted(2 * 1024 * 1024)(_.size)
       .map(_.reduce(_ ++ _))
       .via(Compression.gzip)
