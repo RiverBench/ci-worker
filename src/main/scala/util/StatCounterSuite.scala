@@ -3,7 +3,7 @@ package util
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.graph.{Node, Triple}
-import org.apache.jena.rdf.model.Resource
+import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.sparql.core.DatasetGraph
 import org.apache.jena.vocabulary.RDF
 
@@ -18,9 +18,7 @@ object StatCounterSuite:
                     objects: StatCounter.Result, graphs: StatCounter.Result,
                     statements: StatCounter.Result):
 
-    def addToRdf(distRes: Resource, mi: MetadataInfo, size: Long, flat: Boolean):
-    Unit =
-      val m = distRes.getModel
+    def addToRdf(m: Model, size: Long, totalSize: Long): Resource =
       val toAdd = Seq(
         "IriCountStatistics" -> iris,
         "BlankNodeCountStatistics" -> blankNodes,
@@ -35,45 +33,16 @@ object StatCounterSuite:
         "GraphCountStatistics" -> graphs,
         "StatementCountStatistics" -> statements
       )
-
-      // Info about the distribution
-      // Media type, byte size, link, checksum are added separately by the packaging pipeline
-      distRes.addProperty(RDF.`type`, RdfUtil.Distribution)
-      distRes.addProperty(RDF.`type`, RdfUtil.DcatDistribution)
-
-      val weight = (if flat then 1 else 0) + (
-        if size == mi.elementCount then
-          0
-        else
-          (mi.elementCount.toString.length - size.toString.length + 1) * 2
+      val sizeName = Constants.packageSizeToHuman(size, true)
+      val mainStatRes = m.createResource(RdfUtil.tempDataset.getURI + "#statistics-" + sizeName.toLowerCase)
+      mainStatRes.addProperty(RDF.`type`, RdfUtil.StatisticsSet)
+      mainStatRes.addProperty(
+        RdfUtil.dctermsTitle,
+        "Statistics for " + (if sizeName == "Full" then "full" else sizeName) + " distributions"
       )
-      distRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
+      val weight = if size == totalSize then 0 else totalSize.toString.length - size.toString.length + 1
+      mainStatRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
 
-      val sizeString = if size == mi.elementCount then
-        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.fullDistribution)
-        "Full"
-      else
-        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.partialDistribution)
-        Constants.packageSizeToHuman(size) + " elements"
-
-      if flat then
-        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.flatDistribution)
-        distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString flat distribution")
-      else
-        mi.elementType match
-          case "graphs" =>
-            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.graphStreamDistribution)
-            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString graph stream distribution")
-          case "triples" =>
-            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.tripleStreamDistribution)
-            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString triple stream distribution")
-          case "quads" =>
-            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.quadStreamDistribution)
-            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString quad stream distribution")
-
-      distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
-
-      // Stats
       toAdd
         .zipWithIndex
         .foreach((el, i) => {
@@ -82,8 +51,9 @@ object StatCounterSuite:
           statRes.addProperty(RDF.`type`, m.createResource(RdfUtil.pRb + name))
           statRes.addProperty(RdfUtil.hasDocWeight, i.toString, XSDinteger)
           stat.addToRdf(statRes)
-          distRes.addProperty(RdfUtil.hasStatistics, statRes)
+          mainStatRes.addProperty(RdfUtil.hasStatistics, statRes)
         })
+      mainStatRes
 
 /**
  * A set of stat counters for a stream.

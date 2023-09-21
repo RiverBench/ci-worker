@@ -27,7 +27,12 @@ import scala.jdk.CollectionConverters.*
 object PackageCommand extends Command:
   import eu.ostrzyciel.jelly.convert.jena.*
 
-  private case class PartialResult(size: Long, stats: StatCounterSuite.Result, saveRes: SaveResult, flat: Boolean)
+  sealed trait DistType(val weight: Int)
+  object DistType:
+    case object Stream extends DistType(0)
+    case object Flat extends DistType(1)
+
+  private case class PartialResult(size: Long, stats: StatCounterSuite.Result, saveRes: SaveResult, dType: DistType)
 
   override def name: String = "package"
 
@@ -89,9 +94,9 @@ object PackageCommand extends Command:
         _ <- fChecks
       yield
         val sr = for ((num, stat), streamR) <- stats.zip(streamRes) yield
-          PartialResult(num, stat, streamR, false)
+          PartialResult(num, stat, streamR, DistType.Stream)
         val fr = for ((num, stat), flatR) <- stats.zip(flatRes) yield
-          PartialResult(num, stat, flatR, true)
+          PartialResult(num, stat, flatR, DistType.Flat)
         sr ++ fr
     })
 
@@ -107,8 +112,11 @@ object PackageCommand extends Command:
     (g.run(), m, datasetRes, outDir, metadata)
   } flatMap { (pResultsF, m, datasetRes, outDir, metadata) =>
     pResultsF map { pResults =>
+      val statResources = pResults.filter(_.dType == DistType.Flat)
+        .map(pr => pr.size -> pr.stats.addToRdf(m, pr.size, metadata.elementCount)).toMap
+
       for pResult <- pResults do
-        distributionToRdf(datasetRes, metadata, pResult)
+        distributionToRdf(datasetRes, statResources(pResult.size), metadata, pResult)
 
       val statsFile = outDir.resolve("package_metadata.ttl").toFile
       val os = new FileOutputStream(statsFile)
@@ -121,17 +129,19 @@ object PackageCommand extends Command:
   /**
    * Adds RDF metadata for a given distribution
    * @param datasetRes the dataset resource
+   * @param statRes the statistics resource
    * @param mi dataset metadata
    * @param pResult partial result for the distribution
    */
-  private def distributionToRdf(datasetRes: Resource, mi: MetadataInfo, pResult: PartialResult):
+  private def distributionToRdf(datasetRes: Resource, statRes: Resource, mi: MetadataInfo, pResult: PartialResult):
   Unit =
     val m = datasetRes.getModel
     val distRes = m.createResource(RdfUtil.tempDataset.getURI + "#" + pResult.saveRes.getLocalId)
     datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
+    mi.addToRdf(distRes, pResult.size, pResult.dType)
     distRes.addProperty(RdfUtil.hasFileName, pResult.saveRes.name)
-    pResult.stats.addToRdf(distRes, mi, pResult.size, pResult.flat)
-    pResult.saveRes.addToRdf(distRes, mi, pResult.flat)
+    distRes.addProperty(RdfUtil.hasStatisticsSet, statRes)
+    pResult.saveRes.addToRdf(distRes, mi, pResult.dType)
 
   /**
    * Creates a flow for parsing the input stream with Jena to DatasetGraphs
