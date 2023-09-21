@@ -6,7 +6,7 @@ import util.io.*
 
 import eu.ostrzyciel.jelly.core.JellyOptions
 import eu.ostrzyciel.jelly.core.proto.v1.RdfStreamType
-import eu.ostrzyciel.jelly.stream.EncoderFlow
+import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.system.ErrorHandlerFactory
 import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
@@ -360,11 +360,9 @@ object PackageCommand extends Command:
             Flow[(DatasetGraph, Long)]
               .map((ds, _) => ds.asQuads)
               .via(EncoderFlow.fromGroupedQuads(sOpt, jOpt))
-        ).map(f => {
-          val output = ByteArrayOutputStream()
-          f.writeDelimitedTo(output)
-          ByteString(output.toByteArray)
-        })
+        )
+          .via(JellyIo.toBytesDelimited)
+          .map(ByteString(_))
 
         val serializeFlowG = builder.add(serializeFlow)
         val serializeBroad = builder.add(Broadcast[ByteString](sinkList.size))
