@@ -5,8 +5,8 @@ import util.*
 import util.io.*
 
 import eu.ostrzyciel.jelly.core.JellyOptions
-import eu.ostrzyciel.jelly.core.proto.v1.{RdfStreamOptions, RdfStreamType}
-import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
+import eu.ostrzyciel.jelly.core.proto.v1.RdfStreamType
+import eu.ostrzyciel.jelly.stream.EncoderFlow
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.system.ErrorHandlerFactory
 import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
@@ -30,7 +30,8 @@ object PackageCommand extends Command:
   sealed trait DistType(val weight: Int)
   object DistType:
     case object Stream extends DistType(0)
-    case object Flat extends DistType(1)
+    case object Jelly extends DistType(1)
+    case object Flat extends DistType(2)
 
   private case class PartialResult(size: Long, stats: StatCounterSuite.Result, saveRes: SaveResult, dType: DistType)
 
@@ -57,12 +58,14 @@ object PackageCommand extends Command:
     val sinkStats = Sink.seq[(Long, StatCounterSuite.Result)]
     val sinkStreamPackage = packageStreamSink(metadata, outDir, packages)
     val sinkFlatPackage = packageFlatSink(metadata, outDir, packages)
+    val sinkJellyPackage = packageJellySink(metadata, outDir, packages)
     val sinkChecks = Sink.ignore
 
-    val g = RunnableGraph.fromGraph(GraphDSL.createGraph(sinkStats, sinkStreamPackage, sinkFlatPackage, sinkChecks)
-    ((_, _, _, _))
+    val g = RunnableGraph.fromGraph(
+      GraphDSL.createGraph(sinkStats, sinkStreamPackage, sinkFlatPackage, sinkJellyPackage, sinkChecks
+    )((_, _, _, _, _))
     { implicit builder =>
-      (sStats, sStreamPackage, sFlatPackage, sChecks) =>
+      (sStats, sStreamPackage, sFlatPackage, sJellyPackage, sChecks) =>
       import GraphDSL.Implicits.*
       val in = FileHelper.readArchive(dataFileUrl)
         .map((name, bytes) => (name, bytes.utf8String))
@@ -72,7 +75,7 @@ object PackageCommand extends Command:
       val parseJenaBuffered = parseJenaFlow
         .zipWithIndex
         .buffer(32, OverflowStrategy.backpressure)
-      val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](4))
+      val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](5))
       val checksMerge = builder.add(Merge[Unit](2))
 
       in ~> inBroad
@@ -81,15 +84,18 @@ object PackageCommand extends Command:
       dsBroad ~> statsFlow(stats).async ~> sStats
       dsBroad ~> sStreamPackage
       dsBroad ~> sFlatPackage
+      dsBroad ~> sJellyPackage
 
       ClosedShape
-    }).mapMaterializedValue((fStats, fSeqStreamRes, fSeqFlatRes, fChecks) => {
+    }).mapMaterializedValue((fStats, fSeqStreamRes, fSeqFlatRes, fSeqJellyRes, fChecks) => {
       val fStreamRes = Future.sequence(fSeqStreamRes)
       val fFlatRes = Future.sequence(fSeqFlatRes)
+      val fJellyRes = Future.sequence(fSeqJellyRes)
       for
         stats <- fStats
         streamRes <- fStreamRes
         flatRes <- fFlatRes
+        jellyRes <- fJellyRes
         // There is no value returned from the checks sink, but we need to ensure it is run
         _ <- fChecks
       yield
@@ -97,7 +103,9 @@ object PackageCommand extends Command:
           PartialResult(num, stat, streamR, DistType.Stream)
         val fr = for ((num, stat), flatR) <- stats.zip(flatRes) yield
           PartialResult(num, stat, flatR, DistType.Flat)
-        sr ++ fr
+        val jr = for ((num, stat), jellyR) <- stats.zip(jellyRes) yield
+          PartialResult(num, stat, jellyR, DistType.Jelly)
+        sr ++ fr ++ jr
     })
 
     val m = ModelFactory.createDefaultModel()
@@ -313,37 +321,45 @@ object PackageCommand extends Command:
       SinkShape(serializeFlowG.in)
     })
 
+  /**
+   * Creates a sink that writes the data to Jelly-format files.
+   * @param metadata the metadata of the dataset
+   * @param outDir the directory to write the files to
+   * @param packages the packages to write (size, name)
+   * @return the sink
+   */
   private def packageJellySink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
-  Sink[(DatasetGraph, Long), Future[SaveResult]] =
+  Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
     val sinks = packages.map { case (size, name) =>
       Flow[ByteString]
         .take(size)
-        .toMat(FileHelper.writeCompressed(outDir.resolve(s"flat_$name.jelly.gz")))(Keep.right)
+        .toMat(FileHelper.writeCompressed(outDir.resolve(s"jelly_$name.jelly.gz")))(Keep.right)
     }
 
     // Large target message size to avoid splitting
-    val sOpt = EncoderFlow.Options(100_000_000)
+    val sOpt = EncoderFlow.Options(1_000_000_000)
     val jOpt = JellyOptions.bigStrict
       .withGeneralizedStatements(
         metadata.conformance.usesGeneralizedTriples || metadata.conformance.usesGeneralizedRdfDatasets
       )
+      .withRdfStar(metadata.conformance.usesRdfStar)
       .withStreamType(
         if metadata.elementType == "triples" then RdfStreamType.RDF_STREAM_TYPE_TRIPLES
-        else RdfStreamType.RDF_STREAM_TYPE_GRAPHS
+        else RdfStreamType.RDF_STREAM_TYPE_QUADS
       )
 
     Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
       sinkList =>
         import GraphDSL.Implicits.*
         val serializeFlow = (
-          if metadata.elementType == "quads" then
-            Flow[(DatasetGraph, Long)]
-              .map((ds, _) => ds.asQuads)
-              .via(EncoderFlow.fromGroupedQuads(sOpt, jOpt))
-          else
+          if metadata.elementType == "triples" then
             Flow[(DatasetGraph, Long)]
               .map((ds, _) => ds.getDefaultGraph.asTriples)
               .via(EncoderFlow.fromGroupedTriples(sOpt, jOpt))
+          else
+            Flow[(DatasetGraph, Long)]
+              .map((ds, _) => ds.asQuads)
+              .via(EncoderFlow.fromGroupedQuads(sOpt, jOpt))
         ).map(f => {
           val output = ByteArrayOutputStream()
           f.writeDelimitedTo(output)
@@ -358,9 +374,6 @@ object PackageCommand extends Command:
 
         SinkShape(serializeFlowG.in)
     })
-
-    // TODO: finish
-    ???
 
   /**
    * Checks the structure of the dataset

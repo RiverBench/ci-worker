@@ -1,13 +1,14 @@
 package io.github.riverbench.ci_worker
 package util.io
 
-import org.apache.pekko.stream.IOResult
+import commands.PackageCommand.DistType
 import util.{MetadataInfo, RdfUtil}
 
-import io.github.riverbench.ci_worker.commands.PackageCommand.DistType
+import eu.ostrzyciel.jelly.core
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model.Resource
 import org.apache.jena.vocabulary.RDF
+import org.apache.pekko.stream.IOResult
 
 case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1: String):
   def getLocalId: String = name.split('.').head.toLowerCase.replace('_', '-')
@@ -29,6 +30,8 @@ case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1:
           distRes.addProperty(RdfUtil.dcatMediaType, "text/turtle")
         else
           distRes.addProperty(RdfUtil.dcatMediaType, "application/trig")
+      case DistType.Jelly =>
+        distRes.addProperty(RdfUtil.dcatMediaType, core.Constants.jellyContentType)
 
     val md5Checksum = distRes.getModel.createResource()
       .addProperty(RDF.`type`, RdfUtil.SpdxChecksum)
