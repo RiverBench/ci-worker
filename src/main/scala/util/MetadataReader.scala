@@ -49,7 +49,7 @@ case class MetadataInfo(
       if size == elementCount then
         0
       else
-        (elementCount.toString.length - size.toString.length + 1) * 2
+        (elementCount.toString.length - size.toString.length + 1) * 3
       )
     distRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
 
@@ -60,21 +60,27 @@ case class MetadataInfo(
       distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.partialDistribution)
       Constants.packageSizeToHuman(size) + " elements"
 
+    def addStreamType(t: String): Unit =
+      elementType match
+        case "graphs" =>
+          distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.graphStreamDistribution)
+          distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString graph stream distribution" + t)
+        case "triples" =>
+          distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.tripleStreamDistribution)
+          distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString triple stream distribution" + t)
+        case "quads" =>
+          distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.quadStreamDistribution)
+          distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString quad stream distribution" + t)
+
     dType match
       case DistType.Flat =>
         distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.flatDistribution)
         distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString flat distribution")
       case DistType.Stream =>
-        elementType match
-          case "graphs" =>
-            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.graphStreamDistribution)
-            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString graph stream distribution")
-          case "triples" =>
-            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.tripleStreamDistribution)
-            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString triple stream distribution")
-          case "quads" =>
-            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.quadStreamDistribution)
-            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString quad stream distribution")
+        addStreamType("")
+      case DistType.Jelly =>
+        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.jellyDistribution)
+        addStreamType(" (Jelly)")
 
     distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
 

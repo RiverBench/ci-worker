@@ -90,6 +90,7 @@ object RdfUtil:
   val quadStreamDistribution = m.createResource(pRb + "quadStreamDistribution")
   val graphStreamDistribution = m.createResource(pRb + "graphStreamDistribution")
   val flatDistribution = m.createResource(pRb + "flatDistribution")
+  val jellyDistribution = m.createResource(pRb + "jellyDistribution")
 
   val spdxChecksumAlgorithmSha1 = m.createResource(pSpdx + "checksumAlgorithm_sha1")
   val spdxChecksumAlgorithmMd5 = m.createResource(pSpdx + "checksumAlgorithm_md5")

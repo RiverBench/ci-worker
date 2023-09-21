@@ -1,11 +1,15 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.3.0"
 
+resolvers +=
+  "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
+
+lazy val circeV = "0.14.5"
+lazy val jellyV = "0.2.0+2-d3c7217e-SNAPSHOT"
+lazy val jenaV = "4.7.0"
 lazy val pekkoV = "1.0.1"
 lazy val pekkoHttpV = "1.0.0"
 lazy val pekkoConnV = "1.0.0"
-lazy val circeV = "0.14.5"
-lazy val jenaV = "4.7.0"
 lazy val rdf4jV = "4.3.0"
 
 lazy val root = (project in file("."))
@@ -16,6 +20,8 @@ lazy val root = (project in file("."))
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
       "com.google.guava" % "guava" % "31.1-jre",
+      "eu.ostrzyciel.jelly" %% "jelly-stream" % jellyV,
+      "eu.ostrzyciel.jelly" %% "jelly-jena" % jellyV,
       "io.circe" %% "circe-core" % circeV,
       "io.circe" %% "circe-generic" % circeV,
       "io.circe" %% "circe-parser" % circeV,
