@@ -29,8 +29,9 @@ object DocValue:
           value.getLexicalForm.strip
       case _ =>
         val str = value.getLexicalForm.strip
-        // Heuristic for hash-like strings
-        if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) then
+        // Heuristic for hash-like strings and identifiers
+        if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) ||
+          str.exists(_.isLetter) && str.matches("^[a-z0-9-_.]+$") && str.length > 1 then
           f"`$str`" else str
 
     def getSortKey = value.getLexicalForm.strip
@@ -59,17 +60,23 @@ object DocValue:
   object InternalLink:
     def apply(value: model.Resource): InternalLink | Link =
       val uri = value.getURI
-      val toSplit = if uri.startsWith(AppConfig.CiWorker.baseDatasetUrl) then
-        Some(uri.drop(AppConfig.CiWorker.baseDatasetUrl.length))
+      val split = if uri.startsWith(AppConfig.CiWorker.baseDatasetUrl) then
+        if uri.contains("#statistics-") then
+          val name = uri.split('#').last
+          Some(Array(s"#$name", name))
+        else
+          Some(uri.drop(AppConfig.CiWorker.baseDatasetUrl.length).split('/'))
       else if uri.startsWith(AppConfig.CiWorker.baseProfileUrl) then
-        Some(uri.drop(AppConfig.CiWorker.baseProfileUrl.length))
+        Some(uri.drop(AppConfig.CiWorker.baseProfileUrl.length).split('/'))
       else None
 
-      toSplit match
-        case Some(toSplit) =>
-          val parts = toSplit.split('/')
+      split match
+        case Some(parts) =>
           if parts.length != 2 then
             Link(value)
+          else if parts(0).startsWith("#") then
+            // Anchor link
+            InternalLink(parts(0), parts(1))
           else
             InternalLink(uri, s"${parts(0)} (${parts(1)})")
         case _ => Link(value)

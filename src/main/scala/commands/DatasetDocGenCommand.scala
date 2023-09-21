@@ -51,8 +51,8 @@ object DatasetDocGenCommand extends Command:
         RDF.`type`,
       ),
       nestedSectionProps = Seq(
-        RdfUtil.dcatDistribution,
-        RdfUtil.hasStatistics,
+        (1, RdfUtil.dcatDistribution),
+        (1, RdfUtil.hasStatisticsSet),
       ),
       hidePropsInLevel = Seq(
         (1, RdfUtil.dctermsDescription), // shown as content below the header
@@ -67,13 +67,23 @@ object DatasetDocGenCommand extends Command:
       mi.description + indexIntro(mi, landingPage),
       mi.datasetRes
     )
+
+    // Cheat: create a virtual statistics resource and create a section for it
+    val m = mi.datasetRes.getModel
+    val statsRes = m.createResource()
+    for s <- m.listObjectsOfProperty(RdfUtil.hasStatisticsSet).asScala.distinct do
+      statsRes.addProperty(RdfUtil.hasStatisticsSet, s)
+    // val statSection = docIndex.addSubsection()
+    docBuilderIndex.buildSection(statsRes, docIndex)
+
+    // Save the index.md document
     Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
     println("Generated index.md")
 
     if version == "dev" then
       val optReadme = optIndex.copy(
         hidePropsInLevel = optIndex.hidePropsInLevel ++ Seq(
-          (3, RdfUtil.hasStatistics), // distribution stats
+          (3, RdfUtil.hasStatisticsSet), // distribution stats
           (3, RdfUtil.spdxChecksum), // distribution checksums
         )
       )

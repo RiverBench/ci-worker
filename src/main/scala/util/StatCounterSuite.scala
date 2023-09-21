@@ -18,7 +18,7 @@ object StatCounterSuite:
                     objects: StatCounter.Result, graphs: StatCounter.Result,
                     statements: StatCounter.Result):
 
-    def addToRdf(m: Model, size: Long): Resource =
+    def addToRdf(m: Model, size: Long, totalSize: Long): Resource =
       val toAdd = Seq(
         "IriCountStatistics" -> iris,
         "BlankNodeCountStatistics" -> blankNodes,
@@ -33,9 +33,16 @@ object StatCounterSuite:
         "GraphCountStatistics" -> graphs,
         "StatementCountStatistics" -> statements
       )
-      val sizeName = Constants.packageSizeToHuman(size, true).toLowerCase
-      val mainStatRes = m.createResource(RdfUtil.tempDataset.getURI + "#statistics-" + sizeName)
+      val sizeName = Constants.packageSizeToHuman(size, true)
+      val mainStatRes = m.createResource(RdfUtil.tempDataset.getURI + "#statistics-" + sizeName.toLowerCase)
       mainStatRes.addProperty(RDF.`type`, RdfUtil.StatisticsSet)
+      mainStatRes.addProperty(
+        RdfUtil.dctermsTitle,
+        "Statistics for " + (if sizeName == "Full" then "full" else sizeName) + " distributions"
+      )
+      val weight = if size == totalSize then 0 else totalSize.toString.length - size.toString.length + 1
+      mainStatRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
+
       toAdd
         .zipWithIndex
         .foreach((el, i) => {

@@ -108,7 +108,7 @@ object PackageCommand extends Command:
   } flatMap { (pResultsF, m, datasetRes, outDir, metadata) =>
     pResultsF map { pResults =>
       val statResources = pResults.filter(_.dType == DistType.Flat)
-        .map(pr => pr.size -> pr.stats.addToRdf(m, pr.size)).toMap
+        .map(pr => pr.size -> pr.stats.addToRdf(m, pr.size, metadata.elementCount)).toMap
 
       for pResult <- pResults do
         distributionToRdf(datasetRes, statResources(pResult.size), metadata, pResult)
@@ -133,6 +133,7 @@ object PackageCommand extends Command:
     val m = datasetRes.getModel
     val distRes = m.createResource(RdfUtil.tempDataset.getURI + "#" + pResult.saveRes.getLocalId)
     datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
+    mi.addToRdf(distRes, pResult.size, pResult.dType)
     distRes.addProperty(RdfUtil.hasFileName, pResult.saveRes.name)
     distRes.addProperty(RdfUtil.hasStatisticsSet, statRes)
     pResult.saveRes.addToRdf(distRes, mi, pResult.dType)
