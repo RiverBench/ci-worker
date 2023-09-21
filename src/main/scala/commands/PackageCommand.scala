@@ -13,13 +13,13 @@ import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
 import org.apache.pekko.stream.*
 import org.apache.pekko.stream.connectors.file.TarArchiveMetadata
-import org.apache.pekko.stream.scaladsl.*
+import org.apache.pekko.stream.scaladsl.{Flow, *}
 import org.apache.pekko.util.ByteString
 import org.apache.pekko.{Done, NotUsed}
 import org.eclipse.rdf4j.model.vocabulary.XSD
 import org.eclipse.rdf4j.rio
 
-import java.io.{ByteArrayInputStream, FileOutputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, FileOutputStream}
 import java.nio.file.{FileSystems, Path}
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
@@ -303,7 +303,7 @@ object PackageCommand extends Command:
       SinkShape(serializeFlowG.in)
     })
 
-  private def packageJellyFlatSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
+  private def packageJellySink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
   Sink[(DatasetGraph, Long), Future[SaveResult]] =
     val sinks = packages.map { case (size, name) =>
       Flow[ByteString]
@@ -324,21 +324,21 @@ object PackageCommand extends Command:
 
     Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
       sinkList =>
-        // TODO: FIX
         import GraphDSL.Implicits.*
-        val serializeFlow = Flow[(DatasetGraph, Long)]
-          .mapConcat((ds, _) => {
-            val default = ds.getDefaultGraph
-            val graphs = (if !default.isEmpty then Seq((null, default)) else Seq()) ++
-              ds.listGraphNodes().asScala.map(n => (n, ds.getGraph(n)))
-
-            graphs.map((n, g) => (
-              n,
-              Iterable
-            ))
-          })
-          .via(EncoderFlow.fromGraphs(sOpt, jOpt))
-          .map(f => f)
+        val serializeFlow = (
+          if metadata.elementType == "quads" then
+            Flow[(DatasetGraph, Long)]
+              .map((ds, _) => ds.asQuads)
+              .via(EncoderFlow.fromGroupedQuads(sOpt, jOpt))
+          else
+            Flow[(DatasetGraph, Long)]
+              .map((ds, _) => ds.getDefaultGraph.asTriples)
+              .via(EncoderFlow.fromGroupedTriples(sOpt, jOpt))
+        ).map(f => {
+          val output = ByteArrayOutputStream()
+          f.writeDelimitedTo(output)
+          ByteString(output.toByteArray)
+        })
 
         val serializeFlowG = builder.add(serializeFlow)
         val serializeBroad = builder.add(Broadcast[ByteString](sinkList.size))
@@ -349,6 +349,7 @@ object PackageCommand extends Command:
         SinkShape(serializeFlowG.in)
     })
 
+    // TODO: finish
     ???
 
   /**
