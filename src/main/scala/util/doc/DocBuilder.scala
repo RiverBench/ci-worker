@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters.*
 object DocBuilder:
   case class Options(
     titleProps: Seq[Property] = Seq(),
-    nestedSectionProps: Seq[Property] = Seq(),
+    nestedSectionProps: Seq[(Int, Property)] = Seq(),
     hidePropsInLevel: Seq[(Int, Property)] = Seq(),
     defaultPropGroup: Option[String] = None,
   )
@@ -27,15 +27,18 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     rootSection.setTitle(title)
     rootSection
 
-  private def buildSection(resource: Resource, section: DocSection): Unit =
+  def buildSection(resource: Resource, section: DocSection): Unit =
     val props = getDocPropsForRes(resource)
 
     val usedValues = props.flatMap { (prop, nodes) =>
       val isPropHiddenInLevel = opt.hidePropsInLevel.exists { case (l, p) =>
         l == section.level && p.getURI == prop.prop.getURI
       }
+      val isPropNestedSection = opt.nestedSectionProps.exists { case (l, p) =>
+        l == section.level && p.getURI == prop.prop.getURI
+      }
 
-      if opt.nestedSectionProps.exists(p => p.getURI == prop.prop.getURI) then
+      if isPropNestedSection then
         if !isPropHiddenInLevel then
           val nestedSection = section.addSubsection()
           nestedSection.setWeight(prop.weight)

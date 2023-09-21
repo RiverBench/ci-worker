@@ -1,6 +1,9 @@
 package io.github.riverbench.ci_worker
 package util
 
+import commands.PackageCommand.DistType
+
+import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.vocabulary.RDF
@@ -35,6 +38,45 @@ case class MetadataInfo(
       println("Warning: Dataset has no temporal property, but element type is 'graphs'. " +
         "Assuming it's a non-temporal dataset.")
     errors.result()
+
+  def addToRdf(distRes: Resource, size: Long, dType: DistType): Resource =
+    // Info about the distribution
+    // Media type, byte size, link, checksum are added separately by the packaging pipeline
+    distRes.addProperty(RDF.`type`, RdfUtil.Distribution)
+    distRes.addProperty(RDF.`type`, RdfUtil.DcatDistribution)
+
+    val weight = dType.weight + (
+      if size == elementCount then
+        0
+      else
+        (elementCount.toString.length - size.toString.length + 1) * 2
+      )
+    distRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
+
+    val sizeString = if size == elementCount then
+      distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.fullDistribution)
+      "Full"
+    else
+      distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.partialDistribution)
+      Constants.packageSizeToHuman(size) + " elements"
+
+    dType match
+      case DistType.Flat =>
+        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.flatDistribution)
+        distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString flat distribution")
+      case DistType.Stream =>
+        elementType match
+          case "graphs" =>
+            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.graphStreamDistribution)
+            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString graph stream distribution")
+          case "triples" =>
+            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.tripleStreamDistribution)
+            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString triple stream distribution")
+          case "quads" =>
+            distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.quadStreamDistribution)
+            distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString quad stream distribution")
+
+    distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
 
 case class ConformanceInfo(conformsToRdf11: Boolean = false, conformsToRdfStarDraft_20211217: Boolean = false,
                            usesGeneralizedRdfDatasets: Boolean = false, usesGeneralizedTriples: Boolean = false,
