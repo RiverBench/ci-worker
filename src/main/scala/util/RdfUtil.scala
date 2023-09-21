@@ -33,6 +33,7 @@ object RdfUtil:
   val uniqueCount = m.createProperty(pRb, "uniqueCount")
 
   val hasStatistics = m.createProperty(pRb, "hasStatistics")
+  val hasStatisticsSet = m.createProperty(pRb, "hasStatisticsSet")
   val hasDistributionType = m.createProperty(pRb, "hasDistributionType")
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
   val hasStreamElementType = m.createProperty(pRb, "hasStreamElementType")
@@ -77,6 +78,7 @@ object RdfUtil:
   val Distribution = m.createResource(pRb + "Distribution")
   val Profile = m.createResource(pRb + "Profile")
   val RiverBench = m.createResource(pRb + "RiverBench")
+  val StatisticsSet = m.createResource(pRb + "StatisticsSet")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")

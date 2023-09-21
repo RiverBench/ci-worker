@@ -67,3 +67,7 @@ object MergeMetadataCommand extends Command:
       val distId = distRes.getProperty(RdfUtil.dctermsIdentifier).getObject.asLiteral.getString
       val newDistRes = m.createResource(datasetRes.getURI + "#" + distId)
       RdfUtil.renameResource(distRes, newDistRes, m)
+
+    for statSet <- m.listObjectsOfProperty(RdfUtil.hasStatisticsSet).asScala.distinct.toSeq do
+      val newStatSet = m.createResource(datasetRes.getURI + "#" + statSet.asResource.getURI.split("#").last)
+      RdfUtil.renameResource(statSet.asResource, newStatSet, m)
