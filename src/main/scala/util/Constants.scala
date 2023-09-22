@@ -1,13 +1,18 @@
 package io.github.riverbench.ci_worker
 package util
 
+import eu.ostrzyciel.jelly.convert.jena.riot.{JellyFormat, JellyLanguage}
 import org.apache.jena.riot.RDFFormat
 
 object Constants:
+  // Register Jelly language in Apache Jena
+  JellyLanguage.register()
+
   val outputFormats = Seq(
     ("ttl", RDFFormat.TURTLE_PRETTY),
     ("rdf", RDFFormat.RDFXML_PRETTY),
     ("nt", RDFFormat.NTRIPLES_UTF8),
+    ("jelly", JellyFormat.JELLY_SMALL_STRICT),
   )
 
   val packageSizes = Seq[Long](

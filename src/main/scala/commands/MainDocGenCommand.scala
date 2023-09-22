@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.{AppConfig, ProfileCollection, RdfIoUtil, RdfUtil}
-import util.doc.DocBuilder
+import util.doc.{DocBuilder, MarkdownUtil}
 
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
@@ -167,11 +167,10 @@ object MainDocGenCommand extends Command:
       |""".stripMargin.strip
 
   private def rdfInfo(baseLink: String): String =
-    val rdfLinks = f"**[Turtle]($baseLink.ttl)**, **[N-Triples]($baseLink.nt)**, **[RDF/XML]($baseLink.rdf)**"
     f"""
        |
        |!!! info
        |
-       |    Download this metadata in RDF: $rdfLinks
+       |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
        |
        |""".stripMargin
