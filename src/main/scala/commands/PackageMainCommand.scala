@@ -158,18 +158,40 @@ object PackageMainCommand extends Command:
       .distinct
       .sortBy(_._1)
 
-    profileTableSb.append("Dataset")
-    for col <- columns do
-      profileTableSb.append(f" | ${col._2}")
-    profileTableSb.append("\n---")
-    profileTableSb.append(" | ---" * columns.size)
+    if name.contains("flat") then
+      writeTable("")
+    else
+      profileTableSb.append(
+        """!!! note
+          |    For stream profiles, there are two available types of distributions: plain streaming, and streaming in the Jelly format. See the [documentation](../../documentation/dataset-release-format.md) for details.
+          |
+          |### Plain streaming distributions
+          |
+          |""".stripMargin)
+      writeTable("tar.gz")
+      profileTableSb.append(
+        """
+          |
+          |### Jelly streaming distributions
+          |
+          |""".stripMargin)
+      writeTable("jelly.gz")
 
-    for (dsName, dsUri, dists) <- datasets.sortBy(_._1) do
-      profileTableSb.append(f"\n[$dsName]($dsUri)")
+    def writeTable(filterBy: String): Unit =
+      profileTableSb.append("Dataset")
       for col <- columns do
-        val (distUrl, distSize, distByteSize) = dists.filter(_._2 <= col._1).last
-        profileTableSb.append(f" | [${Constants.packageSizeToHuman(distSize, true)} " +
-          f"(${MarkdownUtil.formatSize(distByteSize)})]($distUrl)")
+        profileTableSb.append(f" | ${col._2}")
+      profileTableSb.append("\n---")
+      profileTableSb.append(" | ---" * columns.size)
+
+      for (dsName, dsUri, dists) <- datasets.sortBy(_._1) do
+        profileTableSb.append(f"\n[$dsName]($dsUri)")
+        for col <- columns do
+          val (distUrl, distSize, distByteSize) = dists
+            .filter(d => d._2 <= col._1 && d._1.contains(filterBy))
+            .last
+          profileTableSb.append(f" | [${Constants.packageSizeToHuman(distSize, true)} " +
+            f"(${MarkdownUtil.formatSize(distByteSize)})]($distUrl)")
 
     Files.writeString(outDir.resolve(f"profiles/doc/${name}_table.md"), profileTableSb.toString())
 
