@@ -80,7 +80,9 @@ class StatCounterSuite(val size: Long):
   private val cStatements = new LightStatCounter[String]()
 
   def add(ds: DatasetGraph): Unit =
-    cGraphs.lightAdd(ds.listGraphNodes().asScala.size)
+    cGraphs.lightAdd(
+      ds.listGraphNodes().asScala.size + (if ds.getDefaultGraph.isEmpty then 0 else 1)
+    )
     val subjects = mutable.Set[String]()
     val predicates = mutable.Set[String]()
     val objects = mutable.Set[String]()
