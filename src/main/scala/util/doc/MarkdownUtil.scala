@@ -35,3 +35,7 @@ object MarkdownUtil:
 
     val (level, d) = inner(v.toDouble)
     f"$d%.2f ${sizePrefixes(level)}"
+
+  def formatMetadataLinks(baseUrl: String): String =
+    f"**[Turtle]($baseUrl.ttl)**, **[N-Triples]($baseUrl.nt)**, " +
+      f"**[RDF/XML]($baseUrl.rdf)**, **[Jelly]($baseUrl.jelly)**"

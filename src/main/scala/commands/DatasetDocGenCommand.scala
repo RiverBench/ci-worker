@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.doc.DocBuilder
+import util.doc.{DocBuilder, MarkdownUtil}
 import util.{MetadataInfo, MetadataReader, RdfIoUtil, RdfUtil}
 
 import org.apache.jena.rdf.model.Property
@@ -139,12 +139,11 @@ object DatasetDocGenCommand extends Command:
        |""".stripMargin
 
   private def indexIntro(mi: MetadataInfo, websiteLink: String): String =
-    val rdfLinks = f"**[Turtle]($websiteLink.ttl)**, **[N-Triples]($websiteLink.nt)**, **[RDF/XML]($websiteLink.rdf)**"
     f"""
        |
        |!!! info
        |
-       |    Download this metadata in RDF: $rdfLinks
+       |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(websiteLink)}
        |    <br>Source repository: **[${mi.identifier}]($baseRepoUrl/dataset-${mi.identifier})**
        |
        |""".stripMargin

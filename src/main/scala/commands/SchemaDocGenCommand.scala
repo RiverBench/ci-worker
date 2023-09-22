@@ -3,6 +3,7 @@ package commands
 
 import util.AppConfig
 
+import io.github.riverbench.ci_worker.util.doc.MarkdownUtil
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
 
@@ -106,7 +107,7 @@ object SchemaDocGenCommand extends Command:
     })
 
     val baseLink = s"${AppConfig.CiWorker.rbRootUrl}schema/$name/$version"
-    val rdfLinks = f"**[Turtle]($baseLink.ttl)**, **[N-Triples]($baseLink.nt)**, **[RDF/XML]($baseLink.rdf)**"
+    val rdfLinks = MarkdownUtil.formatMetadataLinks(baseLink)
     c = rxRdfLinks.replaceAllIn(c, m => {
       val schemaType = m.group(1).toLowerCase
       f"""
