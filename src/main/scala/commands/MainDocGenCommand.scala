@@ -173,8 +173,9 @@ object MainDocGenCommand extends Command:
        |!!! info
        |
        |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
+       |
        |""".stripMargin
     dumpLink match
       case Some(link) => s + f"    A complete dump of all metadata in RiverBench is also available: " +
         MarkdownUtil.formatMetadataLinks(link, ".gz") + "\n\n"
-      case None => s + "\n"
+      case None => s
