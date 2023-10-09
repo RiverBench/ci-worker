@@ -10,6 +10,7 @@ import org.apache.jena.vocabulary.RDF
 
 import java.io.FileOutputStream
 import java.nio.file.{FileSystems, Files, Path}
+import java.util.zip.GZIPOutputStream
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
@@ -82,6 +83,11 @@ object PackageMainCommand extends Command:
       val dsRes = dsModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
       newMainRes.addProperty(RdfUtil.dcatDataset, dsRes)
 
+    val allModels = profileCollection.profiles.values ++
+      Seq(mainModel) ++
+      datasetCollection.datasets.values
+    val dumpModel = RdfUtil.mergeModels(allModels.toSeq)
+
     if version == "dev" then
       // Generate dataset overview
       println("Generating dataset overview...")
@@ -98,6 +104,13 @@ object PackageMainCommand extends Command:
     for (ext, format) <- Constants.outputFormats do
       val mainOutFile = outDir.resolve(f"metadata.$ext").toFile
       RDFDataMgr.write(new FileOutputStream(mainOutFile), mainModel, format)
+
+    println("Writing dump...")
+    for (ext, format) <- Constants.outputFormats do
+      val dumpOutFile = outDir.resolve(f"dump.$ext.gz").toFile
+      val os = new GZIPOutputStream(new FileOutputStream(dumpOutFile))
+      RDFDataMgr.write(os, dumpModel, format)
+      os.close()
 
     println("Done.")
   }
