@@ -55,9 +55,10 @@ object MainDocGenCommand extends Command:
     val rootRes = mainMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.RiverBench).next.asResource
     val mainDocBuilder = new DocBuilder(ontologies, mainDocOpt)
     val baseLink = f"${AppConfig.CiWorker.rbRootUrl}v/$version"
+    val dumpLink = f"${AppConfig.CiWorker.rbRootUrl}dumps/$version"
     val mainDoc = mainDocBuilder.build(
       "RiverBench" + (if version == "dev" then "" else f" ($version)"),
-      Files.readString(repoDir.resolve("doc/index_body.md")) + rdfInfo(baseLink),
+      Files.readString(repoDir.resolve("doc/index_body.md")) + rdfInfo(baseLink, Some(dumpLink)),
       rootRes
     )
     Files.writeString(
@@ -166,11 +167,14 @@ object MainDocGenCommand extends Command:
       |-->
       |""".stripMargin.strip
 
-  private def rdfInfo(baseLink: String): String =
-    f"""
+  private def rdfInfo(baseLink: String, dumpLink: Option[String] = None): String =
+    val s = f"""
        |
        |!!! info
        |
        |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
-       |
        |""".stripMargin
+    dumpLink match
+      case Some(link) => s + f"    A complete dump of all metadata in RiverBench is also available: " +
+        MarkdownUtil.formatMetadataLinks(link, ".gz") + "\n\n"
+      case None => s + "\n"

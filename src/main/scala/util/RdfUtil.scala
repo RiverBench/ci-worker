@@ -138,3 +138,10 @@ object RdfUtil:
 
     model.removeAll(oldResource, null, null)
     model.removeAll(null, null, oldResource)
+
+  def mergeModels(models: IterableOnce[Model]): Model =
+    val model = ModelFactory.createDefaultModel()
+    for m <- models.iterator do
+      model.add(m)
+    model
+  
