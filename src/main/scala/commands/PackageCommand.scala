@@ -344,8 +344,8 @@ object PackageCommand extends Command:
       )
       .withRdfStar(metadata.conformance.usesRdfStar)
       .withStreamType(
-        if metadata.elementType == "triples" then RdfStreamType.RDF_STREAM_TYPE_TRIPLES
-        else RdfStreamType.RDF_STREAM_TYPE_QUADS
+        if metadata.elementType == "triples" then RdfStreamType.TRIPLES
+        else RdfStreamType.QUADS
       )
 
     Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
