@@ -337,7 +337,6 @@ object PackageCommand extends Command:
     }
 
     // Large target message size to avoid splitting
-    val sOpt = EncoderFlow.Options(1_000_000_000)
     val jOpt = JellyOptions.bigStrict
       .withGeneralizedStatements(
         metadata.conformance.usesGeneralizedTriples || metadata.conformance.usesGeneralizedRdfDatasets
@@ -355,11 +354,11 @@ object PackageCommand extends Command:
           if metadata.elementType == "triples" then
             Flow[(DatasetGraph, Long)]
               .map((ds, _) => ds.getDefaultGraph.asTriples)
-              .via(EncoderFlow.fromGroupedTriples(sOpt, jOpt))
+              .via(EncoderFlow.fromGroupedTriples(None, jOpt))
           else
             Flow[(DatasetGraph, Long)]
               .map((ds, _) => ds.asQuads)
-              .via(EncoderFlow.fromGroupedQuads(sOpt, jOpt))
+              .via(EncoderFlow.fromGroupedQuads(None, jOpt))
         )
           .via(JellyIo.toBytesDelimited)
           .map(ByteString(_))
