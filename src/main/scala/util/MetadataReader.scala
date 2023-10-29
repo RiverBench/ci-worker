@@ -11,23 +11,6 @@ import org.apache.jena.vocabulary.RDF
 import java.nio.file.Path
 import scala.jdk.CollectionConverters.*
 
-enum ElementType(val name: String):
-  case Graph extends ElementType("graph")
-  case Dataset extends ElementType("dataset")
-  case Triple extends ElementType("triple")
-  case Quad extends ElementType("quad")
-
-enum StreamType(val iriName: String, val isFlat: Boolean, val elementType: ElementType):
-  lazy val iri = RdfUtil.pStax + iriName
-
-  case Graph extends StreamType("rdfGraphStream", false, ElementType.Graph)
-  case SubjectGraph extends StreamType("rdfSubjectGraphStream", false, ElementType.Graph)
-  case Dataset extends StreamType("rdfDatasetStream", false, ElementType.Dataset)
-  case NamedGraph extends StreamType("rdfNamedGraphStream", false, ElementType.Dataset)
-  case TimestampedNamedGraph extends StreamType("timestampedRdfNamedGraphStream", false, ElementType.Dataset)
-  case Triple extends StreamType("flatRdfTripleStream", true, ElementType.Triple)
-  case Quad extends StreamType("flatRdfQuadStream", true, ElementType.Quad)
-
 case class MetadataInfo(
   identifier: String = "",
   description: String = "",
