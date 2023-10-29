@@ -233,7 +233,7 @@ object PackageMainCommand extends Command:
     for (name, model) <- datasetCollection.datasets.toSeq.sortBy(_._1) do
       val mi = MetadataReader.fromModel(model)
       sb.append(f"[$name]($name/dev) | ")
-      sb.append(f"${mi.elementType} | ")
+      sb.append(f"${mi.streamTypes} | ")
       sb.append(f"${MarkdownUtil.formatInt(mi.elementCount.toString)}")
       for b <- Seq(
         mi.conformance.usesRdfStar,

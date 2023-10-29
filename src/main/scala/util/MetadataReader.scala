@@ -11,14 +11,32 @@ import org.apache.jena.vocabulary.RDF
 import java.nio.file.Path
 import scala.jdk.CollectionConverters.*
 
+enum ElementType(val name: String):
+  case Graph extends ElementType("graph")
+  case Dataset extends ElementType("dataset")
+  case Triple extends ElementType("triple")
+  case Quad extends ElementType("quad")
+
+enum StreamType(val iriName: String, val isFlat: Boolean, val elementType: ElementType):
+  lazy val iri = RdfUtil.pStax + iriName
+
+  case Graph extends StreamType("rdfGraphStream", false, ElementType.Graph)
+  case SubjectGraph extends StreamType("rdfSubjectGraphStream", false, ElementType.Graph)
+  case Dataset extends StreamType("rdfDatasetStream", false, ElementType.Dataset)
+  case NamedGraph extends StreamType("rdfNamedGraphStream", false, ElementType.Dataset)
+  case TimestampedNamedGraph extends StreamType("timestampedRdfNamedGraphStream", false, ElementType.Dataset)
+  case Triple extends StreamType("flatRdfTripleStream", true, ElementType.Triple)
+  case Quad extends StreamType("flatRdfQuadStream", true, ElementType.Quad)
+
 case class MetadataInfo(
   identifier: String = "",
   description: String = "",
-  elementType: String = "",
+  streamTypes: Set[StreamType] = Set.empty,
   elementCount: Long = 0,
   temporalProp: Option[Resource] = None,
   conformance: ConformanceInfo = ConformanceInfo(),
   datasetRes: Resource = null,
+  model: Model = null,
 ):
   def checkConsistency(): Seq[String] =
     val c = conformance
@@ -30,14 +48,23 @@ case class MetadataInfo(
         "but conforms to RDF-star draft 2021-12-17"
     if c.conformsToRdf11 && !c.conformsToRdfStarDraft_20211217 then
       errors += "Dataset conforms to RDF1.1, but not to RDF-star draft 2021-12-17, which is a superset of RDF1.1"
-    if c.usesGeneralizedRdfDatasets && elementType == "triples" then
-      errors += "Dataset uses generalized RDF datasets, but has element type 'triples'"
+    if c.usesGeneralizedRdfDatasets && streamTypes.exists(_.elementType == ElementType.Triple) then
+      errors += "Dataset uses generalized RDF datasets, but is a triple stream"
     if elementCount <= 0 then
       errors += "Dataset has an invalid element count"
-    if temporalProp.isEmpty && elementType == "graphs" then
-      println("Warning: Dataset has no temporal property, but element type is 'graphs'. " +
-        "Assuming it's a non-temporal dataset.")
+    if temporalProp.isEmpty && streamTypes.contains(StreamType.TimestampedNamedGraph) then
+      errors += "Dataset has no temporal property, but it is a timestamped RDF named graph stream."
     errors.result()
+
+  def addStreamTypesToRdf(datasetRes: Resource): Unit =
+    for sType <- streamTypes do
+      val sTypeIri = model.createResource(sType.iri)
+      val sTypeUsage = model.listResourcesWithProperty(RdfUtil.staxHasStreamType, sTypeIri)
+        .asScala.toSeq.head
+      val newUsage = datasetRes.getModel.createResource()
+      sTypeUsage.listProperties().asScala
+        .foreach(p => newUsage.addProperty(p.getPredicate, p.getObject))
+      datasetRes.addProperty(RdfUtil.staxHasStreamTypeUsage, newUsage)
 
   def addToRdf(distRes: Resource, size: Long, dType: DistType): Resource =
     // Info about the distribution
@@ -60,27 +87,28 @@ case class MetadataInfo(
       distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.partialDistribution)
       Constants.packageSizeToHuman(size) + " elements"
 
-    def addStreamType(t: String): Unit =
-      elementType match
-        case "graphs" =>
-          distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.graphStreamDistribution)
-          distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString graph stream distribution" + t)
-        case "triples" =>
-          distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.tripleStreamDistribution)
-          distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString triple stream distribution" + t)
-        case "quads" =>
-          distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.quadStreamDistribution)
-          distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString quad stream distribution" + t)
+    // Assigns the stream type usage from the dataset to the distribution
+    def addStreamTypes(types: Iterable[StreamType]): Unit =
+      val m = distRes.getModel
+      for sType <- types do
+        val sTypeIri = m.createResource(sType.iri)
+        val sTypeUsage = m.listResourcesWithProperty(RdfUtil.staxHasStreamType, sTypeIri)
+          .asScala.toSeq.head
+        distRes.addProperty(RdfUtil.staxHasStreamTypeUsage, sTypeUsage)
 
     dType match
       case DistType.Flat =>
+        addStreamTypes(streamTypes.filter(_.isFlat))
         distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.flatDistribution)
         distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString flat distribution")
       case DistType.Stream =>
-        addStreamType("")
+        addStreamTypes(streamTypes.filterNot(_.isFlat))
+        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.streamDistribution)
+        distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString stream distribution")
       case DistType.Jelly =>
+        addStreamTypes(streamTypes)
         distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.jellyDistribution)
-        addStreamType(" (Jelly)")
+        distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString Jelly distribution")
 
     distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
 
@@ -105,15 +133,18 @@ object MetadataReader:
         .asScala.toSeq.head.asLiteral.getBoolean
 
     val dataset = model.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
-    val types = dataset.listProperties(RdfUtil.hasStreamElementType)
-      .asScala.toSeq
+    val types = dataset.listProperties(RdfUtil.staxHasStreamTypeUsage).asScala
+      .map(st => st.getResource.listProperties(RdfUtil.staxHasStreamType).asScala.toSeq.head)
+      .map(st => st.getResource.getLocalName)
+      .map(name => StreamType.values.find(_.iriName == name).get)
+      .toSet
 
     MetadataInfo(
       identifier = dataset.listProperties(RdfUtil.dctermsIdentifier)
         .asScala.toSeq.head.getLiteral.getString.strip,
       description = dataset.listProperties(RdfUtil.dctermsDescription)
         .asScala.toSeq.head.getLiteral.getString.strip,
-      elementType = types.head.getResource.getURI.split('#').last,
+      streamTypes = types,
       elementCount = dataset.listProperties(RdfUtil.hasStreamElementCount)
         .asScala.toSeq.head.getLiteral.getLong,
       temporalProp = model.listObjectsOfProperty(RdfUtil.hasTemporalProperty)
@@ -126,4 +157,5 @@ object MetadataReader:
         usesRdfStar = getBool("usesRdfStar"),
       ),
       datasetRes = dataset,
+      model = model,
     )

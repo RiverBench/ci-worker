@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package util.io
 
 import commands.PackageCommand.DistType
-import util.{MetadataInfo, RdfUtil}
+import util.{ElementType, MetadataInfo, RdfUtil}
 
 import eu.ostrzyciel.jelly.core
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
@@ -20,13 +20,13 @@ case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1:
 
     dType match
       case DistType.Flat =>
-        if mi.elementType == "triples" then
+        if mi.streamTypes.exists(_.elementType == ElementType.Triple) then
           distRes.addProperty(RdfUtil.dcatMediaType, "application/n-triples")
         else
           distRes.addProperty(RdfUtil.dcatMediaType, "application/n-quads")
       case DistType.Stream =>
         distRes.addProperty(RdfUtil.dcatPackageFormat, "application/tar")
-        if mi.elementType == "triples" then
+        if mi.streamTypes.exists(_.elementType == ElementType.Triple) then
           distRes.addProperty(RdfUtil.dcatMediaType, "text/turtle")
         else
           distRes.addProperty(RdfUtil.dcatMediaType, "application/trig")

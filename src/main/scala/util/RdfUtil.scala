@@ -21,8 +21,12 @@ object RdfUtil:
   val pDcterms = "http://purl.org/dc/terms/"
   // Prefix for FOAF
   val pFoaf = "http://xmlns.com/foaf/0.1/"
+  // Prefix for RDFS
+  val pRdfs = "http://www.w3.org/2000/01/rdf-schema#"
   // Prefix for SPDX
   val pSpdx = "http://spdx.org/rdf/terms#"
+  // Prefix for RDF-STaX
+  val pStax = "https://w3id.org/stax/ontology#"
 
   // Properties
   val maximum = m.createProperty(pRb, "maximum")
@@ -36,7 +40,6 @@ object RdfUtil:
   val hasStatisticsSet = m.createProperty(pRb, "hasStatisticsSet")
   val hasDistributionType = m.createProperty(pRb, "hasDistributionType")
   val hasStreamElementCount = m.createProperty(pRb, "hasStreamElementCount")
-  val hasStreamElementType = m.createProperty(pRb, "hasStreamElementType")
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
   val hasRestriction = m.createProperty(pRb, "hasRestriction")
@@ -73,6 +76,9 @@ object RdfUtil:
   val spdxAlgorithm = m.createProperty(pSpdx, "algorithm")
   val spdxChecksumValue = m.createProperty(pSpdx, "checksumValue")
 
+  val staxHasStreamType = m.createProperty(pStax, "hasStreamType")
+  val staxHasStreamTypeUsage = m.createProperty(pStax, "hasStreamTypeUsage")
+
   // Classes
   val Dataset = m.createResource(pRb + "Dataset")
   val Distribution = m.createResource(pRb + "Distribution")
@@ -86,9 +92,7 @@ object RdfUtil:
   // Instances
   val partialDistribution = m.createResource(pRb + "partialDistribution")
   val fullDistribution = m.createResource(pRb + "fullDistribution")
-  val tripleStreamDistribution = m.createResource(pRb + "tripleStreamDistribution")
-  val quadStreamDistribution = m.createResource(pRb + "quadStreamDistribution")
-  val graphStreamDistribution = m.createResource(pRb + "graphStreamDistribution")
+  val streamDistribution = m.createResource(pRb + "streamDistribution")
   val flatDistribution = m.createResource(pRb + "flatDistribution")
   val jellyDistribution = m.createResource(pRb + "jellyDistribution")
 
@@ -138,6 +142,12 @@ object RdfUtil:
 
     model.removeAll(oldResource, null, null)
     model.removeAll(null, null, oldResource)
+    
+  def removePropertyValuesDeep(subject: Resource, property: Property, model: Model): Unit =
+    val statements = model.listStatements(subject, property, null)
+    for stmt <- statements.asScala do
+      model.removeAll(stmt.getObject.asResource, null, null)
+    model.removeAll(subject, property, null)
 
   def mergeModels(models: IterableOnce[Model]): Model =
     val model = ModelFactory.createDefaultModel()

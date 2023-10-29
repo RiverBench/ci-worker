@@ -109,11 +109,14 @@ object PackageCommand extends Command:
     })
 
     val m = ModelFactory.createDefaultModel()
+    m.setNsPrefix("dcat", RdfUtil.pDcat)
+    m.setNsPrefix("dcterms", RdfUtil.pDcterms)
     m.setNsPrefix("rb", RdfUtil.pRb)
     m.setNsPrefix("rbdoc", RdfUtil.pRbDoc)
-    m.setNsPrefix("dcat", RdfUtil.pDcat)
-    m.setNsPrefix("xsd", XSD.NAMESPACE)
+    m.setNsPrefix("rdfs", RdfUtil.pRdfs)
     m.setNsPrefix("spdx", RdfUtil.pSpdx)
+    m.setNsPrefix("stax", RdfUtil.pStax)
+    m.setNsPrefix("xsd", XSD.NAMESPACE)
 
     val datasetRes = m.createResource(RdfUtil.tempDataset.getURI)
 
@@ -123,6 +126,7 @@ object PackageCommand extends Command:
       val statResources = pResults.filter(_.dType == DistType.Flat)
         .map(pr => pr.size -> pr.stats.addToRdf(m, pr.size, metadata.elementCount)).toMap
 
+      metadata.addStreamTypesToRdf(datasetRes)
       for pResult <- pResults do
         distributionToRdf(datasetRes, statResources(pResult.size), metadata, pResult)
 
@@ -205,8 +209,8 @@ object PackageCommand extends Command:
    * @return a flow that checks the data
    */
   private def checkRdf4jFlow(mi: MetadataInfo): Flow[(TarArchiveMetadata, String), Unit, NotUsed] =
-    val format = mi.elementType match
-      case "triples" =>
+    val format = mi.streamTypes.find(_.isFlat).get.elementType match
+      case ElementType.Triple =>
         if mi.conformance.usesRdfStar then rio.RDFFormat.TURTLESTAR else rio.RDFFormat.TURTLE
       case _ =>
         if mi.conformance.usesRdfStar then rio.RDFFormat.TRIGSTAR else rio.RDFFormat.TRIG
@@ -253,7 +257,7 @@ object PackageCommand extends Command:
       import GraphDSL.Implicits.*
       val writerFlow = Flow[(DatasetGraph, Long)]
         .map((ds, num) => {
-          if metadata.elementType == "triples" then
+          if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
             val data = RDFWriter.create()
               .lang(Lang.TTL)
               .source(ds.getDefaultGraph)
@@ -286,7 +290,7 @@ object PackageCommand extends Command:
    */
   private def packageFlatSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
   Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
-    val fileExtension = if metadata.elementType == "triples" then "nt" else "nq"
+    val fileExtension = if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then "nt" else "nq"
 
     val sinks = packages.map { case (size, name) =>
       Flow[ByteString]
@@ -299,7 +303,7 @@ object PackageCommand extends Command:
       import GraphDSL.Implicits.*
       val serializeFlow = Flow[(DatasetGraph, Long)]
         .map((ds, _) => {
-          if metadata.elementType == "triples" then
+          if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
             RDFWriter.create()
               .lang(Lang.NTRIPLES)
               .source(ds.getDefaultGraph)
@@ -343,7 +347,7 @@ object PackageCommand extends Command:
       )
       .withRdfStar(metadata.conformance.usesRdfStar)
       .withStreamType(
-        if metadata.elementType == "triples" then RdfStreamType.TRIPLES
+        if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then RdfStreamType.TRIPLES
         else RdfStreamType.QUADS
       )
 
@@ -351,7 +355,7 @@ object PackageCommand extends Command:
       sinkList =>
         import GraphDSL.Implicits.*
         val serializeFlow = (
-          if metadata.elementType == "triples" then
+          if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
             Flow[(DatasetGraph, Long)]
               .map((ds, _) => ds.getDefaultGraph.asTriples)
               .via(EncoderFlow.fromGroupedTriples(None, jOpt))
@@ -385,11 +389,12 @@ object PackageCommand extends Command:
       })
 
   private def checkStructure(metadata: MetadataInfo, ds: DatasetGraph): Option[String] =
-    if metadata.elementType == "triples" then
+    if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
       // Only the default graph is allowed
       if ds.listGraphNodes().asScala.toSeq.nonEmpty then
-        return Some("There are named graphs in a triples dataset")
-    else if metadata.elementType == "graphs" then
+        return Some("There are named graphs in a triple stream dataset")
+    else if metadata.streamTypes.contains(StreamType.NamedGraph) ||
+      metadata.streamTypes.contains(StreamType.TimestampedNamedGraph) then
       // One named graph is allowed + the default graph
       val graphs = ds.listGraphNodes().asScala.toSeq
       if graphs.size != 1 then

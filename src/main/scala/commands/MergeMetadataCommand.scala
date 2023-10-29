@@ -45,6 +45,9 @@ object MergeMetadataCommand extends Command:
     val packageMetadata = RDFDataMgr.loadModel(packageDir.resolve("package_metadata.ttl").toString)
 
     val tempDatasetRes = repoMetadata.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
+    // Remove usage info – it's added in the automatic metadata
+    RdfUtil.removePropertyValuesDeep(tempDatasetRes, RdfUtil.staxHasStreamTypeUsage, repoMetadata)
+
     val newDatasetRes = repoMetadata.createResource(AppConfig.CiWorker.baseDatasetUrl + mi.identifier + "/" + version)
     repoMetadata.add(packageMetadata)
     RdfUtil.renameResource(RdfUtil.tempDataset, newDatasetRes, repoMetadata)

@@ -3,7 +3,7 @@ package commands
 
 import util.ReleaseInfoParser.ReleaseInfo
 import util.io.FileHelper
-import util.{MetadataInfo, MetadataReader, ReleaseInfoParser}
+import util.*
 
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}
@@ -21,10 +21,10 @@ object ValidateRepoCommand extends Command:
   override def name = "validate-repo"
 
   override def description = "Validates the dataset repository.\n" +
-    "Args: <repo dir> <source release info file> <path to metadata SHACL file>"
+    "Args: <repo dir> <source release info file> <metadata SHACL file> <ontology imports dir>"
 
   override def validateArgs(args: Array[String]) =
-    args.length == 4
+    args.length == 5
 
   override def run(args: Array[String]): Future[Unit] = Future {
     val repoDir = FileSystems.getDefault.getPath(args(1))
@@ -42,6 +42,11 @@ object ValidateRepoCommand extends Command:
       println(s"SHACL file does not exist: $shaclFile")
       System.exit(1)
 
+    val ontologyImportsDir = FileSystems.getDefault.getPath(args(4))
+    if !Files.exists(ontologyImportsDir) then
+      println(s"Ontology imports directory does not exist: $ontologyImportsDir")
+      System.exit(1)
+
     val dirInspectionResult = validateDirectoryStructure(repoDir)
     if dirInspectionResult.nonEmpty then
       println("Directory structure is invalid:")
@@ -55,26 +60,22 @@ object ValidateRepoCommand extends Command:
       println("Could not parse source release info file.")
       System.exit(1)
 
-    val relAssets = relInfo.toOption.get.assets
-    val datasetSources = Seq("graphs", "quads", "triples")
-      .map(n => n + ".tar.gz")
-      .map(relAssets.map(_.name).contains)
-      .count(identity)
-
-    if datasetSources != 1 then
-      println(s"Exactly one dataset source must be present. There are $datasetSources.")
+    val relAssets = relInfo.toOption.get.assets.map(_.name)
+    val sourceArchives = relAssets.count(_ == "source.tar.gz")
+    if sourceArchives != 1 then
+      println(s"Exactly one dataset source must be present. There are $sourceArchives.")
       System.exit(1)
 
     println("Dataset source is valid.")
 
-    val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile, relInfo.toOption.get)
+    val (metadataErrors, metadataInfo) = validateMetadata(repoDir, shaclFile, relInfo.toOption.get, ontologyImportsDir)
     if metadataErrors.nonEmpty then
       println("Metadata is invalid:")
       metadataErrors.foreach(println)
       System.exit(1)
 
     println("Metadata is valid.")
-    println("Stream element type: " + metadataInfo.elementType)
+    println("Stream types: " + metadataInfo.streamTypes)
     println("Stream element count: " + metadataInfo.elementCount)
     (sourceReleaseInfoFile, metadataInfo)
   } flatMap { (relFile, metadataInfo) =>
@@ -113,7 +114,8 @@ object ValidateRepoCommand extends Command:
 
     errors.toSeq
 
-  private def validateMetadata(repoDir: Path, shaclFile: Path, relInfo: ReleaseInfo): (Seq[String], MetadataInfo) =
+  private def validateMetadata(repoDir: Path, shaclFile: Path, relInfo: ReleaseInfo, importsDir: Path):
+  (Seq[String], MetadataInfo) =
     val errors = mutable.ArrayBuffer[String]()
 
     def loadRdf(p: Path): Model = try
@@ -124,7 +126,10 @@ object ValidateRepoCommand extends Command:
         ModelFactory.createDefaultModel()
 
     val model: Model = loadRdf(repoDir.resolve("metadata.ttl"))
+    // Add STaX ontology – we need it check if the stream type annotations are valid
+    model.add(loadRdf(importsDir.resolve("stax.ttl")))
     val shacl: Model = loadRdf(shaclFile)
+
     if errors.nonEmpty then
       return (errors.toSeq, MetadataInfo())
 
@@ -145,8 +150,8 @@ object ValidateRepoCommand extends Command:
     val mi = MetadataReader.read(repoDir)
     errors ++= mi.checkConsistency()
 
-    // Check if the data file exists for the specified stream element type
-    val dataFile = mi.elementType + ".tar.gz"
+    // Check if the source data file exists
+    val dataFile = "source.tar.gz"
     if !relInfo.assets.map(_.name).contains(dataFile) then
       errors += s"Data file does not exist: $dataFile"
 
@@ -180,13 +185,13 @@ object ValidateRepoCommand extends Command:
             val extension = f.split('.').last
             if f.split('.').head.length != 10 then
               Some(s"File name does not match the expected format: $f")
-            else if metadataInfo.elementType == "triples" then
+            else if metadataInfo.streamTypes.exists(_.elementType == ElementType.Triple) then
               if extension != "ttl" then
-                Some(s"File name does not match the specified stream element type: $f")
+                Some(s"File name does not match the specified stream type: $f")
               else
                 None
             else if extension != "trig" then
-              Some(s"File name does not match the specified stream element type: $f")
+              Some(s"File name does not match the specified stream type: $f")
             else
               None
           }).take(10)

@@ -19,7 +19,6 @@ object ReleaseInfoParser:
     decode[ReleaseInfo](json)
 
   def getDatasetUrl(path: Path): String =
-    val possibleNames = List("triples.tar.gz", "quads.tar.gz", "graphs.tar.gz")
     parse(path).toOption.get.assets
-      .filter(asset => possibleNames.contains(asset.name))
-      .head.browser_download_url
+      .find(_.name == "source.tar.gz")
+      .get.browser_download_url
