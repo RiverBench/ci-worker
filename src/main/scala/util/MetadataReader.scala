@@ -11,12 +11,14 @@ import org.apache.jena.vocabulary.RDF
 import java.nio.file.Path
 import scala.jdk.CollectionConverters.*
 
+
 case class MetadataInfo(
   identifier: String = "",
   description: String = "",
   streamTypes: Set[StreamType] = Set.empty,
   elementCount: Long = 0,
   temporalProp: Option[Resource] = None,
+  subjectNodeShapes: Seq[SubjectNodeShape] = Seq(),
   conformance: ConformanceInfo = ConformanceInfo(),
   datasetRes: Resource = null,
   model: Model = null,
@@ -37,6 +39,8 @@ case class MetadataInfo(
       errors += "Dataset has an invalid element count"
     if temporalProp.isEmpty && streamTypes.contains(StreamType.TimestampedNamedGraph) then
       errors += "Dataset has no temporal property, but it is a timestamped RDF named graph stream."
+    if subjectNodeShapes.isEmpty && streamTypes.contains(StreamType.SubjectGraph) then
+      errors += "Dataset has no subject node shape specified, but it is a subject graph stream."
     errors.result()
 
   def addStreamTypesToRdf(datasetRes: Resource): Unit =
@@ -132,6 +136,8 @@ object MetadataReader:
         .asScala.toSeq.head.getLiteral.getLong,
       temporalProp = model.listObjectsOfProperty(RdfUtil.hasTemporalProperty)
         .asScala.toSeq.headOption.map(_.asResource),
+      subjectNodeShapes = model.listResourcesWithProperty(RDF.`type`, RdfUtil.TopicStreamElementSplit)
+        .asScala.toSeq.headOption.map(SubjectNodeShape.fromElementSplit).getOrElse(Seq()),
       conformance = ConformanceInfo(
         conformsToRdf11 = getBool("conformsToRdf11"),
         conformsToRdfStarDraft_20211217 = getBool("conformsToRdfStarDraft_20211217"),

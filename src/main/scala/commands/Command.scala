@@ -33,7 +33,10 @@ object Command:
     val command = getCommand(args.headOption)
     command.validateArgs(args) match
       case true => command.run(args)
-      case false => Future { println(command.description) }
+      case false => Future {
+        println(command.description)
+        System.exit(1)
+      }
 
 trait Command:
   implicit val actorSystem: ActorSystem[_] = Global.actorSystem

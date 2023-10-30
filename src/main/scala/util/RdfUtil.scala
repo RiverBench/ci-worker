@@ -23,6 +23,8 @@ object RdfUtil:
   val pFoaf = "http://xmlns.com/foaf/0.1/"
   // Prefix for RDFS
   val pRdfs = "http://www.w3.org/2000/01/rdf-schema#"
+  // Prefix for SHACL
+  val pSh = "http://www.w3.org/ns/shacl#"
   // Prefix for SPDX
   val pSpdx = "http://spdx.org/rdf/terms#"
   // Prefix for RDF-STaX
@@ -45,6 +47,7 @@ object RdfUtil:
   val hasRestriction = m.createProperty(pRb, "hasRestriction")
   val hasProfile = m.createProperty(pRb, "hasProfile")
   val hasTemporalProperty = m.createProperty(pRb, "hasTemporalProperty")
+  val hasSubjectShape = m.createProperty(pRb, "hasSubjectShape")
   val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
   val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
 
@@ -72,6 +75,10 @@ object RdfUtil:
 
   val foafHomepage = m.createProperty(pFoaf, "homepage")
 
+  val shTargetClass = m.createProperty(pSh, "targetClass")
+  val shTargetSubjectsOf = m.createProperty(pSh, "targetSubjectsOf")
+  val shTargetObjectsOf = m.createProperty(pSh, "targetObjectsOf")
+
   val spdxChecksum = m.createProperty(pSpdx, "checksum")
   val spdxAlgorithm = m.createProperty(pSpdx, "algorithm")
   val spdxChecksumValue = m.createProperty(pSpdx, "checksumValue")
@@ -85,6 +92,7 @@ object RdfUtil:
   val Profile = m.createResource(pRb + "Profile")
   val RiverBench = m.createResource(pRb + "RiverBench")
   val StatisticsSet = m.createResource(pRb + "StatisticsSet")
+  val TopicStreamElementSplit = m.createResource(pRb + "TopicStreamElementSplit")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")

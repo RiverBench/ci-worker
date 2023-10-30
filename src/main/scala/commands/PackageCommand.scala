@@ -92,12 +92,12 @@ object PackageCommand extends Command:
       val fFlatRes = Future.sequence(fSeqFlatRes)
       val fJellyRes = Future.sequence(fSeqJellyRes)
       for
+        // There is no value returned from the checks sink, but we need to ensure it is run
+        _ <- fChecks
         stats <- fStats
         streamRes <- fStreamRes
         flatRes <- fFlatRes
         jellyRes <- fJellyRes
-        // There is no value returned from the checks sink, but we need to ensure it is run
-        _ <- fChecks
       yield
         val sr = for ((num, stat), streamR) <- stats.zip(streamRes) yield
           PartialResult(num, stat, streamR, DistType.Stream)
@@ -407,6 +407,15 @@ object PackageCommand extends Command:
             case Seq(_) => ()
             case _ => return Some(s"The temporal property $tProp is present multiple times in the dataset")
         case None => ()
+
+    metadata.subjectNodeShapes.flatMap(_.findInDs(ds)).toSet match
+      case s if s.isEmpty => return Some(
+        s"The subject node (selected by shapes ${metadata.subjectNodeShapes}) is not present in the dataset"
+      )
+      case s if s.size == 1 => ()
+      case _ => return Some(
+        s"The subject node (selected by shapes ${metadata.subjectNodeShapes}) is present multiple times in the dataset"
+      )
 
     if !metadata.conformance.usesGeneralizedRdfDatasets &&
       ds.listGraphNodes().asScala.exists(n => n.isLiteral) then
