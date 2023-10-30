@@ -33,7 +33,7 @@ object SubjectNodeShape:
 
   case class TargetCustom(customInstance: Resource) extends SubjectNodeShape:
     override def findInDs(ds: DatasetGraph) = customInstance match
-      case RdfUtil.nanopubsTarget => ds.find(null, null, null, null).asScala
+      case RdfUtil.`yagoTarget` => ds.find(null, null, null, null).asScala
         .map(_.getSubject)
         .filter(_.isNodeTriple)
         .map(_.getTriple.getSubject)

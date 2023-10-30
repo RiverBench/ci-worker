@@ -104,7 +104,7 @@ object RdfUtil:
   val streamDistribution = m.createResource(pRb + "streamDistribution")
   val flatDistribution = m.createResource(pRb + "flatDistribution")
   val jellyDistribution = m.createResource(pRb + "jellyDistribution")
-  val nanopubsTarget = m.createResource(pRb + "nanopubsTarget")
+  val yagoTarget = m.createResource(pRb + "yagoTarget")
 
   val spdxChecksumAlgorithmSha1 = m.createResource(pSpdx + "checksumAlgorithm_sha1")
   val spdxChecksumAlgorithmMd5 = m.createResource(pSpdx + "checksumAlgorithm_md5")
