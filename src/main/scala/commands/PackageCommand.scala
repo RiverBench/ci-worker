@@ -408,14 +408,15 @@ object PackageCommand extends Command:
             case _ => return Some(s"The temporal property $tProp is present multiple times in the dataset")
         case None => ()
 
-    metadata.subjectNodeShapes.flatMap(_.findInDs(ds)).toSet match
-      case s if s.isEmpty => return Some(
-        s"The subject node (selected by shapes ${metadata.subjectNodeShapes}) is not present in the dataset"
-      )
-      case s if s.size == 1 => ()
-      case _ => return Some(
-        s"The subject node (selected by shapes ${metadata.subjectNodeShapes}) is present multiple times in the dataset"
-      )
+    if metadata.subjectNodeShapes.nonEmpty then
+      metadata.subjectNodeShapes.flatMap(_.findInDs(ds)).toSet match
+        case s if s.isEmpty => return Some(
+          s"The subject node (selected by shapes ${metadata.subjectNodeShapes}) is not present in the dataset"
+        )
+        case s if s.size == 1 => ()
+        case _ => return Some(
+          s"The subject node (selected by shapes ${metadata.subjectNodeShapes}) is present multiple times in the dataset"
+        )
 
     if !metadata.conformance.usesGeneralizedRdfDatasets &&
       ds.listGraphNodes().asScala.exists(n => n.isLiteral) then
