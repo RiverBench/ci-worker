@@ -131,13 +131,11 @@ object MainDocGenCommand extends Command:
 
   private def profileOverviewDocGen(profileCollection: ProfileCollection, outDir: Path): Unit =
     val sb = new StringBuilder()
-    sb.append("Profile | Stream / flat | Stream type | RDF-star | Non-standard extensions\n")
-    sb.append("--- | --- | --- | :-: | :-:\n")
+    sb.append("Profile | Stream type | RDF-star | Non-standard extensions\n")
+    sb.append("--- | --- | :-: | :-:\n")
     for pName <- profileCollection.profiles.keys.toSeq.sorted do
       val nameSplit = pName.split('-')
       sb.append(f"[$pName]($pName/dev) | ")
-      sb.append(nameSplit.head)
-      sb.append(" | ")
       sb.append(
         (nameSplit(0), nameSplit(1)) match
         case ("flat", "mixed") => "flat triple or quad"
