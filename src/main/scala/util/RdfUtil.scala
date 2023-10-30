@@ -50,6 +50,7 @@ object RdfUtil:
   val hasSubjectShape = m.createProperty(pRb, "hasSubjectShape")
   val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
   val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
+  val targetCustom = m.createProperty(pRb, "targetCustom")
 
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
@@ -103,6 +104,7 @@ object RdfUtil:
   val streamDistribution = m.createResource(pRb + "streamDistribution")
   val flatDistribution = m.createResource(pRb + "flatDistribution")
   val jellyDistribution = m.createResource(pRb + "jellyDistribution")
+  val nanopubsTarget = m.createResource(pRb + "nanopubsTarget")
 
   val spdxChecksumAlgorithmSha1 = m.createResource(pSpdx + "checksumAlgorithm_sha1")
   val spdxChecksumAlgorithmMd5 = m.createResource(pSpdx + "checksumAlgorithm_md5")

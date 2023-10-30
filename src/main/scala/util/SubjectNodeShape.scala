@@ -31,6 +31,15 @@ object SubjectNodeShape:
         .map(_.getObject)
         .toSeq
 
+  case class TargetCustom(customInstance: Resource) extends SubjectNodeShape:
+    override def findInDs(ds: DatasetGraph) = customInstance match
+      case RdfUtil.nanopubsTarget => ds.find(null, null, null, null).asScala
+        .map(_.getSubject)
+        .filter(_.isNodeTriple)
+        .map(_.getTriple.getSubject)
+        .toSeq
+      case _ => throw new Exception(s"Unknown custom target instance: $customInstance")
+
   def fromElementSplit(elementSplit: Resource): Seq[SubjectNodeShape] =
     elementSplit.listProperties(RdfUtil.hasSubjectShape)
       .asScala
@@ -41,6 +50,7 @@ object SubjectNodeShape:
               case RdfUtil.shTargetClass => Some(TargetClass(st.getObject.asResource()))
               case RdfUtil.shTargetSubjectsOf => Some(TargetSubjectOf(st.getObject.asResource()))
               case RdfUtil.shTargetObjectsOf => Some(TargetObjectOf(st.getObject.asResource()))
+              case RdfUtil.targetCustom => Some(TargetCustom(st.getObject.asResource()))
               case _ => None
           })
           .toSeq.headOption
