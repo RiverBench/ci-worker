@@ -131,7 +131,7 @@ object MainDocGenCommand extends Command:
 
   private def profileOverviewDocGen(profileCollection: ProfileCollection, outDir: Path): Unit =
     val sb = new StringBuilder()
-    sb.append("Profile | Stream / flat | Element type | RDF-star | Non-standard extensions\n")
+    sb.append("Profile | Stream / flat | Stream type | RDF-star | Non-standard extensions\n")
     sb.append("--- | --- | --- | :-: | :-:\n")
     for pName <- profileCollection.profiles.keys.toSeq.sorted do
       val nameSplit = pName.split('-')
@@ -140,10 +140,14 @@ object MainDocGenCommand extends Command:
       sb.append(" | ")
       sb.append(
         (nameSplit(0), nameSplit(1)) match
-        case ("flat", "mixed") => "triple, quad"
-        case ("flat", t) => t.dropRight(1)
-        case ("stream", "mixed") => "triples, quads"
-        case ("stream", t) => t
+        case ("flat", "mixed") => "flat triple or quad"
+        case ("flat", t) => "flat " + t.dropRight(1)
+        case ("stream", "mixed") => "dataset or graph"
+        case ("stream", "datasets") => "dataset"
+        case ("stream", "named") => "named graph"
+        case ("stream", "ts") => "timestamped named graph"
+        case ("stream", "subject") => "subject graph"
+        case _ => "graph"
       )
       for restriction <- Seq("rdfstar", "nonstandard") do
         sb.append(" | ")

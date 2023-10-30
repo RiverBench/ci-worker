@@ -176,6 +176,7 @@ object PackageMainCommand extends Command:
     else
       profileTableSb.append(
         """!!! note
+          |
           |    For stream profiles, there are two available types of distributions: plain streaming, and streaming in the Jelly format. See the [documentation](../../documentation/dataset-release-format.md) for details.
           |
           |### Plain streaming distributions
@@ -211,8 +212,13 @@ object PackageMainCommand extends Command:
   private def datasetMatchesRestrictions(dsRes: Resource, rs: Seq[Seq[(Property, RDFNode)]]): Boolean =
     val andMatches = for r <- rs yield
       val orMatches = for (p, o) <- r yield
-        if p.getURI == RdfUtil.hasDistributionType.getURI then
+        if p == RdfUtil.hasDistributionType then
           None
+        else if p == RdfUtil.staxHasStreamType then
+          Some(
+            dsRes.listProperties(RdfUtil.staxHasStreamTypeUsage).asScala
+              .exists(_.getResource.hasProperty(p, o))
+          )
         else if !dsRes.hasProperty(p, o) then
           Some(false)
         else Some(true)
@@ -223,7 +229,7 @@ object PackageMainCommand extends Command:
 
   private def generateDatasetOverview(datasetCollection: DatasetCollection, outDir: Path): Unit =
     val sb = new StringBuilder()
-    sb.append("Dataset | <abbr title=\"Stream element type\">El. type</abbr> | " +
+    sb.append("Dataset | <abbr title=\"Stream type\">El. type</abbr> | " +
       "<abbr title=\"Stream element count\">El. count</abbr> | " +
       "<abbr title=\"Does the dataset use RDF-star?\">RDF-star</abbr> | " +
       "<abbr title=\"Does the dataset use generalized triples?\">Gen. triples</abbr> | " +
@@ -233,7 +239,9 @@ object PackageMainCommand extends Command:
     for (name, model) <- datasetCollection.datasets.toSeq.sortBy(_._1) do
       val mi = MetadataReader.fromModel(model)
       sb.append(f"[$name]($name/dev) | ")
-      sb.append(f"${mi.streamTypes} | ")
+      val streamType = mi.streamTypes.filterNot(_.isFlat).head.readableName
+        .replace("stream", "").trim
+      sb.append(f"$streamType | ")
       sb.append(f"${MarkdownUtil.formatInt(mi.elementCount.toString)}")
       for b <- Seq(
         mi.conformance.usesRdfStar,

@@ -10,6 +10,7 @@ enum ElementType(val name: String):
 
 enum StreamType(val iriName: String, val isFlat: Boolean, val elementType: ElementType):
   lazy val iri = RdfUtil.pStax + iriName
+  lazy val readableName = "[A-Z\\d]".r.replaceAllIn(iriName, m => " " + m.group(0).toLowerCase).trim
 
   case Graph extends StreamType("graphStream", false, ElementType.Graph)
   case SubjectGraph extends StreamType("subjectGraphStream", false, ElementType.Graph)
