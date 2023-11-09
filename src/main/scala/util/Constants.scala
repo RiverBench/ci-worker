@@ -32,3 +32,5 @@ object Constants:
     case 100_000_000 => "100M"
     case 1_000_000_000 => "1B"
     case _ => if showAsFull then "Full" else size.toString
+
+  val taxonomyDocBaseLink = "https://w3id.org/stax/dev/taxonomy#"

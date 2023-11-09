@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, ProfileCollection, RdfIoUtil, RdfUtil}
+import util.{AppConfig, Constants, ProfileCollection, RdfIoUtil, RdfUtil}
 import util.doc.{DocBuilder, MarkdownUtil}
 
 import org.apache.jena.rdf.model.Model
@@ -130,6 +130,9 @@ object MainDocGenCommand extends Command:
       Files.writeString(profileDocPath, profileDoc.toMarkdown + tableSection)
 
   private def profileOverviewDocGen(profileCollection: ProfileCollection, outDir: Path): Unit =
+    def taxoLink(text: String, name: String) =
+      f"[$text](${Constants.taxonomyDocBaseLink}$name-stream)"
+
     val sb = new StringBuilder()
     sb.append("Profile | Stream type | RDF-star | Non-standard extensions\n")
     sb.append("--- | --- | :-: | :-:\n")
@@ -138,14 +141,16 @@ object MainDocGenCommand extends Command:
       sb.append(f"[$pName]($pName/dev) | ")
       sb.append(
         (nameSplit(0), nameSplit(1)) match
-        case ("flat", "mixed") => "flat triple or quad"
-        case ("flat", t) => "flat " + t.dropRight(1)
-        case ("stream", "mixed") => "dataset or graph"
-        case ("stream", "datasets") => "dataset"
-        case ("stream", "named") => "named graph"
-        case ("stream", "ts") => "timestamped named graph"
-        case ("stream", "subject") => "subject graph"
-        case _ => "graph"
+        case ("flat", "mixed") => "flat " + taxoLink("triple", "flat-rdf-triple") +
+          " or " + taxoLink("quad", "flat-rdf-quad")
+        case ("flat", t) => taxoLink("flat " + t.dropRight(1), "flat-rdf-" + t.dropRight(1))
+        case ("stream", "mixed") => taxoLink("dataset", "rdf-dataset") + " or " +
+          taxoLink("graph", "rdf-graph")
+        case ("stream", "datasets") => taxoLink("dataset", "rdf-dataset")
+        case ("stream", "named") => taxoLink("named graph", "rdf-named-graph")
+        case ("stream", "ts") => taxoLink("timestamped named graph", "timestamped-rdf-named-graph")
+        case ("stream", "subject") => taxoLink("subject graph", "rdf-subject-graph")
+        case _ => taxoLink("graph", "rdf-graph")
       )
       for restriction <- Seq("rdfstar", "nonstandard") do
         sb.append(" | ")

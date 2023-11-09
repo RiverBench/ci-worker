@@ -239,9 +239,9 @@ object PackageMainCommand extends Command:
     for (name, model) <- datasetCollection.datasets.toSeq.sortBy(_._1) do
       val mi = MetadataReader.fromModel(model)
       sb.append(f"[$name]($name/dev) | ")
-      val streamType = mi.streamTypes.filterNot(_.isFlat).head.readableName
-        .replace("stream", "").trim
-      sb.append(f"$streamType | ")
+      val streamType = mi.streamTypes.filterNot(_.isFlat).head
+      sb.append(f"[${streamType.readableName.replace("stream", "").trim}]" +
+        f"(${Constants.taxonomyDocBaseLink}${streamType.docName}) | ")
       sb.append(f"${MarkdownUtil.formatInt(mi.elementCount.toString)}")
       for b <- Seq(
         mi.conformance.usesRdfStar,
