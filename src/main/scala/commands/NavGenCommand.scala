@@ -132,10 +132,12 @@ object NavGenCommand extends Command:
   private def listDir(rootDir: Path, dir: String, prettify: Boolean = true): Seq[YamlValue] =
     rootDir.resolve(dir).toFile.listFiles()
       .flatMap {
-        case f if f.isDirectory => Some(YamlMap(
-          if prettify then prettifyName(f.getName) else f.getName.stripSuffix(".md"),
-          YamlList(listDir(rootDir, (dir + "/" + f.getName).stripPrefix("/")))
-        ))
+        case f if f.isDirectory =>
+          val list = YamlList(listDir(rootDir, (dir + "/" + f.getName).stripPrefix("/")))
+          if list.v.isEmpty then None else Some(YamlMap(
+            if prettify then prettifyName(f.getName) else f.getName.stripSuffix(".md"),
+            list
+          ))
         case f if f.isFile && f.getName.endsWith(".md") =>
           val localPath = dir + "/" + f.getName
           if f.getName == "index.md" then Some(YamlString(dir + "/index.md"))
