@@ -66,7 +66,10 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None):
       sb.append(s"$content\n\n")
 
     for entry <- entries.sortBy(_._1.weight) do
-      sb.append(s"- **${entry._1.toMarkdown}**: ${entry._2.toMarkdown}\n")
+      if entry._2.noIndent then
+        sb.append(s"\n${entry._2.toMarkdown}\n")
+      else
+        sb.append(s"- **${entry._1.toMarkdown}**: ${entry._2.toMarkdown}\n")
 
     if entries.nonEmpty && subsections.nonEmpty then
       sb.append("\n")

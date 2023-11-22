@@ -14,6 +14,7 @@ object DocBuilder:
     nestedSectionProps: Seq[(Int, Property)] = Seq(),
     hidePropsInLevel: Seq[(Int, Property)] = Seq(),
     defaultPropGroup: Option[String] = None,
+    tabularProps: Seq[Property] = Seq(),
   )
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
@@ -37,6 +38,7 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
       val isPropNestedSection = opt.nestedSectionProps.exists { case (l, p) =>
         l == section.level && p.getURI == prop.prop.getURI
       }
+      val isPropTabular = opt.tabularProps.contains(prop.prop)
 
       if isPropNestedSection then
         if !isPropHiddenInLevel then
@@ -52,6 +54,11 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
                 buildSection(res, itemSection)
               case _ => println("WARNING: nested section node is not a resource")
         None
+      else if isPropTabular then
+        val value = makeTable(nodes)
+        if !isPropHiddenInLevel then
+          section.addEntry(prop, value)
+        Some(prop, value)
       else
         val value = makeValue(prop, nodes)
         if !isPropHiddenInLevel then
@@ -73,6 +80,22 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     getDocPropsForRes(resource).map { (prop, objects) =>
       prop -> makeValue(prop, objects)
     }
+
+  private def makeTable(objects: Iterable[RDFNode]): DocValue =
+    val tableMap = objects.flatMap {
+      case rowRes: Resource =>
+        val rowValues = getDocValuesForRes(rowRes)
+        val rowTitle = rowValues.find(_._1.prop == RDF.`type`)
+          .map(_._2.toMarkdownSimple.replaceAll("\\s*\\(\\[.*?\\)$", ""))
+          .getOrElse(getTitleForProps(rowValues).getOrElse(rowRes.toString))
+        Some(rowValues.map((colProp, v) => {
+          (rowTitle, colProp) -> v
+        }))
+      case _ =>
+        println("WARNING: table row node is not a resource")
+        None
+    }.flatten.toMap
+    DocValue.Table(tableMap)
 
   private def makeValue(docProp: DocProp, objects: Iterable[RDFNode]): DocValue =
     val values = objects.map {

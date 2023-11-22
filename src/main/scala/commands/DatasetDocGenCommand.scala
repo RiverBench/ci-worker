@@ -60,6 +60,7 @@ object DatasetDocGenCommand extends Command:
         (3, RDF.`type`), // for distributions
       ),
       defaultPropGroup = Some("Technical metadata"),
+      tabularProps = Seq(RdfUtil.hasStatistics),
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
     val docIndex = docBuilderIndex.build(

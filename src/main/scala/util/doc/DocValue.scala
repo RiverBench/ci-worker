@@ -4,11 +4,12 @@ package util.doc
 import util.{AppConfig, RdfUtil}
 
 import com.ibm.icu.util.ULocale
+import io.github.riverbench.ci_worker.util.doc.MarkdownUtil.prettyLabel
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.datatypes.xsd.impl.XSDBaseNumericType
 import org.apache.jena.rdf.model
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.vocabulary.{RDFS, SKOS}
+import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
 
 object DocValue:
   import MarkdownUtil.indent
@@ -143,8 +144,51 @@ object DocValue:
 
     override def getSortKey = baseName.getOrElse("")
 
+  case class Table(values: Map[(String, DocProp), DocValue]) extends DocValue:
+    override val noIndent = true
+
+    def toMarkdown: String =
+      val sb = new StringBuilder
+      val allCols = values
+        .toSeq
+        .filter { case ((_, col), _) => !col.hidden && col.prop != RDF.`type` }
+        .map { case ((_, col), _) => col }
+        .distinct
+        .sortBy(_.weight)
+      sb.append("| ")
+      sb.append(allCols.map { col => s"| **${col.toMarkdown}** " }.mkString("") + "|\n")
+      sb.append("| --- ")
+      sb.append("| --: " * allCols.size + "|\n")
+
+      values
+        .toSeq
+        .groupBy { case ((row, _), _) => row }
+        .toSeq
+        // sort by row weight... it's there in the columns
+        .sortBy { case (row, cols) =>
+          cols
+            .filter((k, _) => k._2.prop == RdfUtil.hasDocWeight)
+            .map((_, v) => v.getSortKey)
+            .headOption
+            .getOrElse(row)
+        }
+        .foreach { case (row, cols) =>
+          sb.append(s"| **$row** ")
+          for col <- allCols do
+            val value = cols.find((k, _) => k._2 == col).map((_, v) => v)
+            value match
+              case Some(value) => sb.append(s"| ${value.toMarkdownSimple} ")
+              case None => sb.append("| _N/A_ ")
+          sb.append("|\n")
+        }
+      sb.toString
+
+    override def getSortKey = ""
+
 trait DocValue:
   val isNestedList = false
+
+  val noIndent = false
 
   def toMarkdown: String
 
