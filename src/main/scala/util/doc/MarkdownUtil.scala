@@ -6,7 +6,7 @@ object MarkdownUtil:
 
   val indent = "    "
 
-  def toPrettyString(label: String, comment: Option[String]): String =
+  def prettyLabel(label: String, comment: Option[String]): String =
     comment match
       case Some(c) =>
         val cClean = c.replace('"', '\'').replace("\n", " ")

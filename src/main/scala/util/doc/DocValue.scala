@@ -3,6 +3,7 @@ package util.doc
 
 import util.{AppConfig, RdfUtil}
 
+import com.ibm.icu.util.ULocale
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.datatypes.xsd.impl.XSDBaseNumericType
 import org.apache.jena.rdf.model
@@ -17,22 +18,29 @@ object DocValue:
     def getSortKey = value.strip
 
   case class Literal(value: model.Literal) extends DocValue:
-    def toMarkdown: String = value.getDatatype match
-      case XSDboolean => if value.getBoolean then "yes" else "no"
-      case dt: XSDBaseNumericType =>
-        val dtName = dt.getURI.toLowerCase
-        if dtName.contains("int") || dtName.contains("long") then
-          MarkdownUtil.formatInt(value.getLexicalForm)
-        else if dtName.contains("float") || dtName.contains("double") || dtName.contains("decimal") then
-          MarkdownUtil.formatDouble(value.getLexicalForm)
-        else
-          value.getLexicalForm.strip
-      case _ =>
-        val str = value.getLexicalForm.strip
-        // Heuristic for hash-like strings and identifiers
-        if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) ||
-          str.exists(_.isLetter) && str.matches("^[a-z0-9-_.]+$") && str.length > 1 then
-          f"`$str`" else str
+    def toMarkdown: String =
+      if value.getLanguage != "" then
+        // Language string: get a human-readable language tag
+        val lang = value.getLanguage
+        val langName = ULocale.forLanguageTag(value.getLanguage).getDisplayName
+        val langNameOption = if langName != "" then Some(langName) else None
+        f"${value.getLexicalForm.strip} _(${MarkdownUtil.prettyLabel(lang, langNameOption)})_"
+      else value.getDatatype match
+        case XSDboolean => if value.getBoolean then "yes" else "no"
+        case dt: XSDBaseNumericType =>
+          val dtName = dt.getURI.toLowerCase
+          if dtName.contains("int") || dtName.contains("long") then
+            MarkdownUtil.formatInt(value.getLexicalForm)
+          else if dtName.contains("float") || dtName.contains("double") || dtName.contains("decimal") then
+            MarkdownUtil.formatDouble(value.getLexicalForm)
+          else
+            value.getLexicalForm.strip
+        case _ =>
+          val str = value.getLexicalForm.strip
+          // Heuristic for hash-like strings and identifiers
+          if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) ||
+            str.exists(_.isLetter) && str.matches("^[a-z0-9-_.]+$") && str.length > 1 then
+            f"`$str`" else str
 
     def getSortKey = value.getLexicalForm.strip
     
@@ -51,7 +59,7 @@ object DocValue:
     ).headOption
 
     def toMarkdown: String =
-      f"${MarkdownUtil.toPrettyString(label, comment)} ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"
+      f"${MarkdownUtil.prettyLabel(label, comment)} ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"
 
     override def getTitle: Option[String] = Some(label)
 
@@ -131,12 +139,21 @@ object DocValue:
         else f"$indent- ${value.toMarkdown}"
       "\n" + items.mkString("\n")
 
+    override def toMarkdownSimple = values.headOption.map(_.toMarkdown).getOrElse("")
+
     override def getSortKey = baseName.getOrElse("")
 
 trait DocValue:
   val isNestedList = false
 
   def toMarkdown: String
+
+  /**
+   * Markdown without nested lists or anything funny – just return a simple MD
+   * string that can be used in other formatting (e.g., a list).
+   * @return
+   */
+  def toMarkdownSimple: String = toMarkdown
 
   def getTitle: Option[String] = None
 

@@ -97,6 +97,6 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     opt.titleProps.flatMap { prop =>
       props.collect {
         case (p, value) if p.prop.getURI == prop.getURI =>
-          value.getTitle.getOrElse(value.toMarkdown)
+          value.getTitle.getOrElse(value.toMarkdownSimple)
       }
     }.headOption

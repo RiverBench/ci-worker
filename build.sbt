@@ -11,6 +11,7 @@ lazy val pekkoV = "1.0.1"
 lazy val pekkoHttpV = "1.0.0"
 lazy val pekkoConnV = "1.0.0"
 lazy val rdf4jV = "4.3.0"
+lazy val icu4jV = "74.1"
 
 lazy val root = (project in file("."))
   .settings(
@@ -20,6 +21,7 @@ lazy val root = (project in file("."))
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
       "com.google.guava" % "guava" % "31.1-jre",
+      "com.ibm.icu" % "icu4j" % icu4jV,
       "eu.ostrzyciel.jelly" %% "jelly-stream" % jellyV,
       "eu.ostrzyciel.jelly" %% "jelly-jena" % jellyV,
       "io.circe" %% "circe-core" % circeV,
