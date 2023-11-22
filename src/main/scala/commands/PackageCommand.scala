@@ -59,13 +59,15 @@ object PackageCommand extends Command:
     val sinkStreamPackage = packageStreamSink(metadata, outDir, packages)
     val sinkFlatPackage = packageFlatSink(metadata, outDir, packages)
     val sinkJellyPackage = packageJellySink(metadata, outDir, packages)
+    val sinkSampleStream = streamSamplesSink(metadata, outDir)
     val sinkChecks = Sink.ignore
 
     val g = RunnableGraph.fromGraph(
-      GraphDSL.createGraph(sinkStats, sinkStreamPackage, sinkFlatPackage, sinkJellyPackage, sinkChecks
-    )((_, _, _, _, _))
+      GraphDSL.createGraph(
+        sinkStats, sinkStreamPackage, sinkFlatPackage, sinkJellyPackage, sinkSampleStream, sinkChecks
+      )((_, _, _, _, _, _))
     { implicit builder =>
-      (sStats, sStreamPackage, sFlatPackage, sJellyPackage, sChecks) =>
+      (sStats, sStreamPackage, sFlatPackage, sJellyPackage, sSampleStream, sChecks) =>
       import GraphDSL.Implicits.*
       val in = FileHelper.readArchive(dataFileUrl)
         .map((name, bytes) => (name, bytes.utf8String))
@@ -75,7 +77,7 @@ object PackageCommand extends Command:
       val parseJenaBuffered = parseJenaFlow
         .zipWithIndex
         .buffer(32, OverflowStrategy.backpressure)
-      val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](5))
+      val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](6))
       val checksMerge = builder.add(Merge[Unit](2))
 
       in ~> inBroad
@@ -85,12 +87,14 @@ object PackageCommand extends Command:
       dsBroad ~> sStreamPackage
       dsBroad ~> sFlatPackage
       dsBroad ~> sJellyPackage
+      dsBroad ~> sSampleStream
 
       ClosedShape
-    }).mapMaterializedValue((fStats, fSeqStreamRes, fSeqFlatRes, fSeqJellyRes, fChecks) => {
+    }).mapMaterializedValue((fStats, fSeqStreamRes, fSeqFlatRes, fSeqJellyRes, fSeqSampleStream, fChecks) => {
       val fStreamRes = Future.sequence(fSeqStreamRes)
       val fFlatRes = Future.sequence(fSeqFlatRes)
       val fJellyRes = Future.sequence(fSeqJellyRes)
+      val fSampleStreamRes = Future.sequence(fSeqSampleStream)
       for
         // There is no value returned from the checks sink, but we need to ensure it is run
         _ <- fChecks
@@ -98,6 +102,8 @@ object PackageCommand extends Command:
         streamRes <- fStreamRes
         flatRes <- fFlatRes
         jellyRes <- fJellyRes
+        // Ignore the results from sample streams
+        _ <- fSampleStreamRes
       yield
         val sr = for ((num, stat), streamR) <- stats.zip(streamRes) yield
           PartialResult(num, stat, streamR, DistType.Stream)
@@ -252,34 +258,53 @@ object PackageCommand extends Command:
         .take(size)
         .toMat(FileHelper.writeArchive(outDir.resolve(s"stream_$name.tar.gz"), size))(Keep.right)
     }
-    Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
-      sinkList =>
-      import GraphDSL.Implicits.*
-      val writerFlow = Flow[(DatasetGraph, Long)]
-        .map((ds, num) => {
+    Flow[(DatasetGraph, Long)]
+      .map((ds, num) => {
+        if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
+          val data = RDFWriter.create()
+            .lang(Lang.TTL)
+            .source(ds.getDefaultGraph)
+            .asString()
+          (f"$num%010d.ttl", data)
+        else
+          val data = RDFWriter.create()
+            .lang(Lang.TRIG)
+            .source(ds)
+            .asString()
+          (f"$num%010d.trig", data)
+      })
+      .toMat(StreamUtil.broadcastSink(sinks))(Keep.right)
+
+  /**
+   * Creates a sink that writes sample elements of the stream.
+   * @param metadata the metadata of the dataset
+   * @param outDir the directory to write the files to
+   * @return the sink
+   */
+  private def streamSamplesSink(metadata: MetadataInfo, outDir: Path):
+  Sink[(DatasetGraph, Long), Seq[Future[IOResult]]] =
+    val extension = if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then "ttl" else "trig"
+    val sinks = Constants.streamSamples.map { num =>
+      val fileSink = FileIO.toPath(outDir.resolve(f"sample_$num%010d.$extension"))
+      Flow[(DatasetGraph, Long)]
+        .drop(num)
+        .take(1)
+        .map((ds, _) => {
           if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
-            val data = RDFWriter.create()
+            RDFWriter.create()
               .lang(Lang.TTL)
               .source(ds.getDefaultGraph)
               .asString()
-            (f"$num%010d.ttl", data)
           else
-            val data = RDFWriter.create()
+            RDFWriter.create()
               .lang(Lang.TRIG)
               .source(ds)
               .asString()
-            (f"$num%010d.trig", data)
         })
-      val writerFlowG = builder.add(writerFlow)
-
-      val writerBroad = builder.add(Broadcast[(String, String)](sinkList.size))
-
-      writerFlowG.out ~> writerBroad
-      for sink <- sinkList do
-        writerBroad ~> sink
-
-      SinkShape(writerFlowG.in)
-    })
+        .map(ByteString.fromString)
+        .toMat(fileSink)(Keep.right)
+    }
+    StreamUtil.broadcastSink(sinks)
 
   /**
    * Creates a sink that writes the data to flat files
@@ -298,32 +323,21 @@ object PackageCommand extends Command:
         .toMat(FileHelper.writeCompressed(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
     }
 
-    Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
-      sinkList =>
-      import GraphDSL.Implicits.*
-      val serializeFlow = Flow[(DatasetGraph, Long)]
-        .map((ds, _) => {
-          if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
-            RDFWriter.create()
-              .lang(Lang.NTRIPLES)
-              .source(ds.getDefaultGraph)
-              .asString()
-          else
-            RDFWriter.create()
-              .lang(Lang.NQUADS)
-              .source(ds)
-              .asString()
-        })
-        .map(ByteString.fromString)
-
-      val serializeFlowG = builder.add(serializeFlow)
-      val serializeBroad = builder.add(Broadcast[ByteString](sinkList.size))
-      serializeFlowG.out ~> serializeBroad
-      for sink <- sinkList do
-        serializeBroad ~> sink
-
-      SinkShape(serializeFlowG.in)
-    })
+    Flow[(DatasetGraph, Long)]
+      .map((ds, _) => {
+        if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
+          RDFWriter.create()
+            .lang(Lang.NTRIPLES)
+            .source(ds.getDefaultGraph)
+            .asString()
+        else
+          RDFWriter.create()
+            .lang(Lang.NQUADS)
+            .source(ds)
+            .asString()
+      })
+      .map(ByteString.fromString)
+      .toMat(StreamUtil.broadcastSink(sinks))(Keep.right)
 
   /**
    * Creates a sink that writes the data to Jelly-format files.
@@ -351,30 +365,20 @@ object PackageCommand extends Command:
         else RdfStreamType.QUADS
       )
 
-    Sink.fromGraph(GraphDSL.create(sinks) { implicit builder =>
-      sinkList =>
-        import GraphDSL.Implicits.*
-        val serializeFlow = (
-          if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
-            Flow[(DatasetGraph, Long)]
-              .map((ds, _) => ds.getDefaultGraph.asTriples)
-              .via(EncoderFlow.fromGroupedTriples(None, jOpt))
-          else
-            Flow[(DatasetGraph, Long)]
-              .map((ds, _) => ds.asQuads)
-              .via(EncoderFlow.fromGroupedQuads(None, jOpt))
-        )
-          .via(JellyIo.toBytesDelimited)
-          .map(ByteString(_))
+    val serializeFlow = (
+      if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
+        Flow[(DatasetGraph, Long)]
+          .map((ds, _) => ds.getDefaultGraph.asTriples)
+          .via(EncoderFlow.fromGroupedTriples(None, jOpt))
+      else
+        Flow[(DatasetGraph, Long)]
+          .map((ds, _) => ds.asQuads)
+          .via(EncoderFlow.fromGroupedQuads(None, jOpt))
+      )
+      .via(JellyIo.toBytesDelimited)
+      .map(ByteString(_))
 
-        val serializeFlowG = builder.add(serializeFlow)
-        val serializeBroad = builder.add(Broadcast[ByteString](sinkList.size))
-        serializeFlowG.out ~> serializeBroad
-        for sink <- sinkList do
-          serializeBroad ~> sink
-
-        SinkShape(serializeFlowG.in)
-    })
+    serializeFlow.toMat(StreamUtil.broadcastSink(sinks))(Keep.right)
 
   /**
    * Checks the structure of the dataset

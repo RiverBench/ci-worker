@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.doc.{DocBuilder, MarkdownUtil}
-import util.{MetadataInfo, MetadataReader, RdfIoUtil, RdfUtil}
+import util.{Constants, ElementType, MetadataInfo, MetadataReader, RdfIoUtil, RdfUtil}
 
 import org.apache.jena.rdf.model.Property
 import org.apache.jena.riot.RDFDataMgr
@@ -64,7 +64,7 @@ object DatasetDocGenCommand extends Command:
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
     val docIndex = docBuilderIndex.build(
       title,
-      mi.description + indexIntro(mi, landingPage),
+      mi.description + indexIntro(mi, landingPage) + streamPreview(mi, version),
       mi.datasetRes
     )
 
@@ -148,3 +148,18 @@ object DatasetDocGenCommand extends Command:
        |
        |""".stripMargin
 
+  private def streamPreview(mi: MetadataInfo, version: String): String =
+    val extension = if mi.streamTypes.exists(_.elementType == ElementType.Triple) then "ttl" else "trig"
+    val sb = StringBuilder("??? example \"Stream preview (click to expand)\"")
+    for num <- Constants.streamSamples do
+      sb.append("\n\n")
+      sb.append(
+        f"""    === "Element $num"
+           |
+           |        ```turtle title="$num%010d.$extension"
+           |        --8<-- "docs/datasets/${mi.identifier}/$version/data/sample_$num%010d.$extension"
+           |        ```
+           |""".stripMargin
+      )
+
+    sb.toString()

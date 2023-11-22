@@ -24,6 +24,8 @@ object Constants:
     1_000_000_000,
   )
 
+  val streamSamples = Seq[Long](0, 10, 100, 1000, 10_000)
+
   def packageSizeToHuman(size: Long, showAsFull: Boolean = false) = size match
     case 10_000 => "10K"
     case 100_000 => "100K"
