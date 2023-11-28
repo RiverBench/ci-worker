@@ -128,6 +128,8 @@ object ValidateRepoCommand extends Command:
     val model: Model = loadRdf(repoDir.resolve("metadata.ttl"))
     // Add STaX ontology – we need it check if the stream type annotations are valid
     model.add(loadRdf(importsDir.resolve("stax.ttl")))
+    // Add EuroVoc thesaurus to check for valid EuroVoc concepts
+    model.add(loadRdf(importsDir.resolve("eurovoc.ttl")))
     val shacl: Model = loadRdf(shaclFile)
 
     if errors.nonEmpty then
