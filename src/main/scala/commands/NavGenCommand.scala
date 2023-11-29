@@ -79,7 +79,7 @@ object NavGenCommand extends Command:
     val schemaNames = Map(
       "documentation" -> "Documentation ontology",
       "metadata" -> "Metadata ontology",
-      "theme" -> "Topic scheme",
+      "theme" -> "Topic scheme (deprecated)",
     )
     val schemaDir = rootDir.resolve("schema")
     val schemas = schemaDir.toFile.listFiles()
