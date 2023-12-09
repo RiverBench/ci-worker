@@ -14,6 +14,7 @@ object Command:
     MainDocGenCommand,
     MergeMetadataCommand,
     NavGenCommand,
+    PackageCategoryCommand,
     PackageCommand,
     PackageMainCommand,
     PackageSchemaCommand,

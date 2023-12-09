@@ -15,6 +15,8 @@ object RdfUtil:
   val pRbDoc = "https://w3id.org/riverbench/schema/documentation#"
   // Prefix for temporary resources
   val pTemp = "https://w3id.org/riverbench/temp/"
+  // Prefix for SHACL libs
+  val pLib = "https://w3id.org/riverbench/temp/lib#"
   // Prefix for DCAT
   val pDcat = "http://www.w3.org/ns/dcat#"
   // Prefix for DCTERMS
@@ -51,6 +53,8 @@ object RdfUtil:
   val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
   val isSupersetOfProfile = m.createProperty(pRb, "isSupersetOfProfile")
   val targetCustom = m.createProperty(pRb, "targetCustom")
+  val hasDatasetShape = m.createProperty(pRb, "hasDatasetShape")
+  val hasDistributionShape = m.createProperty(pRb, "hasDistributionShape")
 
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")

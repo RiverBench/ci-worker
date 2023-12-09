@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, Constants}
+import util.{AppConfig, Constants, RdfUtil}
 
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
@@ -30,6 +30,10 @@ object PackageSchemaCommand extends Command:
     val schemaBase = AppConfig.CiWorker.rbRootUrl + "schema/"
 
     outDir.toFile.mkdirs()
+
+    if !validateShaclLibs(repoDir) then
+      println("Aborting")
+      throw new Exception()
 
     for name <- toProcessNames do
       val inPath = repoDir.resolve(s"src/$name.ttl")
@@ -64,6 +68,24 @@ object PackageSchemaCommand extends Command:
         val outPath = outDir.resolve(s"$name.$ext")
         RDFDataMgr.write(new FileOutputStream(outPath.toFile), model, format)
   }
+
+  private def validateShaclLibs(repoDir: Path): Boolean =
+    val badLibs = repoDir.resolve("src/lib/profiles").toFile.listFiles()
+      .filter(f => f.isFile && f.getName.endsWith(".ttl"))
+      .flatMap { file =>
+        val name = file.getName.replace(".ttl", "")
+        val m = RDFDataMgr.loadModel(file.getAbsolutePath)
+        if m.contains(m.createResource(RdfUtil.pLib + name), null, null) then
+          None
+        else
+          Some(name)
+      }
+    if badLibs.nonEmpty then
+      println("The following SHACL libraries have mismatched URIs and filenames:")
+      badLibs.foreach(println)
+      false
+    else
+      true
 
   private def prepOntologyForDoc(m: Model, name: String, outDir: Path): Unit =
     if name != "theme" then
