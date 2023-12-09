@@ -48,6 +48,8 @@ object PackageCategoryCommand extends Command:
         val m = RDFDataMgr.loadModel(file.getAbsolutePath)
         (name, m)
       }.toMap
+    // Load SHACL context -- the STaX ontology -- we need its taxonomical relations
+    val shaclContext = RDFDataMgr.loadModel(schemaRepoDir.resolve("src/imports/stax.ttl").toString)
 
     println("Loading profiles...")
     val profileCollection = new ProfileCollection(repoDir.resolve("profiles"))
@@ -83,7 +85,7 @@ object PackageCategoryCommand extends Command:
       profileModel.add(res, RdfUtil.hasVersion, version)
       profileModel.add(res, RdfUtil.dcatInCatalog, mainRes)
       // Link datasets to profiles
-      linkProfileAndDatasets(name, profileModel, res, datasetCollection, outDir)
+      linkProfileAndDatasets(name, profileModel, res, datasetCollection, shaclContext, outDir)
       // Prettify
       profileModel.removeNsPrefix("")
 
@@ -108,7 +110,12 @@ object PackageCategoryCommand extends Command:
       })
 
   private def linkProfileAndDatasets(
-    name: String, profile: Model, profileRes: Resource, datasetCollection: DatasetCollection, outDir: Path
+    name: String,
+    profile: Model,
+    profileRes: Resource,
+    datasetCollection: DatasetCollection,
+    shaclContext: Model,
+    outDir: Path
   ): Unit =
     val dsShapes = getShapes(profile, profileRes, RdfUtil.hasDatasetShape)
     val distShapes = getShapes(profile, profileRes, RdfUtil.hasDistributionShape)
@@ -130,7 +137,7 @@ object PackageCategoryCommand extends Command:
       dsRes match
         case None => throw new Exception(f"Could not find the root resource for dataset $name")
         case Some(dsRes) =>
-          if resMatchesRestrictions(dsRes, dsShapes) then
+          if resMatchesRestrictions(dsRes, dsShapes, Some(shaclContext)) then
             profile.add(profileRes, RdfUtil.dcatSeriesMember, dsRes)
             val distributions = dsRes.listProperties(RdfUtil.dcatDistribution).asScala
               .map(_.getObject.asResource())
@@ -202,8 +209,10 @@ object PackageCategoryCommand extends Command:
       .foreach(r => shapes.add(getSubjectSubgraph(r)))
     Shapes.parse(shapes)
 
-  private def resMatchesRestrictions(res: Resource, shapes: Shapes): Boolean =
+  private def resMatchesRestrictions(res: Resource, shapes: Shapes, context: Option[Model] = None): Boolean =
     val subgraph = getSubjectSubgraph(res)
+    if context.isDefined then
+      subgraph.add(context.get)
     val report = ShaclValidator.get().validate(shapes, subgraph.getGraph)
     report.conforms()
 
