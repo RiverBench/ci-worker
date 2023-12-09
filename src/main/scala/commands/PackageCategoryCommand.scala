@@ -31,14 +31,95 @@ object PackageCategoryCommand extends Command:
     val schemaRepoDir = FileSystems.getDefault.getPath(args(4))
     val outDir = FileSystems.getDefault.getPath(args(5))
 
-    packageProfiles(version, repoDir, mainRepoDir, schemaRepoDir, outDir)
-  }
-
-  private def packageProfiles(version: String, repoDir: Path, mainRepoDir: Path, schemaRepoDir: Path, outDir: Path):
-  Unit =
     val mainVer = if version == "dev" then "" else "v/" + version
     val mainRes = RdfUtil.m.createResource(AppConfig.CiWorker.rbRootUrl + mainVer)
+    val categoryRes = packageCategory(mainRes, version, repoDir, outDir)
 
+    packageTasks(mainRes, categoryRes, version, repoDir, outDir)
+    packageProfiles(mainRes, categoryRes, version, repoDir, mainRepoDir, schemaRepoDir, outDir)
+
+    // Finalize packaging the category
+    println("Serializing category...")
+    for (ext, format) <- Constants.outputFormats do
+      val outFile = outDir.resolve(f"category/metadata.$ext").toFile
+      RDFDataMgr.write(new FileOutputStream(outFile), categoryRes.getModel, format)
+  }
+
+  private def packageCategory(mainRes: Resource, version: String, repoDir: Path, outDir: Path):
+  Resource =
+    println("Loading the category...")
+    outDir.resolve("category/doc").toFile.mkdirs()
+    val categoryM = RDFDataMgr.loadModel(repoDir.resolve("metadata.ttl").toString)
+    val categoryRootRes = RdfUtil.m.createResource(RdfUtil.pTemp + "category")
+    if !categoryM.contains(categoryRootRes, null, null) then
+      throw new Exception("Category does not have a root resource")
+    val id = categoryM.listObjectsOfProperty(categoryRootRes, RdfUtil.dctermsIdentifier).asScala
+      .map(_.asLiteral().getString)
+      .toSeq.head
+    // Add version tags to URIs
+    val newRes = categoryM.createResource(AppConfig.CiWorker.baseCategoryUrl + id + "/" + version)
+    RdfUtil.renameResource(categoryRootRes, newRes, categoryM)
+    // Version metadata
+    categoryM.add(newRes, RdfUtil.hasVersion, version)
+    // Link to main
+    categoryM.add(newRes, RdfUtil.dcatInCatalog, mainRes)
+    // Prettify
+    categoryM.setNsPrefix("dcat", RdfUtil.pDcat)
+    categoryM.removeNsPrefix("")
+    newRes
+
+  private def packageTasks(mainRes: Resource, categoryRes: Resource, version: String, repoDir: Path, outDir: Path):
+  Unit =
+    outDir.resolve("tasks/doc").toFile.mkdirs()
+
+    println("Loading tasks...")
+    val tasks = repoDir.resolve("tasks").toFile.listFiles()
+      .filter(_.isDirectory)
+      .map(d => (
+        d.getName,
+        RDFDataMgr.loadModel(d.toPath.resolve("metadata.ttl").toString)
+      ))
+
+    val taskRootRes = RdfUtil.m.createResource(RdfUtil.pTemp + "task")
+
+    for (name, taskM) <- tasks do
+      // Validate task
+      if !taskM.contains(taskRootRes, null, null) then
+        throw new Exception(s"Task $name does not have a root resource")
+      if !taskM.contains(taskRootRes, RdfUtil.dctermsIdentifier, name) then
+        throw new Exception(s"Task $name does not have a dcterms:identifier matching directory name")
+
+      // Add version tags to URIs
+      val newRes = taskM.createResource(AppConfig.CiWorker.baseTaskUrl + name + "/" + version)
+      RdfUtil.renameResource(taskRootRes, newRes, taskM)
+      // Version metadata
+      taskM.add(newRes, RdfUtil.hasVersion, version)
+      // Link to category
+      taskM.add(newRes, RdfUtil.inCategory, categoryRes)
+      categoryRes.getModel.add(categoryRes, RdfUtil.hasTask, newRes)
+      // Link to main
+      taskM.add(newRes, RdfUtil.dcatInCatalog, mainRes)
+      // Prettify
+      taskM.setNsPrefix("dcat", RdfUtil.pDcat)
+      taskM.removeNsPrefix("")
+
+    // Write to files
+    println("Writing tasks...")
+    for (name, taskM) <- tasks do
+      for (ext, format) <- Constants.outputFormats do
+        val outFile = outDir.resolve(f"tasks/$name.$ext").toFile
+        RDFDataMgr.write(new FileOutputStream(outFile), taskM, format)
+
+
+  private def packageProfiles(
+    mainRes: Resource,
+    categoryRes: Resource,
+    version: String,
+    repoDir: Path,
+    mainRepoDir: Path,
+    schemaRepoDir: Path,
+    outDir: Path
+  ): Unit =
     // First, load all SHACL libs
     println("Loading SHACL libs...")
     val libs = schemaRepoDir.resolve("src/lib/profiles").toFile.listFiles()
@@ -84,6 +165,8 @@ object PackageCategoryCommand extends Command:
       // Version metadata
       profileModel.add(res, RdfUtil.hasVersion, version)
       profileModel.add(res, RdfUtil.dcatInCatalog, mainRes)
+      profileModel.add(res, RdfUtil.inCategory, categoryRes)
+      categoryRes.getModel.add(categoryRes, RdfUtil.hasProfile, res)
       // Link datasets to profiles
       linkProfileAndDatasets(name, profileModel, res, datasetCollection, shaclContext, outDir)
       // Prettify

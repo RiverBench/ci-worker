@@ -22,4 +22,6 @@ object AppConfig:
   object CiWorker:
     val baseDatasetUrl = config.getString("ci-worker.base-dataset-url")
     val baseProfileUrl = config.getString("ci-worker.base-profile-url")
+    val baseTaskUrl = config.getString("ci-worker.base-task-url")
+    val baseCategoryUrl = config.getString("ci-worker.base-category-url")
     val rbRootUrl = config.getString("ci-worker.rb-root-url")

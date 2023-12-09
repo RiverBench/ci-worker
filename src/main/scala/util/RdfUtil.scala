@@ -14,7 +14,7 @@ object RdfUtil:
   // Prefix for RiverBench documentation schema
   val pRbDoc = "https://w3id.org/riverbench/schema/documentation#"
   // Prefix for temporary resources
-  val pTemp = "https://w3id.org/riverbench/temp/"
+  val pTemp = "https://w3id.org/riverbench/temp#"
   // Prefix for SHACL libs
   val pLib = "https://w3id.org/riverbench/temp/lib#"
   // Prefix for DCAT
@@ -47,7 +47,6 @@ object RdfUtil:
   val hasFileName = m.createProperty(pRb, "hasFileName")
   val hasVersion = m.createProperty(pRb, "hasVersion")
   val hasRestriction = m.createProperty(pRb, "hasRestriction")
-  val hasProfile = m.createProperty(pRb, "hasProfile")
   val hasTemporalProperty = m.createProperty(pRb, "hasTemporalProperty")
   val hasSubjectShape = m.createProperty(pRb, "hasSubjectShape")
   val isSubsetOfProfile = m.createProperty(pRb, "isSubsetOfProfile")
@@ -55,6 +54,10 @@ object RdfUtil:
   val targetCustom = m.createProperty(pRb, "targetCustom")
   val hasDatasetShape = m.createProperty(pRb, "hasDatasetShape")
   val hasDistributionShape = m.createProperty(pRb, "hasDistributionShape")
+  val inCategory = m.createProperty(pRb, "inCategory")
+  val hasTask = m.createProperty(pRb, "hasTask")
+  val hasProfile = m.createProperty(pRb, "hasProfile")
+  val hasCategory = m.createProperty(pRb, "hasCategory")
 
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
