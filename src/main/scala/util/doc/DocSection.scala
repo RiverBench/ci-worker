@@ -5,7 +5,7 @@ import util.RdfUtil
 
 import scala.collection.mutable
 
-class DocSection(val level: Int, defaultPropGroup: Option[String] = None):
+class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot: Boolean = false):
   private val entries = mutable.ListBuffer[(DocProp, DocValue)]()
   private val subsections = mutable.ListBuffer[DocSection]()
 
@@ -30,7 +30,7 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None):
             case Some(i) => setWeight(i)
             case None => ()
         case _ => ()
-    else if level == 1 && group.isDefined then
+    else if isRoot && group.isDefined then
       if !subsections.exists(_.title == group.get) then
         val subSec = addSubsection()
         subSec.setTitle(group.get)

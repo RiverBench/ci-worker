@@ -9,6 +9,7 @@ object Command:
   implicit private val ec: ExecutionContext = Global.actorSystem.executionContext
 
   val commands: Seq[Command] = Seq(
+    CategoryDocGenCommand,
     DatasetDocGenCommand,
     HelpCommand,
     MainDocGenCommand,

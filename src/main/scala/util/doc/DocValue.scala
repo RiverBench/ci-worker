@@ -77,6 +77,14 @@ object DocValue:
           Some(uri.drop(AppConfig.CiWorker.baseDatasetUrl.length).split('/'))
       else if uri.startsWith(AppConfig.CiWorker.baseProfileUrl) then
         Some(uri.drop(AppConfig.CiWorker.baseProfileUrl.length).split('/'))
+      else if uri.startsWith(AppConfig.CiWorker.baseTaskUrl) then
+        Some(uri.drop(AppConfig.CiWorker.baseTaskUrl.length).split('/'))
+      else if uri.startsWith(AppConfig.CiWorker.baseCategoryUrl) then
+        Some(uri.drop(AppConfig.CiWorker.baseCategoryUrl.length).split('/'))
+      else if uri == AppConfig.CiWorker.rbRootUrl then
+        Some(Array("RiverBench", "dev"))
+      else if uri.startsWith(AppConfig.CiWorker.rbRootUrl + "v/") then
+        Some(Array("RiverBench", uri.drop(AppConfig.CiWorker.rbRootUrl.length + 2)))
       else None
 
       split match

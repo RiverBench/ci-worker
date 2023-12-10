@@ -3,7 +3,8 @@ package util.doc
 
 import util.RdfUtil
 
-import org.apache.jena.rdf.model.{Literal, Model, Property, RDFNode, Resource}
+import org.apache.jena.rdf.model.{Container, Literal, Model, Property, RDFNode, Resource}
+import org.apache.jena.sparql.util.graph.{GNode, GraphList}
 import org.apache.jena.vocabulary.RDF
 
 import scala.jdk.CollectionConverters.*
@@ -15,13 +16,14 @@ object DocBuilder:
     hidePropsInLevel: Seq[(Int, Property)] = Seq(),
     defaultPropGroup: Option[String] = None,
     tabularProps: Seq[Property] = Seq(),
+    startHeadingLevel: Int = 1,
   )
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
   private val groups = new DocGroupRegistry(ontologies)
 
   def build(title: String, content: String, rootResource: Resource): DocSection =
-    val rootSection = new DocSection(1, opt.defaultPropGroup)
+    val rootSection = new DocSection(opt.startHeadingLevel, opt.defaultPropGroup, true)
     rootSection.setContent(content)
     buildSection(rootResource, rootSection)
     // Override title
@@ -98,7 +100,7 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     DocValue.Table(tableMap)
 
   private def makeValue(docProp: DocProp, objects: Iterable[RDFNode]): DocValue =
-    val values = objects.map {
+    def makeValueInternal(o: RDFNode): DocValue = o match
       case lit: Literal if docProp.prop.getURI == RdfUtil.dcatByteSize.getURI =>
         DocValue.SizeLiteral(lit.getLexicalForm)
       case lit: Literal => DocValue.Literal(lit)
@@ -110,6 +112,18 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
         DocValue.RdfNamedThing(res, ontologies)
       case res: Resource => DocValue.InternalLink(res)
       case node => DocValue.Text(node.toString)
+
+    val values = objects.map { o =>
+      val list = GraphList.members(GNode.create(o.getModel.getGraph, o.asNode)).asScala
+        .map(n => o.getModel.getRDFNode(n))
+      o match
+        case _ if list.nonEmpty =>
+          val nestedValues = list.map(makeValueInternal)
+          DocValue.List(nestedValues, Some(docProp.label))
+        case container: Container =>
+          val nestedValues = container.iterator.asScala.toSeq.map(makeValueInternal)
+          DocValue.List(nestedValues, Some(docProp.label))
+        case node => makeValueInternal(node)
     }
     if values.size > 1 then
       DocValue.List(values, Some(docProp.label))

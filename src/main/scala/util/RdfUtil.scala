@@ -101,7 +101,10 @@ object RdfUtil:
   val RiverBench = m.createResource(pRb + "RiverBench")
   val StatisticsSet = m.createResource(pRb + "StatisticsSet")
   val TopicStreamElementSplit = m.createResource(pRb + "TopicStreamElementSplit")
+  val Category = m.createResource(pRb + "Category")
+  val Task = m.createResource(pRb + "Task")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
+
   val DcatDistribution = m.createResource(pDcat + "Distribution")
   val SpdxChecksum = m.createResource(pSpdx + "Checksum")
 

@@ -12,7 +12,10 @@ class ProfileCollection(profileDir: Path):
     .filter(_.isFile)
     .filter(_.getName.endsWith(".ttl"))
     .filter(_.getName != "template.ttl")
-    .map(f => (f.getName.replace(".ttl", ""), RDFDataMgr.loadModel(f.toString)))
+    .map(f => (
+      f.getName.replace(".ttl", "").replace("profile-", ""),
+      RDFDataMgr.loadModel(f.toString)
+    ))
     .toMap
 
   def getSubsets: Map[String, Seq[String]] =

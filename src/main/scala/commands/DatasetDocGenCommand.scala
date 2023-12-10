@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.doc.{DocBuilder, MarkdownUtil}
+import util.doc.{DocBuilder, DocFileUtil, MarkdownUtil}
 import util.{Constants, ElementType, MetadataInfo, MetadataReader, RdfIoUtil, RdfUtil}
 
 import org.apache.jena.rdf.model.Property
@@ -27,7 +27,7 @@ object DatasetDocGenCommand extends Command:
     val schemaRepoDir = FileSystems.getDefault.getPath(args(3))
     val outputDir = FileSystems.getDefault.getPath(args(4))
 
-    copyDocs(datasetRepoDir, outputDir)
+    DocFileUtil.copyDocs(datasetRepoDir.resolve("doc"), outputDir.resolve("docs"))
 
     val metadata = RDFDataMgr.loadModel(metadataPath.toString)
     val mi = MetadataReader.fromModel(metadata)
@@ -99,25 +99,6 @@ object DatasetDocGenCommand extends Command:
       println(f"Version is $version – not generating README.md")
   }
 
-  private val allowedDocExtensions = Set("md", "jpg", "png", "svg", "jpeg", "bmp", "webp", "gif")
-
-  private def copyDocs(datasetDir: Path, outputDir: Path): Unit =
-    val docDir = datasetDir.resolve("doc")
-    val outputDocDir = outputDir.resolve("docs")
-    Files.createDirectories(outputDocDir)
-    if Files.exists(docDir) then
-      val docFiles = Files.list(docDir).iterator().asScala
-        .filter(f => Files.isRegularFile(f) && allowedDocExtensions.contains(f.getFileName.toString.split('.').last))
-        // Only files smaller than 2 MB
-        .filter(f => Files.size(f) < 2 * 1024 * 1024)
-        .toSeq
-      for docFile <- docFiles do
-        val target = outputDocDir.resolve(docFile.getFileName)
-        Files.copy(docFile, target)
-        println(s"Copied $docFile to $target")
-
-  private val baseRepoUrl = "https://github.com/RiverBench"
-
   private def readmeHeader(id: String): String =
     f"""<!--
        |--
@@ -129,7 +110,7 @@ object DatasetDocGenCommand extends Command:
        |-- to them from the description in the metadata.ttl file.
        |--
        |-->
-       |[![.github/workflows/release.yaml]($baseRepoUrl/dataset-$id/actions/workflows/release.yaml/badge.svg?event=push)]($baseRepoUrl/dataset-$id/actions/workflows/release.yaml)
+       |[![.github/workflows/release.yaml](${Constants.baseRepoUrl}/dataset-$id/actions/workflows/release.yaml/badge.svg?event=push)](${Constants.baseRepoUrl}/dataset-$id/actions/workflows/release.yaml)
        |""".stripMargin
 
   private def readmeIntro(websiteLink: String): String =
@@ -145,7 +126,7 @@ object DatasetDocGenCommand extends Command:
        |!!! info
        |
        |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(websiteLink)}
-       |    <br>Source repository: **[${mi.identifier}]($baseRepoUrl/dataset-${mi.identifier})**
+       |    <br>Source repository: **[${mi.identifier}](${Constants.baseRepoUrl}/dataset-${mi.identifier})**
        |
        |""".stripMargin
 

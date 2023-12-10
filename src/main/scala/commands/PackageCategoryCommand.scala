@@ -107,7 +107,7 @@ object PackageCategoryCommand extends Command:
     println("Writing tasks...")
     for (name, taskM) <- tasks do
       for (ext, format) <- Constants.outputFormats do
-        val outFile = outDir.resolve(f"tasks/$name.$ext").toFile
+        val outFile = outDir.resolve(f"tasks/task-$name.$ext").toFile
         RDFDataMgr.write(new FileOutputStream(outFile), taskM, format)
 
 
@@ -176,7 +176,7 @@ object PackageCategoryCommand extends Command:
     println("Writing profiles...")
     for (name, profileModel) <- profileCollection.profiles do
       for (ext, format) <- Constants.outputFormats do
-        val outFile = outDir.resolve(f"profiles/$name.$ext").toFile
+        val outFile = outDir.resolve(f"profiles/profile-$name.$ext").toFile
         RDFDataMgr.write(new FileOutputStream(outFile), profileModel, format)
 
   private def importShaclLibs(profileName: String, profileModel: Model, libs: Map[String, Model]): Unit =

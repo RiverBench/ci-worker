@@ -7,7 +7,7 @@ object AppConfig:
   private var config = ConfigFactory.load()
 
   /**
-   * ONLY FOR USE IN TESTS. Sets a new base config to use by the Semantic Repository.
+   * ONLY FOR USE IN TESTS. Sets a new base config to use by the CI worker.
    *
    * @param newConfig new config
    */

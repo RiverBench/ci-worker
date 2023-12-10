@@ -15,6 +15,8 @@ object Constants:
     ("jelly", JellyFormat.JELLY_SMALL_STRICT),
   )
 
+  val allowedDocExtensions = Set("md", "jpg", "png", "svg", "jpeg", "bmp", "webp", "gif")
+
   val packageSizes = Seq[Long](
     10_000,
     100_000,
@@ -36,3 +38,4 @@ object Constants:
     case _ => if showAsFull then "Full" else size.toString
 
   val taxonomyDocBaseLink = "https://w3id.org/stax/dev/taxonomy#"
+  val baseRepoUrl = "https://github.com/RiverBench"
