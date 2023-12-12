@@ -26,7 +26,7 @@ object CategoryDocGenCommand extends Command:
       RDF.`type`,
     ),
     hidePropsInLevel = Seq(
-      (1, RDF.`type`), // Always the same
+      (2, RDF.`type`), // Always the same
     ),
     defaultPropGroup = Some("General information"),
     startHeadingLevel = 2,
@@ -57,17 +57,47 @@ object CategoryDocGenCommand extends Command:
 
   private def categoryDocGen(version: String, catRes: Resource, ontologies: Model, repoDir: Path, outDir: Path): Unit =
     val title = RdfUtil.getString(catRes, RdfUtil.dctermsTitle).get
-    val description = Files.readString(repoDir.resolve("doc/index.md")) + "\n\n## Metadata\n"
-    val builder = new DocBuilder(ontologies, catTaskDocOpt)
+    val description = RdfUtil.getString(catRes, RdfUtil.dctermsDescription).get
+    val catOpt = catTaskDocOpt.copy(
+      hidePropsInLevel = catTaskDocOpt.hidePropsInLevel ++ Seq((2, RdfUtil.dctermsDescription))
+    )
+    val builder = new DocBuilder(ontologies, catOpt)
     val catDoc = builder.build(
-      title,
-      description + rdfInfo(s"${AppConfig.CiWorker.baseCategoryUrl}$version"),
+      "Metadata",
+      rdfInfo(s"${AppConfig.CiWorker.baseCategoryUrl}$version"),
       catRes
     )
     val targetDir = outDir.resolve("category")
     targetDir.toFile.mkdirs()
-    Files.writeString(targetDir.resolve("index.md"), catDoc.toMarkdown)
+    Files.writeString(
+      targetDir.resolve("index.md"),
+      f"# $title\n\n$description\n\n" + catDoc.toMarkdown
+    )
     DocFileUtil.copyDocs(repoDir.resolve("doc"), targetDir, Seq("index.md"))
+
+    // Do the README
+    if version == "dev" then
+      println("Generating README...")
+      val docReadme = builder.build("Metadata", "", catRes)
+      val id = RdfUtil.getString(catRes, RdfUtil.dctermsIdentifier).get
+      val websiteLink = s"${AppConfig.CiWorker.baseCategoryUrl}$id/$version"
+      val readmeIntro =
+        f"""# $title
+           |
+           |${MarkdownUtil.readmeHeader("category-" + id)}
+           |
+           |*This README is a snapshot of documentation for the latest development version of the benchmark category.
+           |Full documentation for all versions can be found [on the website]($websiteLink).*
+           |
+           |$description
+           |
+           |""".stripMargin
+      Files.writeString(
+        targetDir.resolve("README.md"),
+        readmeIntro + docReadme.toMarkdown
+      )
+    else
+      print(f"Version is $version, not generating README.")
 
 
   private def taskDocGen(ontologies: Model, repoDir: Path, metadataOutDir: Path, outDir: Path, version: String): Unit =
@@ -79,16 +109,18 @@ object CategoryDocGenCommand extends Command:
         val taskM = RDFDataMgr.loadModel(metadataOutDir.resolve(f"tasks/task-$taskName.ttl").toString)
         val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
         val title = RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskName
-
-        val description = Files.readString(f.toPath.resolve("index.md")) + "\n\n## Metadata\n"
+        val description = Files.readString(f.toPath.resolve("index.md"))
         val taskDoc = taskDocBuilder.build(
-          title,
-          description + rdfInfo(s"${AppConfig.CiWorker.baseTaskUrl}$taskName/$version"),
+          "Metadata",
+          rdfInfo(s"${AppConfig.CiWorker.baseTaskUrl}$taskName/$version"),
           taskRes
         )
         val targetDir = outDir.resolve(f"tasks/$taskName")
         targetDir.toFile.mkdirs()
-        Files.writeString(targetDir.resolve("index.md"), taskDoc.toMarkdown)
+        Files.writeString(
+          targetDir.resolve("index.md"),
+          f"# $title\n\n$description\n\n" + taskDoc.toMarkdown
+        )
 
         DocFileUtil.copyDocs(f.toPath, targetDir, Seq("index.md"))
       })
