@@ -26,7 +26,10 @@ object PackageSchemaCommand extends Command:
     val outDir = FileSystems.getDefault.getPath(args(3))
     val docOutDir = FileSystems.getDefault.getPath(args(4))
 
-    val toProcessNames = Seq("metadata", "documentation", "dataset-shacl", "theme")
+    val toProcessNames = Seq("metadata", "documentation", "theme") ++
+      repoDir.resolve("src/shacl").toFile.listFiles()
+        .filter(f => f.isFile && f.getName.endsWith(".ttl"))
+        .map(f => "shacl/" + f.getName.replace(".ttl", ""))
     val schemaBase = AppConfig.CiWorker.rbRootUrl + "schema/"
 
     outDir.toFile.mkdirs()
@@ -65,7 +68,8 @@ object PackageSchemaCommand extends Command:
         prepOntologyForDoc(model, name, docOutDir)
 
       for (ext, format) <- Constants.outputFormats do
-        val outPath = outDir.resolve(s"$name.$ext")
+        val newName = if name.contains("shacl/") then name.replace("shacl/", "") + "-shacl" else name
+        val outPath = outDir.resolve(s"$newName.$ext")
         RDFDataMgr.write(new FileOutputStream(outPath.toFile), model, format)
   }
 
