@@ -26,7 +26,6 @@ object ValidateCategoryCommand extends Command:
   override def run(args: Array[String]): Future[Unit] = Future {
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val schemaDir = FileSystems.getDefault.getPath(args(2))
-    val importsDir = schemaDir.resolve("src/imports")
     val shaclDir = schemaDir.resolve("src/shacl")
 
     val profileFiles = repoDir.resolve("profiles").toFile.listFiles()
