@@ -23,6 +23,7 @@ object Command:
     SchemaDocGenCommand,
     SelfTestCommand,
     TagDocumentationCommand,
+    ValidateCategoryCommand,
     ValidateRepoCommand,
   )
 
