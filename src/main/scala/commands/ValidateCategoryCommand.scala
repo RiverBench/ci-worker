@@ -30,6 +30,7 @@ object ValidateCategoryCommand extends Command:
 
     val profileFiles = repoDir.resolve("profiles").toFile.listFiles()
       .filter(f => f.isFile && f.getName.endsWith(".ttl"))
+      .filter(_.getName != "template.ttl")
 
     def noCheck(m: Model) = Seq()
 
