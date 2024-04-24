@@ -5,7 +5,7 @@ resolvers +=
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
 
 lazy val circeV = "0.14.5"
-lazy val jellyV = "0.5.0+1-224bcb60-SNAPSHOT"
+lazy val jellyV = "0.5.3+7-47246654-SNAPSHOT"
 lazy val jenaV = "4.7.0"
 lazy val pekkoV = "1.0.1"
 lazy val pekkoHttpV = "1.0.0"
