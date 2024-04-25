@@ -1,5 +1,5 @@
-# GraalVM CE 22.3.0-b2 Java 17, Scala 3.2.2, SBT 1.8.2
-FROM sbtscala/scala-sbt:graalvm-ce-22.3.0-b2-java17_1.8.2_3.2.2 as builder
+# GraalVM CE 22.3.3-b1 Java 17, Scala 3.3.3, SBT 1.9.9
+FROM sbtscala/scala-sbt:graalvm-ce-22.3.3-b1-java17_1.9.9_3.3.3 as builder
 
 # Copy the project sources
 COPY . /app

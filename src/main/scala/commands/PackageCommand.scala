@@ -4,8 +4,8 @@ package commands
 import util.*
 import util.io.*
 
-import eu.ostrzyciel.jelly.core.JellyOptions
-import eu.ostrzyciel.jelly.core.proto.v1.RdfStreamType
+import eu.ostrzyciel.jelly.core.{JellyOptions, LogicalStreamTypeFactory}
+import eu.ostrzyciel.jelly.core.proto.v1.{LogicalStreamType, PhysicalStreamType}
 import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.system.ErrorHandlerFactory
@@ -25,7 +25,7 @@ import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
 object PackageCommand extends Command:
-  import eu.ostrzyciel.jelly.convert.jena.*
+  import eu.ostrzyciel.jelly.convert.jena.{given, *}
 
   sealed trait DistType(val weight: Int)
   object DistType:
@@ -360,20 +360,24 @@ object PackageCommand extends Command:
         metadata.conformance.usesGeneralizedTriples || metadata.conformance.usesGeneralizedRdfDatasets
       )
       .withRdfStar(metadata.conformance.usesRdfStar)
-      .withStreamType(
-        if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then RdfStreamType.TRIPLES
-        else RdfStreamType.QUADS
+      .withPhysicalType(
+        if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then PhysicalStreamType.TRIPLES
+        else PhysicalStreamType.QUADS
       )
+      // Add RDF-STaX stream type (logical stream type in RDF-STaX)
+      .withLogicalType(LogicalStreamTypeFactory.fromOntologyIri(
+        metadata.streamTypes.find(!_.isFlat).get.iri
+      ).get)
 
     val serializeFlow = (
       if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
         Flow[(DatasetGraph, Long)]
           .map((ds, _) => ds.getDefaultGraph.asTriples)
-          .via(EncoderFlow.fromGroupedTriples(None, jOpt))
+          .via(EncoderFlow.graphStream(None, jOpt))
       else
         Flow[(DatasetGraph, Long)]
           .map((ds, _) => ds.asQuads)
-          .via(EncoderFlow.fromGroupedQuads(None, jOpt))
+          .via(EncoderFlow.datasetStreamFromQuads(None, jOpt))
       )
       .via(JellyIo.toBytesDelimited)
       .map(ByteString(_))
