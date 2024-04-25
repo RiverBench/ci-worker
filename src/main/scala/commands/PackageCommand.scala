@@ -4,7 +4,7 @@ package commands
 import util.*
 import util.io.*
 
-import eu.ostrzyciel.jelly.core.JellyOptions
+import eu.ostrzyciel.jelly.core.{JellyOptions, LogicalStreamTypeFactory}
 import eu.ostrzyciel.jelly.core.proto.v1.{LogicalStreamType, PhysicalStreamType}
 import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
@@ -364,6 +364,10 @@ object PackageCommand extends Command:
         if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then PhysicalStreamType.TRIPLES
         else PhysicalStreamType.QUADS
       )
+      // Add RDF-STaX stream type (logical stream type in RDF-STaX)
+      .withLogicalType(LogicalStreamTypeFactory.fromOntologyIri(
+        metadata.streamTypes.find(!_.isFlat).get.iri
+      ).get)
 
     val serializeFlow = (
       if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
