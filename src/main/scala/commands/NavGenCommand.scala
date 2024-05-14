@@ -27,8 +27,14 @@ object NavGenCommand extends Command:
 
     val taskDir = rootDir.resolve("tasks")
     val tasks = listDir(rootDir, f"tasks", false)
-      .collect { case m: YamlMap => m }
-      .sortBy(_.v.keys.head)
+      .collect { case m: YamlMap => (
+        m.v.keys.head,
+        YamlMap(
+          getNameForFile(taskDir.resolve(m.v.keys.head + "/index.md"), true),
+          m.v.values.head
+        )
+      ) }
+      .sortBy(_._1)
 
     val profileDir = rootDir.resolve("profiles")
     val profiles = listDir(rootDir, f"profiles", false)
@@ -51,7 +57,7 @@ object NavGenCommand extends Command:
               })
               .sortBy(m => m.v.keys.head) :+
             YamlMap("Benchmark tasks", YamlList(
-              tasks.filter(_.v.keys.head.startsWith(cDir.getName))
+              tasks.filter(_._1.startsWith(cDir.getName)).map(_._2)
             )) :+
             YamlMap("Benchmark profiles", YamlList(
               profiles.filter(_.v.keys.head.startsWith(cDir.getName))
@@ -98,7 +104,7 @@ object NavGenCommand extends Command:
           "Documentation",
           YamlList(listDir(rootDir, "documentation"))
         ),
-        YamlMap("Benchmark categories", YamlList(
+        YamlMap("Benchmarks", YamlList(
           categories
         )),
         YamlMap("Datasets", YamlList(
