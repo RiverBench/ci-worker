@@ -92,7 +92,7 @@ object DatasetDocGenCommand extends Command:
       val docReadme = docBuilderReadme.build(title, mi.description + readmeIntro(landingPage), mi.datasetRes)
       Files.writeString(
         outputDir.resolve("README.md"),
-        MarkdownUtil.readmeHeader("dataset" + mi.identifier) + "\n\n" + docReadme.toMarkdown
+        MarkdownUtil.readmeHeader("dataset-" + mi.identifier) + "\n\n" + docReadme.toMarkdown
       )
       println("Generated README.md")
     else
