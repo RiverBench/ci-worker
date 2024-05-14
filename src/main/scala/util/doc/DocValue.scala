@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import util.{AppConfig, RdfUtil}
+import util.{AppConfig, PurlMaker, RdfUtil}
 
 import com.ibm.icu.util.ULocale
 import io.github.riverbench.ci_worker.util.doc.MarkdownUtil.prettyLabel
@@ -75,12 +75,9 @@ object DocValue:
           Some(Array(s"#$name", name))
         else
           Some(uri.drop(AppConfig.CiWorker.baseDatasetUrl.length).split('/'))
-      else if uri.startsWith(AppConfig.CiWorker.baseProfileUrl) then
-        Some(uri.drop(AppConfig.CiWorker.baseProfileUrl.length).split('/'))
-      else if uri.startsWith(AppConfig.CiWorker.baseTaskUrl) then
-        Some(uri.drop(AppConfig.CiWorker.baseTaskUrl.length).split('/'))
-      else if uri.startsWith(AppConfig.CiWorker.baseCategoryUrl) then
-        Some(uri.drop(AppConfig.CiWorker.baseCategoryUrl.length).split('/'))
+      // TODO: make this prettier (match) when we get rid of the other PURL stuff
+      else if PurlMaker.unMake(uri).isDefined then
+        PurlMaker.unMake(uri).map(p => Array(p.id, p.version))
       else if uri == AppConfig.CiWorker.rbRootUrl then
         Some(Array("RiverBench", "dev"))
       else if uri.startsWith(AppConfig.CiWorker.rbRootUrl + "v/") then

@@ -57,7 +57,7 @@ object PackageCategoryCommand extends Command:
       .map(_.asLiteral().getString)
       .toSeq.head
     // Add version tags to URIs
-    val newRes = categoryM.createResource(AppConfig.CiWorker.baseCategoryUrl + id + "/" + version)
+    val newRes = categoryM.createResource(PurlMaker.category(id, version))
     RdfUtil.renameResource(categoryRootRes, newRes, categoryM)
     // Version metadata
     categoryM.add(newRes, RdfUtil.hasVersion, version)
@@ -90,7 +90,7 @@ object PackageCategoryCommand extends Command:
         throw new Exception(s"Task $name does not have a dcterms:identifier matching directory name")
 
       // Add version tags to URIs
-      val newRes = taskM.createResource(AppConfig.CiWorker.baseTaskUrl + name + "/" + version)
+      val newRes = taskM.createResource(PurlMaker.task(name, version))
       RdfUtil.renameResource(taskRootRes, newRes, taskM)
       // Version metadata
       taskM.add(newRes, RdfUtil.hasVersion, version)
@@ -146,11 +146,11 @@ object PackageCategoryCommand extends Command:
     outDir.resolve("profiles/doc").toFile.mkdirs()
     val subSupModel = profileCollection.getSubSuperAssertions
 
-    def getProfileUri(name: String) = AppConfig.CiWorker.baseProfileUrl + name + "/" + version
+    def getProfileUri(name: String) = PurlMaker.profile(name, version)
 
     for (name, profileModel) <- profileCollection.profiles do
       // Add version tags to URIs
-      val oldRes = profileModel.createResource(AppConfig.CiWorker.baseProfileUrl + name)
+      val oldRes = profileModel.createResource(AppConfig.CiWorker.baseDevProfileUrl + name)
       val newRes = profileModel.createResource(getProfileUri(name))
       RdfUtil.renameResource(oldRes, newRes, profileModel)
       RdfUtil.renameResource(oldRes, newRes, subSupModel)

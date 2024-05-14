@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, Constants, ProfileCollection, RdfIoUtil, RdfUtil}
+import util.*
 import util.doc.{DocBuilder, MarkdownUtil}
 
 import org.apache.jena.rdf.model.Model
@@ -111,7 +111,7 @@ object MainDocGenCommand extends Command:
       val description = RdfUtil.getString(profileRes, RdfUtil.dctermsDescription) getOrElse ""
       val profileDoc = profileDocBuilder.build(
         s"$name (${readableVersion(version)})",
-        description + rdfInfo(s"${AppConfig.CiWorker.baseProfileUrl}$name/$version"),
+        description + rdfInfo(PurlMaker.profile(name, version)),
         profileRes
       )
       val tableSection =

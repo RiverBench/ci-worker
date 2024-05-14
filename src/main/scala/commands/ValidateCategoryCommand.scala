@@ -42,7 +42,7 @@ object ValidateCategoryCommand extends Command:
         // Check if the ID is consistent with the file name
         (m: Model) => {
           val expectedId = f.getName.replace(".ttl", "")
-          val pRes = m.createResource(AppConfig.CiWorker.baseProfileUrl + expectedId)
+          val pRes = m.createResource(AppConfig.CiWorker.baseDevProfileUrl + expectedId)
           if pRes.listProperties().asScala.isEmpty then
             Seq(s"Profile $pRes has no properties")
           else

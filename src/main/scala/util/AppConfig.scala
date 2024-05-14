@@ -20,8 +20,7 @@ object AppConfig:
   def getConfig = config
 
   object CiWorker:
+    // TODO: migrate these to PurlMaker
     val baseDatasetUrl = config.getString("ci-worker.base-dataset-url")
-    val baseProfileUrl = config.getString("ci-worker.base-profile-url")
-    val baseTaskUrl = config.getString("ci-worker.base-task-url")
-    val baseCategoryUrl = config.getString("ci-worker.base-category-url")
+    val baseDevProfileUrl = config.getString("ci-worker.base-dev-profile-url")
     val rbRootUrl = config.getString("ci-worker.rb-root-url")

@@ -48,11 +48,11 @@ object PackageMainCommand extends Command:
     outDir.resolve("profiles/doc").toFile.mkdirs()
     val subSupModel = profileCollection.getSubSuperAssertions
 
-    def getProfileUri(name: String) = AppConfig.CiWorker.baseProfileUrl + name + "/" + version
+    def getProfileUri(name: String) = AppConfig.CiWorker.baseDevProfileUrl + name + "/" + version
 
     for (name, profileModel) <- profileCollection.profiles do
       // Add version tags to URIs
-      val oldRes = profileModel.createResource(AppConfig.CiWorker.baseProfileUrl + name)
+      val oldRes = profileModel.createResource(AppConfig.CiWorker.baseDevProfileUrl + name)
       val newRes = profileModel.createResource(getProfileUri(name))
       RdfUtil.renameResource(oldRes, newRes, profileModel)
       RdfUtil.renameResource(oldRes, newRes, subSupModel)

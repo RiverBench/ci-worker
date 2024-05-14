@@ -49,22 +49,50 @@ object CategoryDocGenCommand extends Command:
     profileOverviewDocGen(version, profileCollection, outDir)
 
     println("Generating task documentation...")
-    taskDocGen(ontologies, repoDir, packageOutDir, outDir, version)
+    val tasks = taskDocGen(ontologies, repoDir, packageOutDir, outDir, version)
+    taskOverviewDocGen(version, tasks, outDir)
 
     println("Generating category documentation...")
     categoryDocGen(version, catRes, ontologies, repoDir, outDir)
   }
 
   private def categoryDocGen(version: String, catRes: Resource, ontologies: Model, repoDir: Path, outDir: Path): Unit =
+    val id = RdfUtil.getString(catRes, RdfUtil.dctermsIdentifier).get
     val title = RdfUtil.getString(catRes, RdfUtil.dctermsTitle).get
-    val description = RdfUtil.getString(catRes, RdfUtil.dctermsDescription).get
+    val tableSections =
+      f"""
+        |## Benchmark tasks
+        |
+        |Below you will find a list of tasks that are part of this benchmark category.
+        |
+        |!!! tip
+        |
+        |    Benchmark tasks and profiles in RiverBench have machine-readable metadata in RDF.
+        |    You can find RDF download links for each profile on its documentation page.
+        |    You can also use the [HTTP content negotiation mechanism](../../documentation/metadata.md).
+        |
+        |--8<-- "docs/categories/$id/task_table.md"
+        |
+        |## Benchmark profiles
+        |
+        |Profiles in RiverBench group datasets that share common technical characteristics.
+        |For example, whether the datasets consist of triples or quads, if they use RDF-star, etc.
+        |The profiles are intended to be used in benchmarks to compare the performance of different systems on a well-defined collection of datasets.
+        |
+        |See the **[quick start guide](../../documentation/using.md)** for more information on how to use the profiles, tasks, and datasets.
+        |
+        |--8<-- "docs/categories/$id/profile_table.md"
+        |
+        |""".stripMargin
+
+    val description = RdfUtil.getString(catRes, RdfUtil.dctermsDescription).get + tableSections
     val catOpt = catTaskDocOpt.copy(
       hidePropsInLevel = catTaskDocOpt.hidePropsInLevel ++ Seq((2, RdfUtil.dctermsDescription))
     )
     val builder = new DocBuilder(ontologies, catOpt)
     val catDoc = builder.build(
       "Metadata",
-      rdfInfo(s"${AppConfig.CiWorker.baseCategoryUrl}$version"),
+      rdfInfo(PurlMaker.category(id, version)),
       catRes
     )
     val targetDir = outDir.resolve("category")
@@ -79,8 +107,7 @@ object CategoryDocGenCommand extends Command:
     if version == "dev" then
       println("Generating README...")
       val docReadme = builder.build("Metadata", "", catRes)
-      val id = RdfUtil.getString(catRes, RdfUtil.dctermsIdentifier).get
-      val websiteLink = s"${AppConfig.CiWorker.baseCategoryUrl}$id/$version"
+      val websiteLink = PurlMaker.category(id, version)
       val readmeIntro =
         f"""# $title
            |
@@ -100,11 +127,12 @@ object CategoryDocGenCommand extends Command:
       print(f"Version is $version, not generating README.")
 
 
-  private def taskDocGen(ontologies: Model, repoDir: Path, metadataOutDir: Path, outDir: Path, version: String): Unit =
+  private def taskDocGen(ontologies: Model, repoDir: Path, metadataOutDir: Path, outDir: Path, version: String):
+  Seq[(String, Model)] =
     val taskDocBuilder = new DocBuilder(ontologies, catTaskDocOpt)
     repoDir.resolve("tasks").toFile.listFiles()
       .filter(_.isDirectory)
-      .foreach(f => {
+      .map(f => {
         val taskName = f.getName
         val taskM = RDFDataMgr.loadModel(metadataOutDir.resolve(f"tasks/task-$taskName.ttl").toString)
         val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
@@ -112,7 +140,7 @@ object CategoryDocGenCommand extends Command:
         val description = Files.readString(f.toPath.resolve("index.md"))
         val taskDoc = taskDocBuilder.build(
           "Metadata",
-          rdfInfo(s"${AppConfig.CiWorker.baseTaskUrl}$taskName/$version"),
+          rdfInfo(PurlMaker.task(taskName, version)),
           taskRes
         )
         val targetDir = outDir.resolve(f"tasks/$taskName")
@@ -123,7 +151,22 @@ object CategoryDocGenCommand extends Command:
         )
 
         DocFileUtil.copyDocs(f.toPath, targetDir, Seq("index.md"))
+        (taskName, taskM)
       })
+      .toSeq
+
+  private def taskOverviewDocGen(version: String, tasks: Seq[(String, Model)], outDir: Path): Unit =
+    val sb = new StringBuilder()
+    sb.append("Identifier | Task name | Description\n")
+    sb.append("--- | --- | ---\n")
+    for (taskId, taskM) <- tasks.sortBy(_._1) do
+      val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
+      val taskName = RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskId
+      val taskDesc = (RdfUtil.getString(taskRes, RdfUtil.dctermsDescription) getOrElse "").replace('\n', ' ')
+      val taskPurl = PurlMaker.task(taskId, version)
+      sb.append(f"[`$taskId`]($taskPurl) | [$taskName]($taskPurl) | $taskDesc \n")
+
+    Files.writeString(outDir.resolve("category/task_table.md"), sb.toString())
 
   private def profileDocGen(
     profileCollection: ProfileCollection, ontologies: Model, metadataOutDir: Path, outDir: Path, version: String
@@ -149,7 +192,7 @@ object CategoryDocGenCommand extends Command:
       val description = RdfUtil.getString(profileRes, RdfUtil.dctermsDescription) getOrElse ""
       val profileDoc = profileDocBuilder.build(
         s"$name (${readableVersion(version)})",
-        description + rdfInfo(s"${AppConfig.CiWorker.baseProfileUrl}$name/$version"),
+        description + rdfInfo(PurlMaker.profile(name, version)),
         profileRes
       )
       val tableSection =
@@ -159,6 +202,7 @@ object CategoryDocGenCommand extends Command:
           |Below you will find links to download the profile's datasets in different lengths.
           |
           |!!! warning
+          |
           |    Some datasets are shorter than others and a given distribution may not be available for all datasets.
           |    In that case, a link to the longest available distribution of the dataset is provided.
           |
@@ -176,7 +220,7 @@ object CategoryDocGenCommand extends Command:
     sb.append("--- | --- | :-: | :-:\n")
     for pName <- profileCollection.profiles.keys.toSeq.sorted do
       val nameSplit = pName.split('-')
-      sb.append(f"[$pName](${AppConfig.CiWorker.baseProfileUrl}$pName/$version) | ")
+      sb.append(f"[`$pName`](${PurlMaker.profile(pName, version)}) | ")
       sb.append(
         (nameSplit(0), nameSplit(1)) match
           case ("flat", "mixed") => "flat " + taxoLink("triple", "flat-rdf-triple") +
@@ -198,7 +242,7 @@ object CategoryDocGenCommand extends Command:
         )
       sb.append("\n")
 
-    Files.writeString(outDir.resolve("profiles/table.md"), sb.toString())
+    Files.writeString(outDir.resolve("category/profile_table.md"), sb.toString())
 
   private def readableVersion(v: String) =
     if v == "dev" then "development version" else v

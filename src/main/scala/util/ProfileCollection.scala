@@ -34,9 +34,9 @@ class ProfileCollection(profileDir: Path):
       if level > 10 then
         throw new Exception("Too many levels of nesting")
 
-      val supRes = m.createResource(AppConfig.CiWorker.baseProfileUrl + superset)
+      val supRes = m.createResource(AppConfig.CiWorker.baseDevProfileUrl + superset)
       for sub <- subsets do
-        val subRes = m.createResource(AppConfig.CiWorker.baseProfileUrl + sub)
+        val subRes = m.createResource(AppConfig.CiWorker.baseDevProfileUrl + sub)
         m.add(subRes, RdfUtil.isSubsetOfProfile, supRes)
         m.add(supRes, RdfUtil.isSupersetOfProfile, subRes)
         addAssertions(superset, subsetMap(sub), level + 1)
