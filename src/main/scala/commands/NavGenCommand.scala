@@ -24,55 +24,46 @@ object NavGenCommand extends Command:
     val rootDir = docRepoDir.resolve("docs")
 
     println("Building nav structure...")
-    val suiteDir = rootDir.resolve("v")
-    val suites = suiteDir.toFile.listFiles()
-      .filter(_.isDirectory)
-      .map(sDir =>
-        YamlMap(sDir.getName, YamlList(listDir(rootDir, f"v/${sDir.getName}")))
-      )
-      .sortBy(m => Version.parse(m.v.keys.head))
-      .reverse
-      .toSeq
+
+    val taskDir = rootDir.resolve("tasks")
+    val tasks = listDir(rootDir, f"tasks", false)
+      .collect { case m: YamlMap => m }
+      .sortBy(_.v.keys.head)
 
     val profileDir = rootDir.resolve("profiles")
-    val profiles = profileDir.toFile.listFiles()
+    val profiles = listDir(rootDir, f"profiles", false)
+      .collect { case m: YamlMap => m }
+      .sortBy(_.v.keys.head)
+
+    val categoryDir = rootDir.resolve("categories")
+    val categories = categoryDir.toFile.listFiles()
       .filter(_.isDirectory)
-      .map(pDir => YamlMap(
-        pDir.getName,
+      .sortBy(_.getName)
+      .map(cDir => YamlMap(
+        getNameForFile(cDir.toPath.resolve("index.md"), true),
         YamlList(
-          YamlMap("Development version", f"profiles/${pDir.getName}/dev.md") +:
-            listDir(rootDir, f"profiles/${pDir.getName}", false)
-              .filter(v => v.isInstanceOf[YamlMap])
-              .map(_.asInstanceOf[YamlMap])
-              .filter(_.v.keys.head != "dev")
-              .sortBy(m => Version.parse(m.v.keys.head))
-              .reverse
+          YamlString(f"categories/${cDir.getName}/index.md") +:
+            listDir(rootDir, f"categories/${cDir.getName}")
+              .collect { case m: YamlMap => m }
+              .filter(m => {
+                val value = m.v.values.head.asInstanceOf[YamlString].v
+                !value.contains("profile_table.md") && !value.contains("task_table.md")
+              })
+              .sortBy(m => m.v.keys.head) :+
+            YamlMap("Benchmark tasks", YamlList(
+              tasks.filter(_.v.keys.head.startsWith(cDir.getName))
+            )) :+
+            YamlMap("Benchmark profiles", YamlList(
+              profiles.filter(_.v.keys.head.startsWith(cDir.getName))
+            ))
         )
       ))
-      .sortBy(_.v.keys.head)
       .toSeq
 
     val datasetDir = rootDir.resolve("datasets")
     val datasets = datasetDir.toFile.listFiles()
       .filter(_.isDirectory)
-      .map(dDir => YamlMap(
-        dDir.getName,
-        YamlList(
-          YamlMap(
-            "Development version",
-            YamlList(listDir(rootDir, f"datasets/${dDir.getName}/dev"))
-          ) +: dDir.listFiles()
-            .filter(_.isDirectory)
-            .filter(_.getName != "dev")
-            .map(dvDir => YamlMap(
-              dvDir.getName,
-              YamlList(listDir(rootDir, f"datasets/${dDir.getName}/${dvDir.getName}"))
-            ))
-            .sortBy(m => Version.parse(m.v.keys.head))
-            .reverse
-            .toSeq
-        )
-      ))
+      .map(dDir => YamlMap(dDir.getName, f"datasets/${dDir.getName}/index.md"))
       .sortBy(_.v.keys.head)
       .toSeq
 
@@ -107,14 +98,11 @@ object NavGenCommand extends Command:
           "Documentation",
           YamlList(listDir(rootDir, "documentation"))
         ),
+        YamlMap("Benchmark categories", YamlList(
+          categories
+        )),
         YamlMap("Datasets", YamlList(
           YamlString("datasets/index.md") +: datasets
-        )),
-        YamlMap("Profiles", YamlList(
-          YamlString("profiles/index.md") +: profiles
-        )),
-        YamlMap("Suite releases", YamlList(
-          YamlString("v/index.md") +: suites
         )),
         YamlMap("Schemas & ontologies", YamlList(
           YamlString("schema/index.md") +: schemas,
