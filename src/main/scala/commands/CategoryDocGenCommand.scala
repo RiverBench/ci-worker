@@ -42,6 +42,8 @@ object CategoryDocGenCommand extends Command:
     val catRes = catM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Category).next.asResource
     val version = RdfUtil.getString(catRes, RdfUtil.hasVersion).get
 
+    outDir.resolve("category").toFile.mkdirs()
+
     println("Generating profile documentation...")
     val profileCollection = new ProfileCollection(packageOutDir.resolve("profiles"))
     val ontologies = RdfIoUtil.loadOntologies(schemaRepoDir)
@@ -96,7 +98,6 @@ object CategoryDocGenCommand extends Command:
       catRes
     )
     val targetDir = outDir.resolve("category")
-    targetDir.toFile.mkdirs()
     Files.writeString(
       targetDir.resolve("index.md"),
       f"# $title\n\n$description\n\n" + catDoc.toMarkdown
