@@ -31,12 +31,13 @@ class CategoryCollection(namesToUris: Iterable[(String, String)]):
 
   lazy val categoryDumps: Map[String, Model] = namesToUris
     .map((name, uri) => {
+      val dumpUri = uri.replace("metadata.ttl", "dump.jelly")
       try {
-        (name, RDFDataMgr.loadModel(uri.replace("metadata.ttl", "dump.jelly"), JellyLanguage.JELLY))
+        (name, RDFDataMgr.loadModel(dumpUri, JellyLanguage.JELLY))
       }
       catch {
         case e: Exception =>
-          println(f"Failed to load dump for category $name from $uri")
+          println(f"Failed to load dump for category $name from $dumpUri")
           throw e
       }
     })
