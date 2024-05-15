@@ -267,7 +267,7 @@ object PackageCategoryCommand extends Command:
       profileTableSb.append(
         """!!! note
           |
-          |    For stream profiles, there are two available types of distributions: plain streaming, and streaming in the Jelly format. See the [documentation](../../documentation/dataset-release-format.md) for details.
+          |    For stream profiles, there are two available types of distributions: plain streaming, and streaming in the Jelly format. See the [documentation](../documentation/dataset-release-format.md) for details.
           |
           |### Plain streaming distributions
           |
