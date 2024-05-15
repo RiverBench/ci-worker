@@ -22,7 +22,6 @@ object Command:
     ParseTestCommand,
     SchemaDocGenCommand,
     SelfTestCommand,
-    TagDocumentationCommand,
     ValidateCategoryCommand,
     ValidateRepoCommand,
   )
