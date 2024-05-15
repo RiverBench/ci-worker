@@ -88,7 +88,7 @@ object CategoryDocGenCommand extends Command:
         |
         |""".stripMargin
 
-    val description = RdfUtil.getString(catRes, RdfUtil.dctermsDescription).get + tableSections
+    val description = RdfUtil.getString(catRes, RdfUtil.dctermsDescription).get
     val catOpt = catTaskDocOpt.copy(
       hidePropsInLevel = catTaskDocOpt.hidePropsInLevel ++ Seq((2, RdfUtil.dctermsDescription))
     )
@@ -101,7 +101,7 @@ object CategoryDocGenCommand extends Command:
     val targetDir = outDir.resolve("category")
     Files.writeString(
       targetDir.resolve("index.md"),
-      f"# $title\n\n$description\n\n" + catDoc.toMarkdown
+      f"# $title\n\n$description$tableSections\n\n" + catDoc.toMarkdown
     )
     DocFileUtil.copyDocs(repoDir.resolve("doc"), targetDir, Seq("index.md"))
 
