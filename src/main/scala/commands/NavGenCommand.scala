@@ -96,7 +96,7 @@ object NavGenCommand extends Command:
           YamlList(listDir(rootDir, "documentation"))
         ),
         YamlMap("Benchmarks", YamlList(
-          categories
+          YamlString("categories/index.md") +: categories
         )),
         YamlMap("Datasets", YamlList(
           YamlString("datasets/index.md") +: datasets
