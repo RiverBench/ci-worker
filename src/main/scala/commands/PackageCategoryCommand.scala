@@ -80,7 +80,7 @@ object PackageCategoryCommand extends Command:
     newRes
 
   private def packageTasks(mainRes: Resource, categoryRes: Resource, version: String, repoDir: Path, outDir: Path):
-  Seq[Model] =
+  Iterable[Model] =
     outDir.resolve("tasks/doc").toFile.mkdirs()
 
     println("Loading tasks...")
