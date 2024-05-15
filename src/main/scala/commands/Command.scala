@@ -11,6 +11,7 @@ object Command:
   val commands: Seq[Command] = Seq(
     CategoryDocGenCommand,
     DatasetDocGenCommand,
+    GenerateRedirectCommand,
     HelpCommand,
     MainDocGenCommand,
     MergeMetadataCommand,
