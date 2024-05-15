@@ -23,8 +23,8 @@ object GenerateRedirectCommand extends Command:
       println("The 'kind' parameter must be either 'datasets' or 'schema'.")
       throw new IllegalArgumentException()
 
-    val redirectTemplate = Files.readString(
-      Path.of(this.getClass.getClassLoader.getResource("redirect_template.html").toURI)
+    val redirectTemplate = String(
+      getClass.getResourceAsStream("/redirect_template.html").readAllBytes()
     )
 
     // Get the version of RiverBench we should point to
