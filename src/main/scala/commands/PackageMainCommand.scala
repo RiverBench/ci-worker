@@ -63,10 +63,11 @@ object PackageMainCommand extends Command:
       newMainRes.addProperty(RdfUtil.hasCategory, catRes)
 
     // Generate RDF dump of all metadata
+    println("Fetching category dumps for merging...")
     val allModels = Seq(mainModel) ++
-      datasetCollection.datasets.values
-    // TODO: dump should include categories, tasks, profiles...
-    //  This stuff must start in the category repos.
+      datasetCollection.datasets.values ++
+      categoryCollection.categoryDumps.values
+
     val dumpModel = RdfUtil.mergeModels(allModels)
 
     if version == "dev" then

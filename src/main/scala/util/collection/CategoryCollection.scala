@@ -1,6 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.collection
 
+import eu.ostrzyciel.jelly.convert.jena.riot.JellyLanguage
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
 
@@ -23,6 +24,19 @@ class CategoryCollection(namesToUris: Iterable[(String, String)]):
       catch {
         case e: Exception =>
           println(f"Failed to load metadata for category $name from $uri")
+          throw e
+      }
+    })
+    .toMap
+
+  lazy val categoryDumps: Map[String, Model] = namesToUris
+    .map((name, uri) => {
+      try {
+        (name, RDFDataMgr.loadModel(uri.replace("metadata.ttl", "dump.jelly"), JellyLanguage.JELLY))
+      }
+      catch {
+        case e: Exception =>
+          println(f"Failed to load dump for category $name from $uri")
           throw e
       }
     })
