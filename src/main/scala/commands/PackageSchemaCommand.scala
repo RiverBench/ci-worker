@@ -26,7 +26,7 @@ object PackageSchemaCommand extends Command:
     val outDir = FileSystems.getDefault.getPath(args(3))
     val docOutDir = FileSystems.getDefault.getPath(args(4))
 
-    val toProcessNames = Seq("metadata", "documentation", "theme") ++
+    val toProcessNames = Seq("metadata", "documentation") ++
       repoDir.resolve("src/shacl").toFile.listFiles()
         .filter(f => f.isFile && f.getName.endsWith(".ttl"))
         .map(f => "shacl/" + f.getName.replace(".ttl", ""))
@@ -92,17 +92,16 @@ object PackageSchemaCommand extends Command:
       true
 
   private def prepOntologyForDoc(m: Model, name: String, outDir: Path): Unit =
-    if name != "theme" then
-      val externalSubjects = m.listSubjects().asScala
-        .filter(_.isURIResource)
-        .filter(!_.getURI.startsWith(AppConfig.CiWorker.rbRootUrl))
-        .map(_.listProperties().asScala.toSeq)
-        .filter(sts => sts.size == 1 && sts.head.getPredicate == RDF.`type`)
-        .map(sts => sts.head.getSubject.asResource)
-        .toSeq
+    val externalSubjects = m.listSubjects().asScala
+      .filter(_.isURIResource)
+      .filter(!_.getURI.startsWith(AppConfig.CiWorker.rbRootUrl))
+      .map(_.listProperties().asScala.toSeq)
+      .filter(sts => sts.size == 1 && sts.head.getPredicate == RDF.`type`)
+      .map(sts => sts.head.getSubject.asResource)
+      .toSeq
 
-      for s <- externalSubjects do
-        m.removeAll(s, null, null)
+    for s <- externalSubjects do
+      m.removeAll(s, null, null)
 
     val os = new FileOutputStream(outDir.resolve(f"$name.ttl").toFile)
     RDFDataMgr.write(os, m, RDFFormat.TURTLE)

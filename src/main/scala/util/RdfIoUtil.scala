@@ -11,7 +11,6 @@ object RdfIoUtil:
     val ontologyPaths = Seq(
       schemaRepoDir.resolve("src/metadata.ttl"),
       schemaRepoDir.resolve("src/documentation.ttl"),
-      schemaRepoDir.resolve("src/theme.ttl"),
     ) ++ schemaRepoDir.resolve("src/imports").toFile.listFiles()
       .filter(f => f.isFile && (f.getName.endsWith(".ttl") || f.getName.endsWith(".rdf")))
       .map(_.toPath)
