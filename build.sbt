@@ -51,6 +51,7 @@ lazy val root = (project in file("."))
         case _ => MergeStrategy.discard
       }
       case PathList("reference.conf") => MergeStrategy.concat
+      case PathList("redirect_template.html") => MergeStrategy.concat
       case _ => MergeStrategy.first
     },
     assembly / assemblyOutputPath := file("target/assembly/ci-worker-assembly.jar"),
