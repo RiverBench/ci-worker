@@ -2,6 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.*
+import util.collection.*
 import util.doc.*
 
 import org.apache.jena.rdf.model.{Model, Property, Resource}

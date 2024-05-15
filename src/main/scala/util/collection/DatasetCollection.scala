@@ -1,6 +1,7 @@
 package io.github.riverbench.ci_worker
 package util
 
+import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
 
 import java.nio.file.Path
@@ -25,7 +26,7 @@ object DatasetCollection:
     DatasetCollection(datasets)
 
 class DatasetCollection(namesToUris: Iterable[(String, String)]):
-  val datasets = namesToUris
+  val datasets: Map[String, Model] = namesToUris
     .map((name, uri) => {
       try {
         (name, RDFDataMgr.loadModel(uri))

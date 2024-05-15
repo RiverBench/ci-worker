@@ -1,8 +1,9 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.doc.MarkdownUtil
 import util.*
+import util.collection.*
+import util.doc.MarkdownUtil
 
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.riot.RDFDataMgr
