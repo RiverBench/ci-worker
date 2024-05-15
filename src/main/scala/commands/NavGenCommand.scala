@@ -74,24 +74,15 @@ object NavGenCommand extends Command:
       .toSeq
 
     val schemaNames = Map(
-      "documentation" -> "Documentation ontology",
-      "metadata" -> "Metadata ontology",
-      "theme" -> "Topic scheme (deprecated)",
+      "documentation.md" -> "Documentation ontology",
+      "metadata.md" -> "Metadata ontology",
     )
     val schemaDir = rootDir.resolve("schema")
     val schemas = schemaDir.toFile.listFiles()
-      .filter(_.isDirectory)
-      .map(pDir => YamlMap(
-        schemaNames.getOrElse(pDir.getName, pDir.getName),
-        YamlList(
-          YamlMap("Development version", f"schema/${pDir.getName}/dev.md") +:
-            listDir(rootDir, f"schema/${pDir.getName}", false)
-              .filter(v => v.isInstanceOf[YamlMap])
-              .map(_.asInstanceOf[YamlMap])
-              .filter(_.v.keys.head != "dev")
-              .sortBy(m => Version.parse(m.v.keys.head))
-              .reverse
-        )
+      .filter(f => f.isFile && f.getName != "index.md" && f.getName.endsWith(".md"))
+      .map(pFile => YamlMap(
+        schemaNames.getOrElse(pFile.getName, pFile.getName),
+        f"schema/${pFile.getName}"
       ))
       .sortBy(_.v.keys.head)
       .toSeq
