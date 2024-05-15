@@ -5,6 +5,7 @@ import util.*
 import util.collection.*
 import util.doc.MarkdownUtil
 
+import eu.ostrzyciel.jelly.convert.jena.riot.JellyFormat
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.shacl.{ShaclValidator, Shapes}
@@ -36,14 +37,23 @@ object PackageCategoryCommand extends Command:
     val mainRes = RdfUtil.m.createResource(AppConfig.CiWorker.rbRootUrl + mainVer)
     val categoryRes = packageCategory(mainRes, version, repoDir, outDir)
 
-    packageTasks(mainRes, categoryRes, version, repoDir, outDir)
-    packageProfiles(mainRes, categoryRes, version, repoDir, mainRepoDir, schemaRepoDir, outDir)
+    val taskModels = packageTasks(mainRes, categoryRes, version, repoDir, outDir)
+    val profileModels = packageProfiles(mainRes, categoryRes, version, repoDir, mainRepoDir, schemaRepoDir, outDir)
 
     // Finalize packaging the category
     println("Serializing category...")
     for (ext, format) <- Constants.outputFormats do
       val outFile = outDir.resolve(f"category/metadata.$ext").toFile
       RDFDataMgr.write(new FileOutputStream(outFile), categoryRes.getModel, format)
+
+    // Prepare the complete category dump
+    // Save the dump in the Jelly format, as we use it only internally. It is later fetched by
+    // the main repo packaging job.
+    println("Generating RDF dump...")
+    val allModels = Seq(categoryRes.getModel) ++ taskModels ++ profileModels
+    val dumpModel = RdfUtil.mergeModels(allModels)
+    val dumpOutFile = outDir.resolve(f"dump.jelly").toFile
+    RDFDataMgr.write(new FileOutputStream(dumpOutFile), dumpModel, JellyFormat.JELLY_SMALL_STRICT)
   }
 
   private def packageCategory(mainRes: Resource, version: String, repoDir: Path, outDir: Path):
@@ -70,7 +80,7 @@ object PackageCategoryCommand extends Command:
     newRes
 
   private def packageTasks(mainRes: Resource, categoryRes: Resource, version: String, repoDir: Path, outDir: Path):
-  Unit =
+  Seq[Model] =
     outDir.resolve("tasks/doc").toFile.mkdirs()
 
     println("Loading tasks...")
@@ -111,6 +121,8 @@ object PackageCategoryCommand extends Command:
         val outFile = outDir.resolve(f"tasks/task-$name.$ext").toFile
         RDFDataMgr.write(new FileOutputStream(outFile), taskM, format)
 
+    tasks.map(_._2)
+
 
   private def packageProfiles(
     mainRes: Resource,
@@ -120,7 +132,7 @@ object PackageCategoryCommand extends Command:
     mainRepoDir: Path,
     schemaRepoDir: Path,
     outDir: Path
-  ): Unit =
+  ): Iterable[Model] =
     // First, load all SHACL libs
     println("Loading SHACL libs...")
     val libs = schemaRepoDir.resolve("src/lib/profiles").toFile.listFiles()
@@ -179,6 +191,8 @@ object PackageCategoryCommand extends Command:
       for (ext, format) <- Constants.outputFormats do
         val outFile = outDir.resolve(f"profiles/profile-$name.$ext").toFile
         RDFDataMgr.write(new FileOutputStream(outFile), profileModel, format)
+
+    profileCollection.profiles.map(_._2)
 
   private def importShaclLibs(profileName: String, profileModel: Model, libs: Map[String, Model]): Unit =
     profileModel.listObjects().asScala
