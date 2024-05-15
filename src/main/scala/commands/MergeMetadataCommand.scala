@@ -48,7 +48,7 @@ object MergeMetadataCommand extends Command:
     // Remove usage info – it's added in the automatic metadata
     RdfUtil.removePropertyValuesDeep(tempDatasetRes, RdfUtil.staxHasStreamTypeUsage, repoMetadata)
 
-    val newDatasetRes = repoMetadata.createResource(AppConfig.CiWorker.baseDatasetUrl + mi.identifier + "/" + version)
+    val newDatasetRes = repoMetadata.createResource(PurlMaker.dataset(mi.identifier, version))
     repoMetadata.add(packageMetadata)
     RdfUtil.renameResource(RdfUtil.tempDataset, newDatasetRes, repoMetadata)
     RdfUtil.renameResource(tempDatasetRes, newDatasetRes, repoMetadata)

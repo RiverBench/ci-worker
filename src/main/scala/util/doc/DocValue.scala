@@ -75,7 +75,6 @@ object DocValue:
           Some(Array(s"#$name", name))
         else
           Some(uri.drop(AppConfig.CiWorker.baseDatasetUrl.length).split('/'))
-      // TODO: make this prettier (match) when we get rid of the other PURL stuff
       else if PurlMaker.unMake(uri).isDefined then
         PurlMaker.unMake(uri).map(p => Array(p.id, p.version))
       else if uri == AppConfig.CiWorker.rbRootUrl then
