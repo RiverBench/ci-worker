@@ -102,7 +102,7 @@ object PackageMainCommand extends Command:
 
     for (name, model) <- datasetCollection.datasets.toSeq.sortBy(_._1) do
       val mi = MetadataReader.fromModel(model)
-      sb.append(f"[$name]($name/index.md) | ")
+      sb.append(f"[`$name`]($name/index.md) | ")
       val streamType = mi.streamTypes.filterNot(_.isFlat).head
       sb.append(f"[${streamType.readableName.replace("stream", "").trim}]" +
         f"(${Constants.taxonomyDocBaseLink}${streamType.docName}) | ")

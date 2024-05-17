@@ -159,14 +159,14 @@ object CategoryDocGenCommand extends Command:
 
   private def taskOverviewDocGen(version: String, tasks: Seq[(String, Model)], outDir: Path): Unit =
     val sb = new StringBuilder()
-    sb.append("Identifier | Task name | Description\n")
+    sb.append("Task name | Identifier | Description\n")
     sb.append("--- | --- | ---\n")
     for (taskId, taskM) <- tasks.sortBy(_._1) do
       val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
       val taskName = RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskId
       val taskDesc = (RdfUtil.getString(taskRes, RdfUtil.dctermsDescription) getOrElse "").replace('\n', ' ')
       val taskPurl = PurlMaker.task(taskId, version)
-      sb.append(f"[`$taskId`]($taskPurl) | [$taskName]($taskPurl) | $taskDesc \n")
+      sb.append(f"[$taskName]($taskPurl) | [`$taskId`]($taskPurl) | $taskDesc \n")
 
     Files.writeString(outDir.resolve("category/task_table.md"), sb.toString())
 
