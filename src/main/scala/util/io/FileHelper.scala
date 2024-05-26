@@ -47,7 +47,7 @@ object FileHelper:
       .run()
 
     val tarIterator = Iterator
-      .continually(tarIs.getNextTarEntry)
+      .continually(tarIs.getNextEntry)
       .takeWhile(_ != null)
       .filter(tarIs.canReadEntryData)
       .filter(_.isFile)

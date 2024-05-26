@@ -4,14 +4,14 @@ ThisBuild / scalaVersion := "3.3.3"
 resolvers +=
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
 
-lazy val circeV = "0.14.5"
-lazy val jellyV = "0.5.3+8-2906cdf4-SNAPSHOT"
-lazy val jenaV = "4.7.0"
-lazy val pekkoV = "1.0.1"
-lazy val pekkoHttpV = "1.0.0"
-lazy val pekkoConnV = "1.0.0"
-lazy val rdf4jV = "4.3.0"
-lazy val icu4jV = "74.1"
+lazy val circeV = "0.14.7"
+lazy val jellyV = "0.7.0"
+lazy val jenaV = "4.10.0"
+lazy val pekkoV = "1.0.2"
+lazy val pekkoHttpV = "1.0.1"
+lazy val pekkoConnV = "1.0.2"
+lazy val rdf4jV = "4.3.11"
+lazy val icu4jV = "74.2"
 
 lazy val root = (project in file("."))
   .settings(
@@ -20,14 +20,14 @@ lazy val root = (project in file("."))
 
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
-      "com.google.guava" % "guava" % "31.1-jre",
+      "com.google.guava" % "guava" % "33.2.0-jre",
       "com.ibm.icu" % "icu4j" % icu4jV,
       "eu.ostrzyciel.jelly" %% "jelly-stream" % jellyV,
       "eu.ostrzyciel.jelly" %% "jelly-jena" % jellyV,
       "io.circe" %% "circe-core" % circeV,
       "io.circe" %% "circe-generic" % circeV,
       "io.circe" %% "circe-parser" % circeV,
-      "org.apache.commons" % "commons-compress" % "1.23.0",
+      "org.apache.commons" % "commons-compress" % "1.26.1",
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,
