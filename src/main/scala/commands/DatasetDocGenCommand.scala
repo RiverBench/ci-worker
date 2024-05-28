@@ -65,7 +65,7 @@ object DatasetDocGenCommand extends Command:
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
     val docIndex = docBuilderIndex.build(
       title,
-      mi.description + indexIntro(mi, landingPage) + streamPreview(mi, version),
+      mi.description + indexIntro(mi, landingPage) + streamPreview(mi),
       mi.datasetRes
     )
 
@@ -116,7 +116,7 @@ object DatasetDocGenCommand extends Command:
        |
        |""".stripMargin
 
-  private def streamPreview(mi: MetadataInfo, version: String): String =
+  private def streamPreview(mi: MetadataInfo): String =
     val extension = if mi.streamTypes.exists(_.elementType == ElementType.Triple) then "ttl" else "trig"
     val sb = StringBuilder("??? example \"Stream preview (click to expand)\"")
     for num <- Constants.streamSamples do
@@ -125,7 +125,7 @@ object DatasetDocGenCommand extends Command:
         f"""    === "Element $num"
            |
            |        ```turtle title="$num%010d.$extension"
-           |        --8<-- "docs/datasets/${mi.identifier}/$version/data/sample_$num%010d.$extension"
+           |        --8<-- "docs/datasets/${mi.identifier}/data/sample_$num%010d.$extension"
            |        ```
            |""".stripMargin
       )
