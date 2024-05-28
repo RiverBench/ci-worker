@@ -48,7 +48,7 @@ case class MetadataInfo(
       val sTypeIri = model.createResource(sType.iri)
       val sTypeUsage = model.listResourcesWithProperty(RdfUtil.staxHasStreamType, sTypeIri)
         .asScala.toSeq.head
-      val newUsage = datasetRes.getModel.createResource()
+      val newUsage = datasetRes.getModel.createResource(RdfUtil.newAnonId(sType.iri.getBytes))
       sTypeUsage.listProperties().asScala
         .foreach(p => newUsage.addProperty(p.getPredicate, p.getObject))
       datasetRes.addProperty(RdfUtil.staxHasStreamTypeUsage, newUsage)
@@ -111,7 +111,7 @@ object MetadataReader:
    * @return
    */
   def read(repoDir: Path): MetadataInfo =
-    val model = RDFDataMgr.loadModel(repoDir.resolve("metadata.ttl").toString)
+    val model = RdfIoUtil.loadWithStableBNodeIds(repoDir.resolve("metadata.ttl"))
     fromModel(model)
 
   def fromModel(model: Model): MetadataInfo =

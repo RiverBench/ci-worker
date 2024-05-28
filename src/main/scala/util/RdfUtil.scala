@@ -1,10 +1,12 @@
 package io.github.riverbench.ci_worker
 package util
 
-import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
+import org.apache.jena.rdf.model.{AnonId, Model, ModelFactory, Property, Resource}
 import org.apache.jena.vocabulary.{RDF, RDFS, SKOS, VCARD}
 
+import java.util.UUID
 import scala.jdk.CollectionConverters.*
+import scala.util.Random
 
 object RdfUtil:
   val m = ModelFactory.createDefaultModel()
@@ -174,4 +176,18 @@ object RdfUtil:
     for m <- models.iterator do
       model.add(m)
     model
+
   
+  def newAnonId(seed: Object): AnonId =
+    val r = Random(seed.hashCode())
+    AnonId.create(UUID(r.nextLong(), r.nextLong()).toString)
+
+  /**
+   * Creates a new anonymous ID for a blank node based on some bytes as the seed.
+   * Note that for two identical seeds, the same ID will be generated.
+   *
+   * @param seed any hashable object
+   * @return a new AnonId
+   */
+  def newAnonId(seed: Array[Byte]): AnonId =
+    AnonId.create(UUID.nameUUIDFromBytes(seed).toString)

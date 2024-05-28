@@ -39,7 +39,7 @@ object CategoryDocGenCommand extends Command:
     val schemaRepoDir = FileSystems.getDefault.getPath(args(3))
     val outDir = FileSystems.getDefault.getPath(args(4))
 
-    val catM = RDFDataMgr.loadModel(packageOutDir.resolve("category/metadata.ttl").toString)
+    val catM = RdfIoUtil.loadWithStableBNodeIds(packageOutDir.resolve("category/metadata.ttl"))
     val catRes = catM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Category).next.asResource
     val version = RdfUtil.getString(catRes, RdfUtil.hasVersion).get
 
@@ -136,7 +136,7 @@ object CategoryDocGenCommand extends Command:
       .filter(_.isDirectory)
       .map(f => {
         val taskName = f.getName
-        val taskM = RDFDataMgr.loadModel(metadataOutDir.resolve(f"tasks/task-$taskName.ttl").toString)
+        val taskM = RdfIoUtil.loadWithStableBNodeIds(metadataOutDir.resolve(f"tasks/task-$taskName.ttl"))
         val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
         val title = RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskName
         val description = Files.readString(f.toPath.resolve("index.md"))

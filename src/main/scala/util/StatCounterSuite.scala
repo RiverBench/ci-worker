@@ -47,7 +47,7 @@ object StatCounterSuite:
         .zipWithIndex
         .foreach((el, i) => {
           val (name, stat) = el
-          val statRes = m.createResource()
+          val statRes = m.createResource(RdfUtil.newAnonId((name + stat.toString).getBytes))
           statRes.addProperty(RDF.`type`, m.createResource(RdfUtil.pRb + name))
           statRes.addProperty(RdfUtil.hasDocWeight, i.toString, XSDinteger)
           stat.addToRdf(statRes)

@@ -29,7 +29,7 @@ object DatasetDocGenCommand extends Command:
 
     DocFileUtil.copyDocs(datasetRepoDir.resolve("doc"), outputDir.resolve("docs"))
 
-    val metadata = RDFDataMgr.loadModel(metadataPath.toString)
+    val metadata = RdfIoUtil.loadWithStableBNodeIds(metadataPath)
     val mi = MetadataReader.fromModel(metadata)
     val landingPage = mi.datasetRes.listProperties(RdfUtil.dcatLandingPage)
       .asScala.toSeq.head.getResource.getURI

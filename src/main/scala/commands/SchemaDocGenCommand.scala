@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.AppConfig
+import util.{AppConfig, RdfIoUtil}
 
 import io.github.riverbench.ci_worker.util.doc.MarkdownUtil
 import org.apache.jena.rdf.model.Model
@@ -35,7 +35,7 @@ object SchemaDocGenCommand extends Command:
       println(f"Processing ${mdFile.getFileName}...")
       val ontFile = inDir.resolve(mdFile.getFileName.toString.replace(".md", ".ttl"))
       val outFile = outDir.resolve(mdFile.getFileName.toString)
-      val m = RDFDataMgr.loadModel(ontFile.toString)
+      val m = RdfIoUtil.loadWithStableBNodeIds(ontFile)
       postProcessFile(m, version, mdFile, outFile)
   }
 

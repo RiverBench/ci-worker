@@ -33,14 +33,14 @@ case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1:
       case DistType.Jelly =>
         distRes.addProperty(RdfUtil.dcatMediaType, core.Constants.jellyContentType)
 
-    val md5Checksum = distRes.getModel.createResource()
+    val md5Checksum = distRes.getModel.createResource(RdfUtil.newAnonId(md5.getBytes))
       .addProperty(RDF.`type`, RdfUtil.SpdxChecksum)
       .addProperty(RdfUtil.spdxAlgorithm, RdfUtil.spdxChecksumAlgorithmMd5)
       .addProperty(RdfUtil.spdxChecksumValue, md5)
       .addProperty(RdfUtil.hasDocWeight, "1", XSDinteger)
     distRes.addProperty(RdfUtil.spdxChecksum, md5Checksum)
 
-    val sha1Checksum = distRes.getModel.createResource()
+    val sha1Checksum = distRes.getModel.createResource(RdfUtil.newAnonId(sha1.getBytes))
       .addProperty(RDF.`type`, RdfUtil.SpdxChecksum)
       .addProperty(RdfUtil.spdxAlgorithm, RdfUtil.spdxChecksumAlgorithmSha1)
       .addProperty(RdfUtil.spdxChecksumValue, sha1)
