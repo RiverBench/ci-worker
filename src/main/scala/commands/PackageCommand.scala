@@ -4,12 +4,13 @@ package commands
 import util.*
 import util.io.*
 
+import eu.ostrzyciel.jelly.core.proto.v1.PhysicalStreamType
 import eu.ostrzyciel.jelly.core.{JellyOptions, LogicalStreamTypeFactory}
-import eu.ostrzyciel.jelly.core.proto.v1.{LogicalStreamType, PhysicalStreamType}
 import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
-import org.apache.jena.riot.system.ErrorHandlerFactory
 import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
+import org.apache.jena.riot.lang.LabelToNode
+import org.apache.jena.riot.system.{ErrorHandlerFactory, FactoryRDFStd}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
 import org.apache.pekko.stream.*
 import org.apache.pekko.stream.connectors.file.TarArchiveMetadata
@@ -19,13 +20,14 @@ import org.apache.pekko.{Done, NotUsed}
 import org.eclipse.rdf4j.model.vocabulary.XSD
 import org.eclipse.rdf4j.rio
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, FileOutputStream}
+import java.io.{ByteArrayInputStream, FileOutputStream}
 import java.nio.file.{FileSystems, Path}
+import java.util.UUID
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
 object PackageCommand extends Command:
-  import eu.ostrzyciel.jelly.convert.jena.{given, *}
+  import eu.ostrzyciel.jelly.convert.jena.{*, given}
 
   sealed trait DistType(val weight: Int)
   object DistType:
@@ -166,6 +168,12 @@ object PackageCommand extends Command:
    * @return a flow that parses the input stream
    */
   private def parseJenaFlow: Flow[(TarArchiveMetadata, String), DatasetGraph, NotUsed] =
+    // Override the mechanism for creating blank nodes to make their IDs deterministic
+    // As long as the seed stays the same, the blank node IDs parsed from the same file will be the same.
+    // See: https://github.com/RiverBench/RiverBench/issues/81
+    val labelToNode = LabelToNode.createScopeByDocumentHash(UUID.fromString("13371337-1337-1337-1337-000000000000"))
+    val rdfFactory = FactoryRDFStd(labelToNode)
+
     Flow[(TarArchiveMetadata, String)].map((tarMeta, data) => {
       val name = tarMeta.filePathName
       val lang = if name.endsWith(".ttl") then Lang.TTL else Lang.TRIG
@@ -176,6 +184,7 @@ object PackageCommand extends Command:
         RDFParser.create()
           // most strict parsing settings possible
           .checking(true)
+          .factory(rdfFactory)
           .errorHandler(ErrorHandlerFactory.errorHandlerStrict)
           .fromString(data)
           .lang(lang)

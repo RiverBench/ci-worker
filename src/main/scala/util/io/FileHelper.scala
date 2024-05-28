@@ -129,10 +129,15 @@ object FileHelper:
           filePathPrefix = "",
           filePathName = path,
           size = bytes.length,
-          lastModification = Instant.now,
+          // Set modification time to 1970 to make the output ideally stable.
+          // See: https://github.com/RiverBench/RiverBench/issues/81
+          lastModification = Instant.ofEpochSecond(0),
         )
         extraDirs.map(extraDir => (
-          TarArchiveMetadata.directory(extraDir),
+          TarArchiveMetadata.directory(
+            extraDir,
+            Instant.ofEpochSecond(0),
+          ),
           Source.empty[ByteString]
         )) ++ Seq(
           (metadata, Source(Seq(ByteString(bytes))))
