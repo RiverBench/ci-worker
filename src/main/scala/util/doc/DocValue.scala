@@ -128,8 +128,7 @@ object DocValue:
       })
       .headOption
       .orElse(name)
-      .orElse(values.headOption.map(_._1.label))
-      .getOrElse("")
+      .getOrElse("zzz" + values.map(_._2.getSortKey).toSeq.sorted.hashCode().toString)
 
   case class List(values: Iterable[DocValue], baseName: Option[String]) extends DocValue:
     override val isNestedList = true
