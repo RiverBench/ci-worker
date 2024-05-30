@@ -25,6 +25,8 @@ object RdfUtil:
   val pDcterms = "http://purl.org/dc/terms/"
   // Prefix for FOAF
   val pFoaf = "http://xmlns.com/foaf/0.1/"
+  // Prefix for OWL
+  val pOwl = "http://www.w3.org/2002/07/owl#"
   // Prefix for RDFS
   val pRdfs = "http://www.w3.org/2000/01/rdf-schema#"
   // Prefix for SHACL
@@ -84,6 +86,8 @@ object RdfUtil:
   val dctermsModified = m.createProperty(pDcterms, "modified")
 
   val foafHomepage = m.createProperty(pFoaf, "homepage")
+
+  val owlVersionIri = m.createProperty(pOwl, "versionIRI")
 
   val shTargetClass = m.createProperty(pSh, "targetClass")
   val shTargetSubjectsOf = m.createProperty(pSh, "targetSubjectsOf")
