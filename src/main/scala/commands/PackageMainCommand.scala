@@ -69,11 +69,10 @@ object PackageMainCommand extends Command:
       categoryCollection.categoryDumps.values
 
     val dumpModel = RdfUtil.mergeModels(allModels)
-
-    if version == "dev" then
-      // Generate dataset overview
-      println("Generating dataset overview...")
-      generateDatasetOverview(datasetCollection, outDir)
+    
+    // Generate dataset overview
+    println("Generating dataset overview...")
+    generateDatasetOverview(datasetCollection, outDir)
 
     // Write to files
     println("Writing main metadata...")
