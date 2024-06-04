@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package util
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
-import org.apache.jena.graph.{Node, Triple}
+import org.apache.jena.graph.{Node, NodeFactory, Node_URI, Triple}
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.sparql.core.DatasetGraph
 import org.apache.jena.vocabulary.RDF
@@ -61,6 +61,9 @@ object StatCounterSuite:
  */
 class StatCounterSuite(val size: Long):
   import StatCounter.*
+  
+  // Hack. Jena usually represents the default graph node as null, which is not great for us here.
+  private val DEFAULT_GRAPH = NodeFactory.createBlankNode("DEFAULT GRAPH")
 
   // A bad heuristic: 10x the size of the stream is assumed to be the number of elements in the bloom filters
   private val cIris = new StatCounter[String](10 * size)
@@ -72,20 +75,23 @@ class StatCounterSuite(val size: Long):
   private val cBlankNodes = new LightStatCounter[String]()
   private val cQuotedTriples = new LightStatCounter[String]()
 
-  private val cSubjects = new LightStatCounter[String]()
-  private val cPredicates = new LightStatCounter[String]()
-  private val cObjects = new LightStatCounter[String]()
-  private val cGraphs = new LightStatCounter[String]()
+  private val cSubjects = new StatCounter[Node](10 * size)
+  private val cPredicates = new StatCounter[Node](10 * size)
+  private val cObjects = new StatCounter[Node](10 * size)
+  private val cGraphs = new StatCounter[Node](10 * size)
 
   private val cStatements = new LightStatCounter[String]()
 
   def add(ds: DatasetGraph): Unit =
-    cGraphs.lightAdd(
-      ds.listGraphNodes().asScala.size + (if ds.getDefaultGraph.isEmpty then 0 else 1)
-    )
-    val subjects = mutable.Set[String]()
-    val predicates = mutable.Set[String]()
-    val objects = mutable.Set[String]()
+    
+    if ds.getDefaultGraph.isEmpty then
+      cGraphs.add(ds.listGraphNodes().asScala.toSeq)
+    else
+      cGraphs.add(ds.listGraphNodes().asScala.toSeq :+ DEFAULT_GRAPH)
+      
+    val subjects = mutable.Set[Node]()
+    val predicates = mutable.Set[Node]()
+    val objects = mutable.Set[Node]()
     val iris = mutable.Set[String]()
     val blankNodes = mutable.Set[String]()
     val literals = mutable.Set[String]()
@@ -105,9 +111,9 @@ class StatCounterSuite(val size: Long):
       stCount += 1
       getTriples(t.asTriple)
     }).flatMap(t => {
-      subjects += t.getSubject.toString(false)
-      predicates += t.getPredicate.toString(false)
-      objects += t.getObject.toString(false)
+      subjects += t.getSubject
+      predicates += t.getPredicate
+      objects += t.getObject
 
       t.getSubject :: t.getPredicate :: t.getObject :: Nil
     }) ++ ds.listGraphNodes().asScala

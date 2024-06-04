@@ -3,6 +3,7 @@ package util
 
 import com.google.common.hash.{BloomFilter, Funnel, PrimitiveSink}
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
+import org.apache.jena.graph.Node
 import org.apache.jena.rdf.model.Resource
 
 //noinspection UnstableApiUsage
@@ -19,6 +20,10 @@ object StatCounter:
 
   implicit val stringFunnel: Funnel[String] =
     (from: String, into: PrimitiveSink) => into.putBytes(from.getBytes)
+    
+  // Add to the node's funnel both its hashcode and string repr. bytes to avoid collisions... just in case
+  implicit val nodeFunnel: Funnel[Node] =
+    (from: Node, into: PrimitiveSink) => into.putInt(from.hashCode()).putBytes(from.toString.getBytes)
 
 class LightStatCounter[T]:
   import StatCounter.*
