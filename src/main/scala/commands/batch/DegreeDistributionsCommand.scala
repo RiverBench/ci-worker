@@ -8,6 +8,7 @@ import util.io.*
 import eu.ostrzyciel.jelly.stream.{DecoderFlow, JellyIo}
 import eu.ostrzyciel.jelly.convert.jena.given
 import eu.ostrzyciel.jelly.core.proto.v1.RdfStreamFrame
+import org.apache.datasketches.cpc.*
 import org.apache.jena.graph.{Node, NodeFactory, Triple}
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
@@ -80,10 +81,10 @@ object DegreeDistributionsCommand extends Command:
     
     class LongMutable(var value: Long)
 
-    val sMap = new mutable.HashMap[Node, LongMutable]()
-    val pMap = new mutable.HashMap[Node, LongMutable]()
-    val oMap = new mutable.HashMap[Node, LongMutable]()
-    val gMap = new mutable.HashMap[Node, LongMutable]()
+    val sMap = new mutable.HashMap[Node, (CpcSketch, LongMutable)]()
+    val pMap = new mutable.HashMap[Node, (CpcSketch, LongMutable)]()
+    val oMap = new mutable.HashMap[Node, (CpcSketch, LongMutable)]()
+    val gMap = new mutable.HashMap[Node, (CpcSketch, LongMutable)]()
 
     val maps = Seq(
       "subject" -> sMap,
@@ -92,8 +93,9 @@ object DegreeDistributionsCommand extends Command:
       "graph" -> gMap
     )
 
-    def writeToMap(map: mutable.HashMap[Node, LongMutable], node: Node): Unit =
-      val counter = map.getOrElseUpdate(node, LongMutable(0L))
+    def writeToMap(map: mutable.HashMap[Node, (CpcSketch, LongMutable)], node: Node, hashes: Array[Int]): Unit =
+      val (sketch, counter) = map.getOrElseUpdate(node, (CpcSketch(11), LongMutable(0L)))
+      sketch.update(hashes)
       counter.value += 1
     
     val statementSource: Source[Triple | Quad, NotUsed] = Source.futureSource(response.map(_.entity.dataBytes))
@@ -108,18 +110,20 @@ object DegreeDistributionsCommand extends Command:
         val s = t.getSubject
         val p = t.getPredicate
         val o = t.getObject
-        writeToMap(sMap, s)
-        writeToMap(pMap, p)
-        writeToMap(oMap, o)
+        val hashes = Array(s.hashCode, p.hashCode, o.hashCode)
+        writeToMap(sMap, s, hashes)
+        writeToMap(pMap, p, hashes)
+        writeToMap(oMap, o, hashes)
       case q: Quad =>
         val s = q.getSubject
         val p = q.getPredicate
         val o = q.getObject
         val g = q.getGraph
-        writeToMap(sMap, s)
-        writeToMap(pMap, p)
-        writeToMap(oMap, o)
-        writeToMap(gMap, g)
+        val hashes = Array(s.hashCode, p.hashCode, o.hashCode, g.hashCode)
+        writeToMap(sMap, s, hashes)
+        writeToMap(pMap, p, hashes)
+        writeToMap(oMap, o, hashes)
+        writeToMap(gMap, g, hashes)
     }
 
     streamFuture map { _ =>
@@ -133,11 +137,13 @@ object DegreeDistributionsCommand extends Command:
 
       for (name, map) <- maps do
         val os = BufferedWriter(FileWriter(outDir.resolve(f"$name.tsv").toFile))
-        for (node, counter) <- map do
+        for (node, (sketch, counter)) <- map do
+          val data = f"${counter.value}\t" +
+            f"${sketch.getLowerBound(2)}\t${sketch.getEstimate}\t${sketch.getUpperBound(2)}\n"
           if outputNodes == 1 then
-            os.write(f"${node.toString(true)}\t${counter.value}\n")
+            os.write(f"${node.toString(true)}\t$data")
           else
-            os.write(f"${counter.value}\n")
+            os.write(data)
         os.close()
 
       println("Done.")
