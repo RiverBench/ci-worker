@@ -28,15 +28,8 @@ object FileHelper:
    */
   def readArchive(url: String)(implicit as: ActorSystem[_]):
   Source[(TarArchiveMetadata, ByteString), NotUsed] =
-    implicit val ec: ExecutionContext = as.executionContext
-    val response: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = url))
-      .flatMap {
-        // Follow redirects
-        case HttpResponse(StatusCodes.Redirection(_), headers, _, _) =>
-          val newUri = headers.collect { case Location(loc) => loc }.head
-          Http().singleRequest(HttpRequest(uri = newUri))
-        case r => Future { r }
-      }
+    given ExecutionContext = as.executionContext
+    val response = HttpHelper.getWithFollowRedirects(url)
 
     // Unfortunately, Pekko untar stage is glitchy with large archives, so we have to
     // use the non-reactive Apache Commons implementation instead.

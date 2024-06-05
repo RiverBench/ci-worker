@@ -9,6 +9,7 @@ object Command:
   implicit private val ec: ExecutionContext = Global.actorSystem.executionContext
 
   val commands: Seq[Command] = Seq(
+    // CI commands
     CategoryDocGenCommand,
     DatasetDocGenCommand,
     GenerateRedirectCommand,
@@ -25,6 +26,9 @@ object Command:
     SelfTestCommand,
     ValidateCategoryCommand,
     ValidateRepoCommand,
+
+    // Batch commands
+    batch.DegreeDistributionsCommand,
   )
 
   def getCommand(name: Option[String]): Command =
