@@ -39,7 +39,6 @@ lazy val root = (project in file("."))
       "org.eclipse.rdf4j" % "rdf4j-model" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-trig" % rdf4jV,
-      "org.apache.datasketches" % "datasketches-java" % "6.0.0",
     ),
 
     // Discard module-info.class files

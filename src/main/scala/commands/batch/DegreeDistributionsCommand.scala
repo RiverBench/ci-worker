@@ -8,7 +8,6 @@ import util.io.*
 import eu.ostrzyciel.jelly.stream.{DecoderFlow, JellyIo}
 import eu.ostrzyciel.jelly.convert.jena.given
 import eu.ostrzyciel.jelly.core.proto.v1.RdfStreamFrame
-import org.apache.datasketches.cpc.*
 import org.apache.jena.graph.{Node, NodeFactory, Triple}
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
@@ -38,16 +37,17 @@ object DegreeDistributionsCommand extends Command:
       |As output it provides cardinality estimates for the number of unique triples in which subject, predicate,
       |object, and graph node appears. The estimates are provided with lower and upper bounds with 95% confidence.
       |
-      |Args: <profile-name> <version> <distribution-size> <out-dir>
+      |Args: <profile-name> <version> <distribution-size> <output-nodes (0/1)> <out-dir>
       |""".stripMargin
 
-  override def validateArgs(args: Array[String]): Boolean = args.length == 5
+  override def validateArgs(args: Array[String]): Boolean = args.length == 6
 
   override def run(args: Array[String]): Future[Unit] = Future {
     val profileName = args(1)
     val version = args(2)
     val distribution = args(3)
-    val outDir = Path.of(args(4))
+    val outputNodes = args(4).toInt
+    val outDir = Path.of(args(5))
 
     println(f"Fetching profile $profileName version $version...")
     val profileIri = PurlMaker.profile(profileName, version)
@@ -64,11 +64,12 @@ object DegreeDistributionsCommand extends Command:
         Future.successful(())
       else
         datasetOutDir.toFile.mkdirs()
-        Await.ready(processDataset(dataset, distribution, datasetOutDir), 10.hours)
+        Await.ready(processDataset(dataset, distribution, datasetOutDir, outputNodes), 10.hours)
   }
 
 
-  private def processDataset(datasetIri: Resource, distributionSize: String, outDir: Path): Future[Unit] =
+  private def processDataset(datasetIri: Resource, distributionSize: String, outDir: Path, outputNodes: Int): 
+  Future[Unit] =
     val datasetM = RDFDataMgr.loadModel(datasetIri.getURI, Lang.RDFXML)
     val distribution = datasetM.listSubjectsWithProperty(RdfUtil.dctermsIdentifier, f"jelly-$distributionSize")
       .asScala.toSeq.head
@@ -76,11 +77,13 @@ object DegreeDistributionsCommand extends Command:
 
     println(f"Processing data from $downloadUrl...")
     val response = HttpHelper.getWithFollowRedirects(downloadUrl)
+    
+    class LongMutable(var value: Long)
 
-    val sMap = new mutable.HashMap[Node, CpcSketch]()
-    val pMap = new mutable.HashMap[Node, CpcSketch]()
-    val oMap = new mutable.HashMap[Node, CpcSketch]()
-    val gMap = new mutable.HashMap[Node, CpcSketch]()
+    val sMap = new mutable.HashMap[Node, LongMutable]()
+    val pMap = new mutable.HashMap[Node, LongMutable]()
+    val oMap = new mutable.HashMap[Node, LongMutable]()
+    val gMap = new mutable.HashMap[Node, LongMutable]()
 
     val maps = Seq(
       "subject" -> sMap,
@@ -89,9 +92,9 @@ object DegreeDistributionsCommand extends Command:
       "graph" -> gMap
     )
 
-    def writeToMap(map: mutable.HashMap[Node, CpcSketch], node: Node, hashes: Array[Int]): Unit =
-      val subjectSketch = map.getOrElseUpdate(node, new CpcSketch(11))
-      subjectSketch.update(hashes)
+    def writeToMap(map: mutable.HashMap[Node, LongMutable], node: Node): Unit =
+      val counter = map.getOrElseUpdate(node, LongMutable(0L))
+      counter.value += 1
     
     val statementSource: Source[Triple | Quad, NotUsed] = Source.futureSource(response.map(_.entity.dataBytes))
       .via(Compression.gunzip())
@@ -105,20 +108,18 @@ object DegreeDistributionsCommand extends Command:
         val s = t.getSubject
         val p = t.getPredicate
         val o = t.getObject
-        val hashes = Array(s.hashCode, p.hashCode, o.hashCode)
-        writeToMap(sMap, s, hashes)
-        writeToMap(pMap, p, hashes)
-        writeToMap(oMap, o, hashes)
+        writeToMap(sMap, s)
+        writeToMap(pMap, p)
+        writeToMap(oMap, o)
       case q: Quad =>
         val s = q.getSubject
         val p = q.getPredicate
         val o = q.getObject
         val g = q.getGraph
-        val hashes = Array(s.hashCode, p.hashCode, o.hashCode, g.hashCode)
-        writeToMap(sMap, s, hashes)
-        writeToMap(pMap, p, hashes)
-        writeToMap(oMap, o, hashes)
-        writeToMap(gMap, g, hashes)
+        writeToMap(sMap, s)
+        writeToMap(pMap, p)
+        writeToMap(oMap, o)
+        writeToMap(gMap, g)
     }
 
     streamFuture map { _ =>
@@ -132,8 +133,11 @@ object DegreeDistributionsCommand extends Command:
 
       for (name, map) <- maps do
         val os = BufferedWriter(FileWriter(outDir.resolve(f"$name.tsv").toFile))
-        for (node, sketch) <- map do
-          os.write(f"${node.toString(true)}\t${sketch.getLowerBound(2)}\t${sketch.getEstimate}\t${sketch.getUpperBound(2)}\n")
+        for (node, counter) <- map do
+          if outputNodes == 1 then
+            os.write(f"${node.toString(true)}\t${counter.value}\n")
+          else
+            os.write(f"${counter.value}\n")
         os.close()
 
       println("Done.")
