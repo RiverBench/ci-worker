@@ -248,7 +248,13 @@ object CategoryDocGenCommand extends Command:
         Await.ready(preloadBibFuture, 60.seconds)
         val benchResultsDoc = benchResultsDocBuilder.build(
           label,
-          s"""This benchmark result was reported in a Nanopublication: [$npUri]($npUri).""".stripMargin,
+          s"""!!! info
+             |
+             |    This benchmark result was reported in a Nanopublication: [$npUri]($npUri).
+             |
+             |    The documentation here was generated automatically.
+             |
+             |""".stripMargin,
           newRootNode
         )
         // Remove the section title
