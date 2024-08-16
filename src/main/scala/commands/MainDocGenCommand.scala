@@ -28,7 +28,7 @@ object MainDocGenCommand extends Command:
 
     println("Generating main documentation...")
     val ontologies = RdfIoUtil.loadOntologies(schemaRepoDir)
-    val mainMetadata = RdfIoUtil.loadWithStableBNodeIds(mainMetadataOutDir.resolve("metadata.ttl"))
+    val mainMetadata = RdfIoUtil.loadModelWithStableBNodeIds(mainMetadataOutDir.resolve("metadata.ttl"))
     val mainDocOpt = DocBuilder.Options(
       titleProps = Seq(
         RdfUtil.hasLabelOverride,

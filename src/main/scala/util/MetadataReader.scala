@@ -111,7 +111,7 @@ object MetadataReader:
    * @return
    */
   def read(repoDir: Path): MetadataInfo =
-    val model = RdfIoUtil.loadWithStableBNodeIds(repoDir.resolve("metadata.ttl"))
+    val model = RdfIoUtil.loadModelWithStableBNodeIds(repoDir.resolve("metadata.ttl"))
     fromModel(model)
 
   def fromModel(model: Model): MetadataInfo =

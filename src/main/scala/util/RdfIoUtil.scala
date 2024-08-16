@@ -1,6 +1,7 @@
 package io.github.riverbench.ci_worker
 package util
 
+import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr, RDFParser}
 import org.apache.jena.riot.lang.LabelToNode
@@ -25,12 +26,12 @@ object RdfIoUtil:
 
     val model = ModelFactory.createDefaultModel()
     for path <- ontologyPaths do
-      val m = loadWithStableBNodeIds(path)
+      val m = loadModelWithStableBNodeIds(path)
       m.removeNsPrefix("")
       model.add(m)
     model
 
-  def loadWithStableBNodeIds(p: Path, lang: Lang = null): Model =
+  def loadModelWithStableBNodeIds(p: Path, lang: Lang = null): Model =
     val model = ModelFactory.createDefaultModel()
     RDFParser.create()
       .factory(rdfFactory)
@@ -38,3 +39,12 @@ object RdfIoUtil:
       .lang(lang)
       .parse(model)
     model
+    
+  def loadDatasetWithStableBNodeIds(p: Path, lang: Lang = null): Dataset =
+    val dataset = DatasetFactory.create()
+    RDFParser.create()
+      .factory(rdfFactory)
+      .source(p)
+      .lang(lang)
+      .parse(dataset)
+    dataset

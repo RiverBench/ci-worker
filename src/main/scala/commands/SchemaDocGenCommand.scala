@@ -35,7 +35,7 @@ object SchemaDocGenCommand extends Command:
       println(f"Processing ${mdFile.getFileName}...")
       val ontFile = inDir.resolve(mdFile.getFileName.toString.replace(".md", ".ttl"))
       val outFile = outDir.resolve(mdFile.getFileName.toString)
-      val m = RdfIoUtil.loadWithStableBNodeIds(ontFile)
+      val m = RdfIoUtil.loadModelWithStableBNodeIds(ontFile)
       postProcessFile(m, version, mdFile, outFile)
   }
 

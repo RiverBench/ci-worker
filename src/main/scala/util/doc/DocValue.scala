@@ -5,6 +5,7 @@ import util.{AppConfig, PurlMaker, RdfUtil}
 
 import com.ibm.icu.util.ULocale
 import io.github.riverbench.ci_worker.util.doc.MarkdownUtil.prettyLabel
+import io.github.riverbench.ci_worker.util.external.DoiBibliography
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.datatypes.xsd.impl.XSDBaseNumericType
 import org.apache.jena.rdf.model
@@ -66,8 +67,8 @@ object DocValue:
 
     override def getSortKey: String = label
 
-  object InternalLink:
-    def apply(value: model.Resource): InternalLink | Link =
+  object Link:
+    def apply(value: model.Resource): Link =
       val uri = value.getURI
       val split = if uri.startsWith(AppConfig.CiWorker.baseDatasetUrl) then
         if uri.contains("#statistics-") then
@@ -86,21 +87,29 @@ object DocValue:
       split match
         case Some(parts) =>
           if parts.length != 2 then
-            Link(value)
+            ExternalLink(value)
           else if parts(0).startsWith("#") then
             // Anchor link
             InternalLink(parts(0), parts(1))
           else
             InternalLink(uri, s"${parts(0)} (${parts(1)})")
-        case _ => Link(value)
+        case _ if uri.contains("//doi.org") => DoiLink(value)
+        case _ => ExternalLink(value)
 
-  case class InternalLink(uri: String, name: String) extends DocValue:
+  trait Link extends DocValue
+
+  case class InternalLink(uri: String, name: String) extends Link:
     def toMarkdown: String = f"[$name]($uri)"
     def getSortKey = name
 
-  case class Link(value: model.Resource) extends DocValue:
-    def toMarkdown: String = f"[${value.getURI}](${value.getURI})"
+  case class DoiLink(value: model.Resource) extends Link:
+    // We assume here that someone earlier preloaded the needed bibliography
+    private val bib = DoiBibliography.getBibliographyFromCache(value.getURI)
+    def toMarkdown: String = bib.getOrElse(f"[${value.getURI}](${value.getURI})")
+    override def getSortKey = value.getURI
 
+  case class ExternalLink(value: model.Resource) extends Link:
+    def toMarkdown: String = f"[${value.getURI}](${value.getURI})"
     override def getSortKey = value.getURI
 
   case class BlankNode(values: Iterable[(DocProp, DocValue)], name: Option[String]) extends DocValue:
@@ -144,7 +153,6 @@ object DocValue:
       "\n" + items.mkString("\n")
 
     override def toMarkdownSimple = values.headOption.map(_.toMarkdown).getOrElse("")
-
     override def getSortKey = baseName.getOrElse("")
 
   case class Table(values: Map[(String, DocProp), DocValue]) extends DocValue:

@@ -25,6 +25,8 @@ object RdfUtil:
   val pDcterms = "http://purl.org/dc/terms/"
   // Prefix for FOAF
   val pFoaf = "http://xmlns.com/foaf/0.1/"
+  // Prefix for IRAO
+  val pIrao = "http://ontology.ethereal.cz/irao/"
   // Prefix for OWL
   val pOwl = "http://www.w3.org/2002/07/owl#"
   // Prefix for RDFS
@@ -62,6 +64,7 @@ object RdfUtil:
   val hasTask = m.createProperty(pRb, "hasTask")
   val hasProfile = m.createProperty(pRb, "hasProfile")
   val hasCategory = m.createProperty(pRb, "hasCategory")
+  val usesTask = m.createProperty(pRb, "usesTask")
 
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
@@ -87,6 +90,8 @@ object RdfUtil:
 
   val foafHomepage = m.createProperty(pFoaf, "homepage")
 
+  val iraoHasFollowedProtocol = m.createProperty(pIrao, "hasFollowedProtocol")
+
   val owlVersionIri = m.createProperty(pOwl, "versionIRI")
 
   val shTargetClass = m.createProperty(pSh, "targetClass")
@@ -109,6 +114,7 @@ object RdfUtil:
   val TopicStreamElementSplit = m.createResource(pRb + "TopicStreamElementSplit")
   val Category = m.createResource(pRb + "Category")
   val Task = m.createResource(pRb + "Task")
+  val SystemUnderTest = m.createResource(pRb + "SystemUnderTest")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
 
   val DcatDistribution = m.createResource(pDcat + "Distribution")

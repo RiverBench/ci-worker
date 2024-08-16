@@ -17,6 +17,7 @@ object DocBuilder:
     defaultPropGroup: Option[String] = None,
     tabularProps: Seq[Property] = Seq(),
     startHeadingLevel: Int = 1,
+    customValueFormatters: PartialFunction[RDFNode, DocValue] = PartialFunction.empty,
   )
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
@@ -100,18 +101,20 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     DocValue.Table(tableMap)
 
   private def makeValue(docProp: DocProp, objects: Iterable[RDFNode]): DocValue =
-    def makeValueInternal(o: RDFNode): DocValue = o match
-      case lit: Literal if docProp.prop.getURI == RdfUtil.dcatByteSize.getURI =>
-        DocValue.SizeLiteral(lit.getLexicalForm)
-      case lit: Literal => DocValue.Literal(lit)
-      case res: Resource if res.isAnon =>
-        val nestedValues = getDocValuesForRes(res)
-        DocValue.BlankNode(nestedValues, getTitleForProps(nestedValues))
-      case res: Resource if docProp.prop.getURI == RDF.`type`.getURI ||
-        RdfUtil.isNamedThing(res, Some(ontologies)) =>
-        DocValue.RdfNamedThing(res, ontologies)
-      case res: Resource => DocValue.InternalLink(res)
-      case node => DocValue.Text(node.toString)
+    def makeValueInternal(o: RDFNode): DocValue =
+      o match
+        case opt.customValueFormatters(value) => value
+        case lit: Literal if docProp.prop.getURI == RdfUtil.dcatByteSize.getURI =>
+          DocValue.SizeLiteral(lit.getLexicalForm)
+        case lit: Literal => DocValue.Literal(lit)
+        case res: Resource if res.isAnon =>
+          val nestedValues = getDocValuesForRes(res)
+          DocValue.BlankNode(nestedValues, getTitleForProps(nestedValues))
+        case res: Resource if docProp.prop.getURI == RDF.`type`.getURI ||
+          RdfUtil.isNamedThing(res, Some(ontologies)) =>
+          DocValue.RdfNamedThing(res, ontologies)
+        case res: Resource => DocValue.Link(res)
+        case node => DocValue.Text(node.toString)
 
     val values = objects.map { o =>
       val list = GraphList.members(GNode.create(o.getModel.getGraph, o.asNode)).asScala

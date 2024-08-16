@@ -12,6 +12,8 @@ import _root_.io.circe.syntax.*
 import _root_.io.circe.generic.auto.*
 import _root_.io.circe.parser.decode
 
+import scala.util.{Failure, Success, Try}
+
 object DoiBibliography:
   case class BibliographyEntry(doi: String, bib: String)
   case class BibliographyCache(entries: List[BibliographyEntry])
@@ -35,9 +37,15 @@ object DoiBibliography:
       println(s"Loaded bibliography cache with ${workingCache.size} entries from $cacheFile")
   }
 
+  def preloadBibliography(doiLikes: Seq[String])(using as: ActorSystem[_]): Future[Unit] =
+    given ExecutionContext = as.executionContext
+    Future.sequence(doiLikes.map(getBibliography)) map (_ => {
+      saveCache()
+    })
+
   def getBibliography(doiLike: String)(using as: ActorSystem[_]): Future[String] =
     given ExecutionContext = as.executionContext
-    extractDoi(doiLike) flatMap { doi =>
+    Future.fromTry(extractDoi(doiLike)) flatMap { doi =>
       usedDois.put(doi, doi)
       workingCache.get(doi) match
         case Some(bib) => Future.successful(bib)
@@ -50,6 +58,9 @@ object DoiBibliography:
           bib
     }
 
+  def getBibliographyFromCache(doiLike: String): Option[String] =
+    extractDoi(doiLike).toOption.flatMap(doi => workingCache.get(doi))
+
   def saveCache(): Unit =
     val cacheFile = CiFileCache.getCachedFile("bibliography", "doi-cache.json")
     val cache = BibliographyCache(
@@ -60,12 +71,12 @@ object DoiBibliography:
     Files.writeString(cacheFile.toPath, cache.asJson.spaces2, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
     println(s"Saved bibliography cache with ${cache.entries.size} entries to $cacheFile")
 
-  private def extractDoi(doiLike: String): Future[String] =
+  private def extractDoi(doiLike: String): Try[String] =
     val split = doiLike.split("/")
     if split.length < 2 then
-      Future.failed(new IllegalArgumentException(s"Invalid DOI-like string: $doiLike"))
+      Failure(new IllegalArgumentException(s"Invalid DOI-like string: $doiLike"))
     else
-      Future.successful(split(split.length - 2) + "/" + split.last)
+      Success(split(split.length - 2) + "/" + split.last)
 
   private def fetchBibliography(doi: String)(using as: ActorSystem[_]): Future[String] =
     given ExecutionContext = as.executionContext

@@ -3,9 +3,11 @@ package commands
 
 import util.*
 import util.collection.*
+import util.external.*
 import util.doc.MarkdownUtil
 
 import eu.ostrzyciel.jelly.convert.jena.riot.JellyFormat
+import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.shacl.{ShaclValidator, Shapes}
@@ -26,7 +28,7 @@ object PackageCategoryCommand extends Command:
 
   override def validateArgs(args: Array[String]) = args.length == 6
 
-  override def run(args: Array[String]): Future[Unit] = Future {
+  override def run(args: Array[String]): Future[Unit] =
     val version = args(1)
     val repoDir = FileSystems.getDefault.getPath(args(2))
     val mainRepoDir = FileSystems.getDefault.getPath(args(3))
@@ -37,6 +39,7 @@ object PackageCategoryCommand extends Command:
     val mainRes = RdfUtil.m.createResource(AppConfig.CiWorker.rbRootUrl + mainVer)
     val categoryRes = packageCategory(mainRes, version, repoDir, outDir)
 
+    val performedBenchmarksF = getPerformedBenchmarks(categoryRes)
     val taskModels = packageTasks(mainRes, categoryRes, version, repoDir, outDir)
     val profileModels = packageProfiles(mainRes, categoryRes, version, repoDir, mainRepoDir, schemaRepoDir, outDir)
 
@@ -48,13 +51,16 @@ object PackageCategoryCommand extends Command:
 
     // Prepare the complete category dump
     // Save the dump in the Jelly format, as we use it only internally. It is later fetched by
-    // the main repo packaging job.
-    println("Generating RDF dump...")
-    val allModels = Seq(categoryRes.getModel) ++ taskModels ++ profileModels
-    val dumpModel = RdfUtil.mergeModels(allModels)
-    val dumpOutFile = outDir.resolve(f"dump.jelly").toFile
-    RDFDataMgr.write(new FileOutputStream(dumpOutFile), dumpModel, JellyFormat.JELLY_SMALL_STRICT)
-  }
+    // the main repo packaging job and the doc packager.
+    println("Waiting for performed benchmarks...")
+    performedBenchmarksF.map(dataset => {
+      println("Generating RDF dump...")
+      val allModels = Seq(categoryRes.getModel, dataset.getDefaultModel) ++ taskModels ++ profileModels
+      val dumpModel = RdfUtil.mergeModels(allModels)
+      dataset.setDefaultModel(dumpModel)
+      val dumpOutFile = outDir.resolve(f"dump.jelly").toFile
+      RDFDataMgr.write(new FileOutputStream(dumpOutFile), dataset, JellyFormat.JELLY_BIG_STRICT)
+    })
 
   private def packageCategory(mainRes: Resource, version: String, repoDir: Path, outDir: Path):
   Resource =
@@ -192,7 +198,22 @@ object PackageCategoryCommand extends Command:
         val outFile = outDir.resolve(f"profiles/profile-$name.$ext").toFile
         RDFDataMgr.write(new FileOutputStream(outFile), profileModel, format)
 
-    profileCollection.profiles.map(_._2)
+    profileCollection.profiles.values
+
+  private def getPerformedBenchmarks(categoryRes: Resource): Future[Dataset] =
+    val categoryId = categoryRes.getProperty(RdfUtil.dctermsIdentifier).getString
+    val futures = NanopublicationSparql.getForCategory(categoryId)
+      .map(Nanopublications.getNanopublication)
+    Future.sequence(futures).map { datasets =>
+      val ds = DatasetFactory.create()
+      datasets.foreach(fetchedDs => {
+        fetchedDs.listNames().asScala.foreach { name =>
+          ds.addNamedModel(name, fetchedDs.getNamedModel(name))
+        }
+      })
+      Nanopublications.saveCache()
+      ds
+    }
 
   private def importShaclLibs(profileName: String, profileModel: Model, libs: Map[String, Model]): Unit =
     profileModel.listObjects().asScala

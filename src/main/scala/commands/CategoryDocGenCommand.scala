@@ -2,15 +2,19 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.*
+import util.SemVer.*
 import util.collection.*
 import util.doc.*
+import util.external.*
 
 import org.apache.jena.rdf.model.{Model, Property, Resource}
-import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.vocabulary.{RDF, RDFS}
 
+import java.io.File
 import java.nio.file.{FileSystems, Files, Path}
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 object CategoryDocGenCommand extends Command:
   def name: String = "category-doc-gen"
@@ -33,13 +37,39 @@ object CategoryDocGenCommand extends Command:
     startHeadingLevel = 2,
   )
 
+  // Documentation formatter for system under test
+  private case class DocValueSut(name: String, version: Option[String]) extends DocValue:
+    override def toMarkdown: String = name + version.fold("")(v => s" ($v)")
+    override def getSortKey: String = toMarkdown
+
+  private val benchResultsDocOpt = DocBuilder.Options(
+    // TODO
+    titleProps = Seq(RDFS.label),
+    hidePropsInLevel = Seq(
+      (3, RDF.`type`),
+    ),
+    startHeadingLevel = 3,
+    customValueFormatters = {
+      case res: Resource if {
+        val props = res.listProperties().asScala.map(_.getPredicate).toSeq
+        res.hasProperty(RDF.`type`, RdfUtil.SystemUnderTest) &&
+          props.contains(RDFS.label) &&
+          (props.contains(RdfUtil.hasVersion) && props.size == 3 || props.size == 2)
+      } =>
+        val name = res.getProperty(RDFS.label).getObject.asLiteral().getString
+        val version = res.listProperties(RdfUtil.hasVersion).asScala.toSeq.headOption
+          .map(_.getObject.asLiteral().getString)
+        DocValueSut(name, version)
+    }
+  )
+
   def run(args: Array[String]): Future[Unit] = Future {
     val packageOutDir = FileSystems.getDefault.getPath(args(1))
     val repoDir = FileSystems.getDefault.getPath(args(2))
     val schemaRepoDir = FileSystems.getDefault.getPath(args(3))
     val outDir = FileSystems.getDefault.getPath(args(4))
 
-    val catM = RdfIoUtil.loadWithStableBNodeIds(packageOutDir.resolve("category/metadata.ttl"))
+    val catM = RdfIoUtil.loadModelWithStableBNodeIds(packageOutDir.resolve("category/metadata.ttl"))
     val catRes = catM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Category).next.asResource
     val version = RdfUtil.getString(catRes, RdfUtil.hasVersion).get
 
@@ -131,30 +161,93 @@ object CategoryDocGenCommand extends Command:
 
   private def taskDocGen(ontologies: Model, repoDir: Path, metadataOutDir: Path, outDir: Path, version: String):
   Seq[(String, Model)] =
+    val dumpDataset = RdfIoUtil.loadDatasetWithStableBNodeIds(metadataOutDir.resolve("dump.jelly"))
+    val potentialDois = dumpDataset.listNames().asScala
+      .flatMap(graphName => {
+        val m = dumpDataset.getNamedModel(graphName)
+        m.listObjects().asScala
+      })
+      .filter(_.isResource)
+      .map(_.asResource().getURI)
+      .filter(_.contains("//doi.org"))
+      .toSeq
+    val preloadBibFuture = DoiBibliography.preloadBibliography(potentialDois)
     val taskDocBuilder = new DocBuilder(ontologies, catTaskDocOpt)
+    val benchResultsDocBuilder = new DocBuilder(ontologies, benchResultsDocOpt)
+
+    def genOne(f: File): (String, Model) =
+      // Prepare data for the task documentation
+      val taskName = f.getName
+      val taskVersion = Version(version)
+      val taskM = RdfIoUtil.loadModelWithStableBNodeIds(metadataOutDir.resolve(f"tasks/task-$taskName.ttl"))
+      val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
+      val title = RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskName
+      val description = Files.readString(f.toPath.resolve("index.md"))
+
+      val taskDoc = taskDocBuilder.build(
+        "Metadata",
+        rdfInfo(PurlMaker.task(taskName, version)),
+        taskRes
+      )
+
+      // Process benchmark result Nanopublications
+      val benchmarkNodes = dumpDataset.listNames().asScala.flatMap(graphName => {
+        val m = dumpDataset.getNamedModel(graphName)
+        m.listStatements(null, RdfUtil.usesTask, null).asScala
+          .flatMap(st => PurlMaker.unMake(st.getResource.getURI).map(purl => (st, purl)))
+          .filter((_, purl) => {
+            if purl.kind != "tasks" || purl.id != taskName then
+              false
+            else
+              val taskVersionInNanopub = Version.tryParse(purl.version)
+              if taskVersionInNanopub.isEmpty then
+                println(s"Warning: Task $taskName has a benchmark result with an invalid version: $purl")
+                false
+              // Only include benchmark results that are for the same version or older
+              else taskVersionInNanopub.get.isLessOrEqualThan(taskVersion)
+          })
+          .flatMap((st, _) => {
+            val subject = st.getSubject
+            m.listSubjectsWithProperty(RdfUtil.iraoHasFollowedProtocol, subject)
+              .asScala.take(1)
+          })
+      }).toSeq
+
+      val resultMds = for rootNode <- benchmarkNodes yield
+        val m = rootNode.getModel
+        val newRootNode = m.createResource()
+        RdfUtil.renameResource(rootNode, newRootNode, m)
+        // Rename all internal IRIs to new blank nodes for doc generation purposes
+        val prefix = rootNode.getNameSpace
+        val toRename = m.listSubjects().asScala.filter(_.getNameSpace == prefix).toSeq
+        toRename.foreach(res => RdfUtil.renameResource(res, m.createResource(), m))
+        if !preloadBibFuture.isCompleted then
+          println("Waiting for bibliography preloading...")
+        Await.ready(preloadBibFuture, 60.seconds)
+        val benchResultsDoc = benchResultsDocBuilder.build(
+          "Benchmark results",
+          "This section contains benchmark results for this task.",
+          newRootNode
+        )
+        benchResultsDoc.toMarkdown
+
+      val targetDir = outDir.resolve(f"tasks/$taskName")
+      targetDir.toFile.mkdirs()
+      Files.writeString(
+        targetDir.resolve("index.md"),
+        f"# $title\n\n$description\n\n" + taskDoc.toMarkdown
+      )
+      Files.writeString(
+        targetDir.resolve("results.md"),
+        resultMds.mkString("\n\n")
+      )
+
+      DocFileUtil.copyDocs(f.toPath, targetDir, Seq("index.md"))
+      (taskName, taskM)
+
     repoDir.resolve("tasks").toFile.listFiles()
       .filter(_.isDirectory)
-      .map(f => {
-        val taskName = f.getName
-        val taskM = RdfIoUtil.loadWithStableBNodeIds(metadataOutDir.resolve(f"tasks/task-$taskName.ttl"))
-        val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
-        val title = RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskName
-        val description = Files.readString(f.toPath.resolve("index.md"))
-        val taskDoc = taskDocBuilder.build(
-          "Metadata",
-          rdfInfo(PurlMaker.task(taskName, version)),
-          taskRes
-        )
-        val targetDir = outDir.resolve(f"tasks/$taskName")
-        targetDir.toFile.mkdirs()
-        Files.writeString(
-          targetDir.resolve("index.md"),
-          f"# $title\n\n$description\n\n" + taskDoc.toMarkdown
-        )
-
-        DocFileUtil.copyDocs(f.toPath, targetDir, Seq("index.md"))
-        (taskName, taskM)
-      })
+      .map(genOne)
       .toSeq
 
   private def taskOverviewDocGen(version: String, tasks: Seq[(String, Model)], outDir: Path): Unit =
