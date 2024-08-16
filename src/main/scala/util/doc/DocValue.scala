@@ -15,6 +15,8 @@ import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
 object DocValue:
   import MarkdownUtil.indent
 
+  private val urlRegex = """https?://[^\s]+""".r
+
   case class Text(value: String) extends DocValue:
     def toMarkdown: String = value.strip
     def getSortKey = value.strip
@@ -105,7 +107,8 @@ object DocValue:
   case class DoiLink(value: model.Resource) extends Link:
     // We assume here that someone earlier preloaded the needed bibliography
     private val bib = DoiBibliography.getBibliographyFromCache(value.getURI)
-    def toMarkdown: String = bib.getOrElse(f"[${value.getURI}](${value.getURI})")
+    def toMarkdown: String = bib.fold(f"[${value.getURI}](${value.getURI})")
+      (b => urlRegex.replaceAllIn(b, m => f"[${m.matched}](${m.matched})"))
     override def getSortKey = value.getURI
 
   case class ExternalLink(value: model.Resource) extends Link:
