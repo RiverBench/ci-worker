@@ -47,14 +47,14 @@ lazy val root = (project in file("."))
     // Just Java Things (tm), I guess
     assembly / assemblyMergeStrategy := {
       case PathList("module-info.class") => MergeStrategy.discard
-      case PathList("META-INF", xs*) => (xs map {_.toLowerCase}) match {
+      case PathList("META-INF", xs @ _*) => (xs map {_.toLowerCase}) match {
         // Merge services – otherwise RDF4J's parsers won't get registered
         case "services" :: xs => MergeStrategy.filterDistinctLines
         case _ => MergeStrategy.discard
       }
       case PathList("reference.conf") => MergeStrategy.concat
       case PathList("redirect_template.html") => MergeStrategy.concat
-      case PathList("sparql", xs*) => MergeStrategy.concat
+      case PathList("sparql", xs @ _*) => MergeStrategy.concat
       case _ => MergeStrategy.first
     },
     assembly / assemblyOutputPath := file("target/assembly/ci-worker-assembly.jar"),
