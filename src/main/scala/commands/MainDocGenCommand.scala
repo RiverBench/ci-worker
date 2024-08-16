@@ -100,10 +100,10 @@ object MainDocGenCommand extends Command:
        |
        |""".stripMargin
     val s2 = dumpLink match
-      case Some(link) => s + f"    A complete dump of all metadata in RiverBench (without benchmark results) is available: \n    " +
+      case Some(link) => s + f"    A complete dump of all metadata in RiverBench (without benchmark results) is available: <br>" +
         MarkdownUtil.formatMetadataLinks(link, ".gz") + "\n\n"
       case None => s
     dump2Link match
-      case Some(link) => s2 + f"    A dump including community-contributed benchmark results (via Nanopublications) is also available: \n    " +
+      case Some(link) => s2 + f"    A dump including community-contributed benchmark results (via Nanopublications) is also available: <br>" +
         MarkdownUtil.formatDatasetMetadataLinks(link, ".gz") + "\n\n"
       case None => s2
