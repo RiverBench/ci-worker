@@ -1,0 +1,54 @@
+PREFIX rb: <https://w3id.org/riverbench/schema/metadata#>
+prefix np: <http://www.nanopub.org/nschema#>
+prefix npa: <http://purl.org/nanopub/admin/>
+prefix npx: <http://purl.org/nanopub/x/>
+prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+prefix dct: <http://purl.org/dc/terms/>
+
+select ?np where {
+  graph npa:graph {
+    ?np npa:hasHeadGraph ?h .
+    ?np npa:hasValidSignatureForPublicKey ?pubkey .
+  }
+  graph ?h {
+    ?np np:hasPublicationInfo ?pubInfo ;
+        np:hasAssertion ?assertionGraph .
+  }
+  graph ?pubInfo {
+    ?s npx:hasNanopubType rb:PerformedBenchmark .
+  }
+
+  filter exists {
+    graph ?assertionGraph {
+      { ?x rb:usesProfile ?rbElement . }
+      UNION
+      { ?x rb:usesTask ?rbElement . }
+      BIND(REPLACE(STR(?rbElement), '^.*/([a-z0-9]+).*', '$1') as ?categoryName)
+      FILTER(?categoryName = <<CATEGORY>>)
+    }
+  }
+  filter not exists {
+    graph npa:graph {
+      ?newversion npa:hasHeadGraph ?nh .
+      ?newversion npa:hasValidSignatureForPublicKey ?pubkey .
+    }
+    graph ?nh {
+      ?newversion np:hasPublicationInfo ?ni .
+    }
+    graph ?ni {
+      ?newversion npx:supersedes ?np .
+    }
+  }
+  filter not exists {
+    graph npa:graph {
+      ?retraction npa:hasHeadGraph ?rh .
+      ?retraction npa:hasValidSignatureForPublicKey ?pubkey .
+    }
+    graph ?rh {
+      ?retraction np:hasAssertion ?ra .
+    }
+    graph ?ra {
+      ?somebody npx:retracts ?np .
+    }
+  }
+}

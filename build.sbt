@@ -31,6 +31,7 @@ lazy val root = (project in file("."))
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,
+      "org.apache.jena" % "jena-rdfconnection" % jenaV,
       "org.apache.pekko" %% "pekko-connectors-file" % pekkoConnV,
       "org.apache.pekko" %% "pekko-actor-typed" % pekkoV,
       "org.apache.pekko" %% "pekko-stream-typed" % pekkoV,
