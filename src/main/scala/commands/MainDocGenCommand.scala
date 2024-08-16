@@ -50,9 +50,10 @@ object MainDocGenCommand extends Command:
     val mainDocBuilder = new DocBuilder(ontologies, mainDocOpt)
     val baseLink = f"${AppConfig.CiWorker.rbRootUrl}v/$version"
     val dumpLink = f"${AppConfig.CiWorker.rbRootUrl}dumps/$version"
+    val dumpWithResults = f"${AppConfig.CiWorker.rbRootUrl}dumps-with-results/$version"
     val mainDoc = mainDocBuilder.build(
       "RiverBench" + (if version == "dev" then "" else f" ($version)"),
-      Files.readString(repoDir.resolve("doc/index_body.md")) + rdfInfo(baseLink, Some(dumpLink)),
+      Files.readString(repoDir.resolve("doc/index_body.md")) + rdfInfo(baseLink, Some(dumpLink), Some(dumpWithResults)),
       rootRes
     )
     Files.writeString(
@@ -90,7 +91,7 @@ object MainDocGenCommand extends Command:
       |-->
       |""".stripMargin.strip
 
-  private def rdfInfo(baseLink: String, dumpLink: Option[String] = None): String =
+  private def rdfInfo(baseLink: String, dumpLink: Option[String] = None, dump2Link: Option[String] = None): String =
     val s = f"""
        |
        |!!! info
@@ -98,7 +99,11 @@ object MainDocGenCommand extends Command:
        |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
        |
        |""".stripMargin
-    dumpLink match
-      case Some(link) => s + f"    A complete dump of all metadata in RiverBench is also available: " +
+    val s2 = dumpLink match
+      case Some(link) => s + f"    A complete dump of all metadata in RiverBench (without benchmark results) is available: " +
         MarkdownUtil.formatMetadataLinks(link, ".gz") + "\n\n"
       case None => s
+    dump2Link match
+      case Some(link) => s2 + f"    A dump including community-contributed benchmark results (via Nanopublications) is also available: " +
+        MarkdownUtil.formatDatasetMetadataLinks(link, ".gz") + "\n\n"
+      case None => s2
