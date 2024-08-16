@@ -14,9 +14,9 @@ object NanopublicationSparql:
     "https://virtuoso.services.np.trustyuri.net/sparql",
   )
   private var preferredEndpoint = (0, endpoints.head)
-  private val baseQueryString = Files.readString(
-    Path.of(getClass.getResource("/sparql/getNanopubsForCategory.rq").toURI.getPath)
-  )
+  private val baseQueryString = 
+    String(getClass.getResourceAsStream("/sparql/getNanopubsForCategory.rq").readAllBytes())
+  
 
   def getForCategory(category: String): Seq[String] =
     val query = parametrizeQuery(baseQueryString, Map("CATEGORY" -> f"'$category'"))
