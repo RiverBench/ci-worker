@@ -270,7 +270,11 @@ object CategoryDocGenCommand extends Command:
       else resultMds.mkString("\n\n")
       Files.writeString(
         targetDir.resolve("results.md"),
-        f"# Benchmark results for task $taskName\n\n$resultsBody"
+        s"""# Benchmark results for task $taskName
+           |
+           |[<- Back to task definition](index.md)
+           |
+           |$resultsBody""".stripMargin
       )
 
       DocFileUtil.copyDocs(f.toPath, targetDir, Seq("index.md"))
