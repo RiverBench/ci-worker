@@ -5,6 +5,7 @@ import util.*
 import util.collection.*
 import util.doc.MarkdownUtil
 
+import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{Model, Property, RDFNode, Resource}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.vocabulary.RDF
@@ -64,11 +65,17 @@ object PackageMainCommand extends Command:
 
     // Generate RDF dump of all metadata
     println("Fetching category dumps for merging...")
+    val categoryDumps = categoryCollection.categoryDumps.values
     val allModels = Seq(mainModel) ++
       datasetCollection.datasets.values ++
-      categoryCollection.categoryDumps.values
+      categoryDumps.map(_.getDefaultModel)
 
     val dumpModel = RdfUtil.mergeModels(allModels)
+    val dumpWithResultsDataset = DatasetFactory.create(dumpModel)
+    for categoryDump <- categoryDumps do
+      for graphName <- categoryDump.listNames().asScala do
+        val graph = categoryDump.getNamedModel(graphName)
+        dumpWithResultsDataset.addNamedModel(graphName, graph)
     
     // Generate dataset overview
     println("Generating dataset overview...")
@@ -85,6 +92,13 @@ object PackageMainCommand extends Command:
       val dumpOutFile = outDir.resolve(f"dump.$ext.gz").toFile
       val os = new GZIPOutputStream(new FileOutputStream(dumpOutFile))
       RDFDataMgr.write(os, dumpModel, format)
+      os.close()
+
+    println("Writing dump with benchmark results...")
+    for (ext, format) <- Constants.datasetOutputFormats do
+      val dumpWithNanopubsOutFile = outDir.resolve(f"dump-with-results.$ext.gz").toFile
+      val os = new GZIPOutputStream(new FileOutputStream(dumpWithNanopubsOutFile))
+      RDFDataMgr.write(os, dumpWithResultsDataset, format)
       os.close()
 
     println("Done.")

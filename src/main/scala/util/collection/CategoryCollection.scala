@@ -2,6 +2,7 @@ package io.github.riverbench.ci_worker
 package util.collection
 
 import eu.ostrzyciel.jelly.convert.jena.riot.JellyLanguage
+import org.apache.jena.query.Dataset
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
 
@@ -29,11 +30,11 @@ class CategoryCollection(namesToUris: Iterable[(String, String)]):
     })
     .toMap
 
-  lazy val categoryDumps: Map[String, Model] = namesToUris
+  lazy val categoryDumps: Map[String, Dataset] = namesToUris
     .map((name, uri) => {
       val dumpUri = uri.replace("metadata.ttl", "dump.jelly")
       try {
-        (name, RDFDataMgr.loadModel(dumpUri, JellyLanguage.JELLY))
+        (name, RDFDataMgr.loadDataset(dumpUri, JellyLanguage.JELLY))
       }
       catch {
         case e: Exception =>

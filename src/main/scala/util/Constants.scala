@@ -12,7 +12,13 @@ object Constants:
     ("ttl", RDFFormat.TURTLE_PRETTY),
     ("rdf", RDFFormat.RDFXML_PRETTY),
     ("nt", RDFFormat.NTRIPLES_UTF8),
-    ("jelly", JellyFormat.JELLY_SMALL_STRICT),
+    ("jelly", JellyFormat.JELLY_BIG_STRICT),
+  )
+
+  val datasetOutputFormats = Seq(
+    ("trig", RDFFormat.TRIG_PRETTY),
+    ("nq", RDFFormat.NQUADS_UTF8),
+    ("jelly", JellyFormat.JELLY_BIG_STRICT),
   )
 
   val allowedDocExtensions = Set("md", "jpg", "png", "svg", "jpeg", "bmp", "webp", "gif")
