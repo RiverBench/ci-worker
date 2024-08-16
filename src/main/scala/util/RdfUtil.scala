@@ -27,6 +27,8 @@ object RdfUtil:
   val pFoaf = "http://xmlns.com/foaf/0.1/"
   // Prefix for IRAO
   val pIrao = "http://ontology.ethereal.cz/irao/"
+  // Prefix for NP (nanopubs)
+  val pNp = "http://www.nanopub.org/nschema#"
   // Prefix for OWL
   val pOwl = "http://www.w3.org/2002/07/owl#"
   // Prefix for RDFS
@@ -83,14 +85,20 @@ object RdfUtil:
   val dcatSeriesMember = m.createProperty(pDcat, "seriesMember")
   val dcatDataset = m.createProperty(pDcat, "dataset")
 
+  val dctermsCreated = m.createProperty(pDcterms, "created")
+  val dctermsCreator = m.createProperty(pDcterms, "creator")
   val dctermsDescription = m.createProperty(pDcterms, "description")
   val dctermsIdentifier = m.createProperty(pDcterms, "identifier")
+  val dctermsLicense = m.createProperty(pDcterms, "license")
   val dctermsTitle = m.createProperty(pDcterms, "title")
   val dctermsModified = m.createProperty(pDcterms, "modified")
 
   val foafHomepage = m.createProperty(pFoaf, "homepage")
 
   val iraoHasFollowedProtocol = m.createProperty(pIrao, "hasFollowedProtocol")
+  
+  val npHasAssertion = m.createProperty(pNp, "hasAssertion")
+  val npHasPublicationInfo = m.createProperty(pNp, "hasPublicationInfo")
 
   val owlVersionIri = m.createProperty(pOwl, "versionIRI")
 

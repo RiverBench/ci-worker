@@ -7,7 +7,7 @@ import util.collection.*
 import util.doc.*
 import util.external.*
 
-import org.apache.jena.rdf.model.{Model, Property, Resource}
+import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.vocabulary.{RDF, RDFS}
 
 import java.io.File
@@ -43,8 +43,6 @@ object CategoryDocGenCommand extends Command:
     override def getSortKey: String = toMarkdown
 
   private val benchResultsDocOpt = DocBuilder.Options(
-    // TODO
-    titleProps = Seq(RDFS.label),
     hidePropsInLevel = Seq(
       (3, RDF.`type`),
     ),
@@ -60,7 +58,12 @@ object CategoryDocGenCommand extends Command:
         val version = res.listProperties(RdfUtil.hasVersion).asScala.toSeq.headOption
           .map(_.getObject.asLiteral().getString)
         DocValueSut(name, version)
-    }
+    },
+    defaultPropGroup = Some("General information"),
+  )
+
+  private val allowedPubInfoPredicates = Set(
+    RdfUtil.dctermsCreator, RdfUtil.dctermsLicense, RdfUtil.dctermsCreated,
   )
 
   def run(args: Array[String]): Future[Unit] = Future {
@@ -191,8 +194,19 @@ object CategoryDocGenCommand extends Command:
       )
 
       // Process benchmark result Nanopublications
+      // Tuple: (nanopub URI, pubinfo graph URI, label)
+      val benchmarkNodeToNanopubInfo = scala.collection.mutable.Map[String, (Resource, Resource, String)]()
+      val nanopubUriToLabel = scala.collection.mutable.Map[String, String]()
       val benchmarkNodes = dumpDataset.listNames().asScala.flatMap(graphName => {
         val m = dumpDataset.getNamedModel(graphName)
+        m.listStatements(null, RdfUtil.npHasAssertion, null).asScala.foreach(st => {
+          val npUri = st.getSubject.asResource()
+          val pubInfoGraphName = st.getSubject.getProperty(RdfUtil.npHasPublicationInfo).getObject.asResource()
+          val mPubInfo = dumpDataset.getNamedModel(pubInfoGraphName)
+          val label = mPubInfo.listStatements(npUri, RDFS.label, null).asScala.toSeq
+            .map(_.getObject.asLiteral().getString).headOption.getOrElse(npUri.getURI)
+          benchmarkNodeToNanopubInfo(st.getObject.asResource().getURI) = (npUri, pubInfoGraphName, label)
+        })
         m.listStatements(null, RdfUtil.usesTask, null).asScala
           .flatMap(st => PurlMaker.unMake(st.getResource.getURI).map(purl => (st, purl)))
           .filter((_, purl) => {
@@ -214,9 +228,17 @@ object CategoryDocGenCommand extends Command:
       }).toSeq
 
       val resultMds = for rootNode <- benchmarkNodes yield
-        val m = rootNode.getModel
+        val (npUri, pubInfoUri, label) = benchmarkNodeToNanopubInfo(rootNode.getURI)
+        val m = ModelFactory.createDefaultModel()
+        m.add(rootNode.getModel)
         val newRootNode = m.createResource()
         RdfUtil.renameResource(rootNode, newRootNode, m)
+        val toAdd = dumpDataset.getNamedModel(pubInfoUri)
+          .listStatements().asScala
+          .filter(st => allowedPubInfoPredicates.contains(st.getPredicate))
+          .map(st => m.createStatement(newRootNode, st.getPredicate, st.getObject))
+          .toArray
+        m.add(toAdd)
         // Rename all internal IRIs to new blank nodes for doc generation purposes
         val prefix = rootNode.getNameSpace
         val toRename = m.listSubjects().asScala.filter(_.getNameSpace == prefix).toSeq
@@ -225,11 +247,12 @@ object CategoryDocGenCommand extends Command:
           println("Waiting for bibliography preloading...")
         Await.ready(preloadBibFuture, 60.seconds)
         val benchResultsDoc = benchResultsDocBuilder.build(
-          "Benchmark results",
-          "This section contains benchmark results for this task.",
+          label,
+          s"""This benchmark result was reported in a Nanopublication: [$npUri]($npUri).""".stripMargin,
           newRootNode
         )
-        benchResultsDoc.toMarkdown
+        // Remove the section title
+        benchResultsDoc.toMarkdown.replace("#### General information\n", "")
 
       val targetDir = outDir.resolve(f"tasks/$taskName")
       targetDir.toFile.mkdirs()
@@ -237,9 +260,11 @@ object CategoryDocGenCommand extends Command:
         targetDir.resolve("index.md"),
         f"# $title\n\n$description\n\n" + taskDoc.toMarkdown
       )
+      val resultsBody = if resultMds.isEmpty then "_No benchmark results were reported yet for this task._"
+      else resultMds.mkString("\n\n")
       Files.writeString(
         targetDir.resolve("results.md"),
-        resultMds.mkString("\n\n")
+        f"# Benchmark results for task $taskName\n\n$resultsBody"
       )
 
       DocFileUtil.copyDocs(f.toPath, targetDir, Seq("index.md"))
