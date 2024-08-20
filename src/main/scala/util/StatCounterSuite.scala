@@ -82,8 +82,13 @@ class StatCounterSuite(val size: Long):
 
   private val cStatements = new LightStatCounter[String]()
 
+  /**
+   * Also runs additional validation checks on the dataset.
+   * See: https://github.com/RiverBench/RiverBench/issues/107
+   * Yeah, I know this spaghettifies the code, but we already iterate over all nodes here.
+   * @throws IllegalArgumentException if the dataset is invalid
+   */
   def add(ds: DatasetGraph): Unit =
-    
     if ds.getDefaultGraph.isEmpty then
       cGraphs.add(ds.listGraphNodes().asScala.toSeq)
     else
@@ -120,11 +125,14 @@ class StatCounterSuite(val size: Long):
 
     allNodes.foreach(n => {
       if n.isURI then
-        iris += n.getURI
+        val iri = n.getURI
+        checkAsciiControlChars(iri)
+        iris += iri
       else if n.isBlank then
         blankNodes += n.getBlankNodeLabel
       else if n.isLiteral then
         val lit = n.toString(false)
+        checkAsciiControlChars(lit)
         literals += lit
         if n.getLiteralLanguage != "" then
           langLiterals += lit
@@ -152,6 +160,16 @@ class StatCounterSuite(val size: Long):
     cPredicates.addUnique(predicates)
     cObjects.addUnique(objects)
     cStatements.lightAdd(stCount)
+
+  /**
+   * @throws IllegalArgumentException if the string contains disallowed ASCII control characters (0x00-0x1F)
+   */
+  private def checkAsciiControlChars(s: String): Unit =
+    if s.exists(c => c < 20) then
+      throw new IllegalArgumentException(f"String \"$s\" contains disallowed ASCII control characters (0x00-0x1F). " +
+        f"This will break the RDF/XML serialization. If these characters must be here, consult the RiverBench " +
+        f"maintainer. Otherwise, if they are here by mistake, please remove them. " +
+        f"See: https://github.com/RiverBench/dataset-politiquices/issues/1")
 
   def result: StatCounterSuite.Result =
     StatCounterSuite.Result(cIris.result, cBlankNodes.result, cLiterals.result, cPlainLiterals.result,
