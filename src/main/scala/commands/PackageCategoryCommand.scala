@@ -312,11 +312,17 @@ object PackageCategoryCommand extends Command:
       for (dsName, dsUri, dists) <- datasets.sortBy(_._1) do
         profileTableSb.append(f"\n[$dsName]($dsUri)")
         for col <- columns do
-          val (distUrl, distSize, distByteSize) = dists
-            .filter(d => d._2 <= col._1 && d._1.contains(filterBy))
-            .last
-          profileTableSb.append(f" | [${Constants.packageSizeToHuman(distSize, true)} " +
-            f"(${MarkdownUtil.formatSize(distByteSize)})]($distUrl)")
+          val distOption = if col._2 == "Full" then
+            // For the "Full" column get the largest available distribution
+            dists.filter(d => d._1.contains(filterBy)).lastOption
+          else
+            // Otherwise get the distribution with the matching size
+            dists.filter(d => d._2 == col._1 && d._1.contains(filterBy)).lastOption
+          distOption match
+            case None => profileTableSb.append(" | –")
+            case Some((distUrl, distSize, distByteSize)) =>
+              profileTableSb.append(f" | [${Constants.packageSizeToHuman(distSize, true)} " +
+                f"(${MarkdownUtil.formatSize(distByteSize)})]($distUrl)")
 
     Files.writeString(outDir.resolve(f"profiles/doc/${name}_table.md"), profileTableSb.toString())
 
