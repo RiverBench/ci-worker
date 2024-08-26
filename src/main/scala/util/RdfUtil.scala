@@ -123,6 +123,7 @@ object RdfUtil:
   val TopicStreamElementSplit = m.createResource(pRb + "TopicStreamElementSplit")
   val Category = m.createResource(pRb + "Category")
   val Task = m.createResource(pRb + "Task")
+  val StatementCountStatistics = m.createResource(pRb + "StatementCountStatistics")
   val SystemUnderTest = m.createResource(pRb + "SystemUnderTest")
   val DocGroup = m.createResource(pRbDoc + "DocGroup")
 

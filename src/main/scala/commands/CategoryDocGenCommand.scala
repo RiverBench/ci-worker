@@ -332,12 +332,13 @@ object CategoryDocGenCommand extends Command:
         """
           |## Download links
           |
-          |Below you will find links to download the profile's datasets in different lengths.
+          |Below you will find links to download this profile's datasets in different lengths. The length of the dataset
+          |is measured in stream elements (individual graphs or datasets) and is indicated in the table.
+          |To see the size in statements (triples or quads), hover your mouse over the download link.
           |
           |!!! warning
           |
-          |    Some datasets are shorter than others and a given distribution may not be available for all datasets.
-          |    In that case, a link to the longest available distribution of the dataset is provided.
+          |    Some datasets are shorter than others and a given fixed-size distribution may not be available for all datasets.
           |
           |""".stripMargin +
           Files.readString(metadataOutDir.resolve(f"profiles/doc/${name}_table.md"))

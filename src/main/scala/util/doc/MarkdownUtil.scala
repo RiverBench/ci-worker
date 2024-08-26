@@ -4,7 +4,7 @@ package util.doc
 import util.Constants
 
 object MarkdownUtil:
-  private val sizePrefixes = Seq("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+  private val sizeSuffixes = Seq("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
 
   val indent = "    "
 
@@ -34,9 +34,8 @@ object MarkdownUtil:
       else
         val (i, d2) = inner(d / 1024d)
         (i + 1, d2)
-
     val (level, d) = inner(v.toDouble)
-    f"$d%.2f ${sizePrefixes(level)}"
+    f"$d%.1f ${sizeSuffixes(level)}"
 
   def formatMetadataLinks(baseUrl: String, suffix: String = ""): String =
     f"**[Turtle]($baseUrl.ttl$suffix)**, **[N-Triples]($baseUrl.nt$suffix)**, " +

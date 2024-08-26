@@ -246,8 +246,8 @@ object PackageCategoryCommand extends Command:
       throw new Exception(s"No distribution shape specified in profile $name")
 
     val profileTableSb = StringBuilder()
-    // name, dataset uri, Seq(dist download url, size, byte size)
-    val datasets: mutable.ArrayBuffer[(String, Resource, Seq[(String, Long, Long)])] = mutable.ArrayBuffer()
+    // name, dataset uri, Seq(dist download url, size, byte size, statements)
+    val datasets: mutable.ArrayBuffer[(String, Resource, Seq[(String, Long, Long, Long)])] = mutable.ArrayBuffer()
 
     for ((name, dsModel) <- datasetCollection.datasets) do
       if dsModel.isEmpty then
@@ -265,7 +265,13 @@ object PackageCategoryCommand extends Command:
                 val downloadUrl = distRes.getProperty(RdfUtil.dcatDownloadURL).getObject.asResource().getURI
                 val size = distRes.getProperty(RdfUtil.hasStreamElementCount).getObject.asLiteral().getLong
                 val byteSize = distRes.getProperty(RdfUtil.dcatByteSize).getObject.asLiteral().getLong
-                (downloadUrl, size, byteSize)
+                val stats = distRes.getProperty(RdfUtil.hasStatisticsSet).getResource
+                val statements = stats.listProperties(RdfUtil.hasStatistics).asScala
+                  .map(_.getResource)
+                  .filter(_.hasProperty(RDF.`type`, RdfUtil.StatementCountStatistics))
+                  .map(_.getProperty(RdfUtil.sum).getLong)
+                  .toSeq.head
+                (downloadUrl, size, byteSize, statements)
               })
               .toSeq
               .sortBy(_._2)
@@ -320,9 +326,11 @@ object PackageCategoryCommand extends Command:
             dists.filter(d => d._2 == col._1 && d._1.contains(filterBy)).lastOption
           distOption match
             case None => profileTableSb.append(" | –")
-            case Some((distUrl, distSize, distByteSize)) =>
-              profileTableSb.append(f" | [${Constants.packageSizeToHuman(distSize, true)} " +
-                f"(${MarkdownUtil.formatSize(distByteSize)})]($distUrl)")
+            case Some((distUrl, distSize, distByteSize, statements)) =>
+              val hover = f"${MarkdownUtil.formatInt(distSize.toString)} stream elements; " +
+                f"${MarkdownUtil.formatInt(statements.toString)} statements"
+              profileTableSb.append(f" | <abbr title=\"$hover\">[${Constants.packageSizeToHuman(distSize, true)} " +
+                f"(${MarkdownUtil.formatSize(distByteSize)})]($distUrl)</abbr>")
 
     Files.writeString(outDir.resolve(f"profiles/doc/${name}_table.md"), profileTableSb.toString())
 
