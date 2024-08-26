@@ -100,6 +100,7 @@ object NavGenCommand extends Command:
         YamlMap("Datasets", YamlList(
           YamlString("datasets/index.md") +: datasets
         )),
+        YamlMap("Benchmark results", "results/index.md"),
         YamlMap("Schemas & ontologies", YamlList(
           YamlString("schema/index.md") +: schemas,
         )),
