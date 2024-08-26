@@ -289,24 +289,40 @@ object PackageCategoryCommand extends Command:
       .sortBy(_._1)
 
     if name.contains("flat") then
-      writeTable("")
-    else
+      val distFormats = if name.contains("triples") then "N-Triples"
+      else if name.contains("quads") then "N-Quads"
+      else "N-Triples/N-Quads"
       profileTableSb.append(
-        """!!! note
+        f"""!!! note
           |
-          |    For stream profiles, there are two available types of distributions: plain streaming, and streaming in the Jelly format. See the [documentation](../documentation/dataset-release-format.md) for details.
+          |    There are two available types of distributions for this profile: plain flat files, and the universal distribution in the Jelly format. See the [documentation](../documentation/dataset-release-format.md) for details.
           |
-          |### Plain streaming distributions
+          |### Plain flat distributions ($distFormats)
+          |
+          |""".stripMargin)
+      // hack: both .nt and .nq contain ".n"...
+      writeTable(".n")
+    else
+      val distFormats = if name.contains("graphs") then "Turtle"
+      else if name.contains("datasets") then "TriG"
+      else "Turtle/TriG"
+      profileTableSb.append(
+        f"""!!! note
+          |
+          |    There are two available types of distributions for this profile: plain streaming packages, and the universal distribution in the Jelly format. See the [documentation](../documentation/dataset-release-format.md) for details.
+          |
+          |### Plain streaming distributions ($distFormats)
           |
           |""".stripMargin)
       writeTable("tar.gz")
-      profileTableSb.append(
-        """
-          |
-          |### Jelly streaming distributions
-          |
-          |""".stripMargin)
-      writeTable("jelly.gz")
+
+    profileTableSb.append(
+      """
+        |
+        |### Jelly distributions
+        |
+        |""".stripMargin)
+    writeTable("jelly.gz")
 
     def writeTable(filterBy: String): Unit =
       profileTableSb.append("Dataset")
