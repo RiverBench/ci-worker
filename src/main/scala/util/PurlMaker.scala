@@ -10,17 +10,21 @@ object PurlMaker:
   private val datasetPurlPattern = 
     f"""^${Regex.quote(AppConfig.CiWorker.rbRootUrl)}datasets/([a-z0-9-]+)/([a-z0-9.]+)(#.*)?""".r
 
-  def category(id: String, version: String): String = inner(id, version, "categories")
+  def category(id: String, version: String, subpage: Option[String] = None): String =
+    inner(id, version, "categories", subpage)
 
-  def task(id: String, version: String): String = inner(id, version, "tasks")
+  def task(id: String, version: String, subpage: Option[String] = None): String = 
+    inner(id, version, "tasks", subpage)
   
-  def profile(id: String, version: String): String = inner(id, version, "profiles")
+  def profile(id: String, version: String, subpage: Option[String] = None): String = 
+    inner(id, version, "profiles", subpage)
 
   def dataset(id: String, version: String): String =
     f"${AppConfig.CiWorker.rbRootUrl}datasets/$id/$version"
   
-  private inline def inner(id: String, version: String, kind: String): String =
-    f"${AppConfig.CiWorker.rbRootUrl}v/$version/$kind/$id"
+  private inline def inner(id: String, version: String, kind: String, subpage: Option[String]): String =
+    val s = f"${AppConfig.CiWorker.rbRootUrl}v/$version/$kind/$id"
+    subpage.fold(s)(sp => s"$s/$sp")
   
   // TODO: after introducing the remaining makers, update DocValue.InternalLink to use this
 

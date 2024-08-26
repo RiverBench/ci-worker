@@ -243,12 +243,15 @@ object CategoryDocGenCommand extends Command:
         val prefix = rootNode.getNameSpace
         val toRename = m.listSubjects().asScala.filter(_.getNameSpace == prefix).toSeq
         toRename.foreach(res => RdfUtil.renameResource(res, m.createResource(), m))
+        val npId = npUri.getURI.split('/').last
         if !preloadBibFuture.isCompleted then
           println("Waiting for bibliography preloading...")
         Await.ready(preloadBibFuture, 60.seconds)
         val benchResultsDoc = benchResultsDocBuilder.build(
           label,
-          s"""!!! info
+          s"""<span id="$npId"></span>
+             |
+             |!!! info
              |
              |    This benchmark result was reported in a Nanopublication: [$npUri]($npUri).
              |

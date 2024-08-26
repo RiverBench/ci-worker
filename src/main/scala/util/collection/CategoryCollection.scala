@@ -16,7 +16,7 @@ object CategoryCollection:
     }
     CategoryCollection(categories)
 
-class CategoryCollection(namesToUris: Iterable[(String, String)]):
+class CategoryCollection(val namesToUris: Iterable[(String, String)]):
   val categories: Map[String, Model] = namesToUris
     .map((name, uri) => {
       try {

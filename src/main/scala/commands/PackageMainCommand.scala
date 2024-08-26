@@ -5,7 +5,7 @@ import util.*
 import util.collection.*
 import util.doc.MarkdownUtil
 
-import org.apache.jena.query.DatasetFactory
+import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.rdf.model.{Model, Property, RDFNode, Resource}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.vocabulary.RDF
@@ -81,6 +81,10 @@ object PackageMainCommand extends Command:
     println("Generating dataset overview...")
     generateDatasetOverview(datasetCollection, outDir)
 
+    // Generate benchmark result summary
+    println("Generating benchmark result summary...")
+    generateBenchmarkResultSummary(dumpWithResultsDataset, categoryCollection, outDir, version)
+
     // Write to files
     println("Writing main metadata...")
     for (ext, format) <- Constants.outputFormats do
@@ -131,3 +135,71 @@ object PackageMainCommand extends Command:
 
     outDir.resolve("doc").toFile.mkdirs()
     Files.writeString(outDir.resolve(f"doc/dataset_table.md"), sb.toString())
+
+  private def generateBenchmarkResultSummary(
+    dump: Dataset, categories: CategoryCollection, outDir: Path, version: String
+  ): Unit =
+    val sb = new StringBuilder()
+    for (name, catUri) <- categories.namesToUris.toSeq.sortBy(_._1) do
+      sb.append(f"## Benchmark results for category [`$name`](${PurlMaker.category(name, version)})\n\n")
+      generateBenchmarkResultTable(sb, name, categories.categoryDumps(name), version)
+      sb.append("\n\n")
+    outDir.resolve("doc").toFile.mkdirs()
+    Files.writeString(outDir.resolve(f"doc/benchmark_results_table.md"), sb.toString())
+
+  private def generateBenchmarkResultTable(
+    sb: StringBuilder, categoryName: String, dump: Dataset, version: String
+  ): Unit =
+    val allNamedGraphs = dump.listNames().asScala
+      .map(name => (name, dump.getNamedModel(name)))
+      .toSeq
+    val nanopubs = allNamedGraphs
+      .flatMap((headGraph, model) => {
+        val sts = model.listStatements(null, RdfUtil.npHasAssertion, null).asScala.toSeq
+        if sts.isEmpty then None
+        else
+          val npUrl = sts.head.getSubject.getURI
+          val assertionGraph = sts.head.getResource.getURI
+          val pubInfoGraph = model.listStatements(null, RdfUtil.npHasPublicationInfo, null)
+            .asScala.toSeq.head.getResource.getURI
+          Some(npUrl, assertionGraph, pubInfoGraph)
+      })
+    val benchmarks = nanopubs
+      .flatMap((npUrl, assertGraph, pubInfoGraph) => {
+        val mAssert = dump.getNamedModel(assertGraph)
+        val sts = mAssert.listStatements(null, RdfUtil.iraoHasFollowedProtocol, null).asScala.toSeq
+        if sts.isEmpty then None
+        else
+          val protocol = sts.head.getResource
+          val profile = mAssert.listObjectsOfProperty(protocol, RdfUtil.usesProfile).asScala
+            .filter(_.isResource).toSeq.headOption
+            .flatMap(x => PurlMaker.unMake(x.asResource.getURI))
+          val task = mAssert.listObjectsOfProperty(protocol, RdfUtil.usesTask).asScala
+            .filter(_.isResource).toSeq.headOption
+            .flatMap(x => PurlMaker.unMake(x.asResource.getURI))
+          val mPubInfo = dump.getNamedModel(pubInfoGraph)
+          val date = mPubInfo.listObjectsOfProperty(mPubInfo.createResource(npUrl), RdfUtil.dctermsCreated)
+            .asScala.toSeq.headOption
+            .map(_.asLiteral.getString)
+          Some(npUrl, profile, task, date)
+      })
+    if benchmarks.isEmpty then
+      sb.append("_No benchmark results were reported yet for this category._\n")
+      return
+
+    sb.append("Task | Profile | Date reported | Details | Source\n")
+    sb.append("--- | --- | --- | --- | ---\n")
+    for (npUrl, profileOption, taskOption, dateOption) <- benchmarks do
+      val profile = profileOption.map(p => f"[${p.id} (${p.version})](${PurlMaker.profile(p.id, p.version)})")
+        .getOrElse("_Unknown_")
+      val task = taskOption.map(t => f"[${t.id} (${t.version})](${PurlMaker.task(t.id, t.version)})")
+        .getOrElse("_Unknown_")
+      val date = dateOption.getOrElse("_Unknown_")
+      val details = if taskOption.isDefined then
+        val npId = npUrl.split('/').last
+        // Link to the version of the task that we are on right now, not the one that the
+        // benchmark was run on.
+        val taskPurl = taskOption.map(t => PurlMaker.task(t.id, version, Some("results"))).getOrElse("")
+        f"[:octicons-arrow-right-24: Details]($taskPurl#$npId)"
+      else "–"
+      sb.append(f"$task | $profile | $date | $details | [:fontawesome-solid-diagram-project: Source]($npUrl)\n")

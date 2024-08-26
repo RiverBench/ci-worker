@@ -67,6 +67,7 @@ object RdfUtil:
   val hasProfile = m.createProperty(pRb, "hasProfile")
   val hasCategory = m.createProperty(pRb, "hasCategory")
   val usesTask = m.createProperty(pRb, "usesTask")
+  val usesProfile = m.createProperty(pRb, "usesProfile")
 
   val hasDocWeight = m.createProperty(pRbDoc, "hasDocWeight")
   val hasDocGroup = m.createProperty(pRbDoc, "hasDocGroup")
