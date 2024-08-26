@@ -4,7 +4,7 @@ package commands
 import util.doc.{DocBuilder, DocFileUtil, MarkdownUtil}
 import util.*
 
-import org.apache.jena.rdf.model.Property
+import org.apache.jena.rdf.model.{Property, RDFNode}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.sparql.vocabulary.FOAF
 import org.apache.jena.vocabulary.{RDF, RDFS}
@@ -61,6 +61,9 @@ object DatasetDocGenCommand extends Command:
       ),
       defaultPropGroup = Some("Technical metadata"),
       tabularProps = Seq(RdfUtil.hasStatistics),
+      customSectionContentGen = Map(
+        RdfUtil.dcatDistribution -> generateDownloadTable,
+      ),
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
     val docIndex = docBuilderIndex.build(
@@ -86,7 +89,8 @@ object DatasetDocGenCommand extends Command:
         hidePropsInLevel = optIndex.hidePropsInLevel ++ Seq(
           (3, RdfUtil.hasStatisticsSet), // distribution stats
           (3, RdfUtil.spdxChecksum), // distribution checksums
-        )
+        ),
+        customSectionContentGen = Map(),
       )
       val docBuilderReadme = new DocBuilder(ontologies, optReadme)
       val docReadme = docBuilderReadme.build(title, mi.description + readmeIntro(landingPage), mi.datasetRes)
@@ -98,6 +102,56 @@ object DatasetDocGenCommand extends Command:
     else
       println(f"Version is $version – not generating README.md")
   }
+
+  private def generateDownloadTable(distributions: Seq[RDFNode]): String =
+    val data = distributions.map { dist =>
+      val distRes = dist.asResource()
+      val downloadLink = distRes.listProperties(RdfUtil.dcatDownloadURL).next.getResource.getURI
+      val id = distRes.listProperties(RdfUtil.dctermsIdentifier).next.getLiteral.getString.split('-')
+      val row = id.last
+      val distType = id.head
+      val byteSize = distRes.listProperties(RdfUtil.dcatByteSize).next.getLiteral.getLong
+      val elementCount = distRes.listProperties(RdfUtil.hasStreamElementCount).next.getLiteral.getLong
+      val stats = distRes.getProperty(RdfUtil.hasStatisticsSet).getResource
+      val statements = stats.listProperties(RdfUtil.hasStatistics).asScala
+        .map(_.getResource)
+        .filter(_.hasProperty(RDF.`type`, RdfUtil.StatementCountStatistics))
+        .map(_.getProperty(RdfUtil.sum).getLong)
+        .toSeq.head
+
+      (distType, row, downloadLink, byteSize, elementCount, statements)
+    }
+    val rows = data
+      .groupBy(_._2)
+      .map((row, dists) => dists.head).toSeq
+      .sortBy(_._5)
+    val sb = StringBuilder()
+    sb.append(
+      """
+        |### Download links
+        |
+        |The dataset is published in a few size variants, each containing a specific number of stream elements.
+        |For each size, there are three distribution types available: flat (just an N-Triples/N-Quads file),
+        |streaming (a .tar.gz archive with Turtle/TriG files, one file per stream element),
+        |and [Jelly](https://w3id.org/jelly) (a native binary format for streaming RDF).
+        |See the [documentation](../../documentation/dataset-release-format.md) for more details.
+        |
+        |""".stripMargin)
+    sb.append("Distribution size | Statements | Flat | Streaming | Jelly\n")
+    sb.append("--- | --: | --: | --: | --:\n")
+    for row <- rows do
+      val dists = data.filter(_._2 == row._2)
+      val hover = f"${MarkdownUtil.formatInt(row._5.toString)} stream elements"
+      sb.append(f"<abbr title=\"$hover\">${Constants.packageSizeToHuman(row._5, true)}</abbr>")
+      sb.append(" | ")
+      sb.append(MarkdownUtil.formatInt(row._6.toString))
+      for dType <- Seq("flat", "stream", "jelly") do
+        sb.append(" | ")
+        val dist = dists.find(_._1 == dType).get
+        sb.append(f"[:octicons-download-24: ${MarkdownUtil.formatSize(dist._4)}](${dist._3})")
+      sb.append("\n")
+    sb.append("\n\nThe full metadata of all distributions can be found below.")
+    sb.toString()
 
   private def readmeIntro(websiteLink: String): String =
     f"""
@@ -113,6 +167,8 @@ object DatasetDocGenCommand extends Command:
        |
        |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(websiteLink)}
        |    <br>Source repository: **[${mi.identifier}](${Constants.baseRepoUrl}/dataset-${mi.identifier})**
+       |
+       |    **[:octicons-arrow-down-24: Go to download links](#distributions)**
        |
        |""".stripMargin
 

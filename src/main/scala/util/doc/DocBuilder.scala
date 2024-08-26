@@ -18,6 +18,7 @@ object DocBuilder:
     tabularProps: Seq[Property] = Seq(),
     startHeadingLevel: Int = 1,
     customValueFormatters: PartialFunction[RDFNode, DocValue] = PartialFunction.empty,
+    customSectionContentGen: Map[Resource, Seq[RDFNode] => String] = Map(),
   )
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
@@ -48,6 +49,8 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
           val nestedSection = section.addSubsection()
           nestedSection.setWeight(prop.weight)
           nestedSection.setTitle(prop.group.getOrElse(prop.toMarkdown))
+          val customContent = opt.customSectionContentGen.get(prop.prop).map(_(nodes))
+          nestedSection.setContent(customContent.getOrElse(""))
           for node <- nodes do
             val itemSection = nestedSection.addSubsection()
             node match
