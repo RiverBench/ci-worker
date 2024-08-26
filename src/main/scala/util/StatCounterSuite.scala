@@ -162,13 +162,16 @@ class StatCounterSuite(val size: Long):
     cStatements.lightAdd(stCount)
 
   /**
-   * @throws IllegalArgumentException if the string contains disallowed ASCII control characters (0x00-0x1F)
+   * @throws IllegalArgumentException if the string contains disallowed ASCII control characters
    */
   private def checkAsciiControlChars(s: String): Unit =
-    if s.exists(c => c < 20) then
-      throw new IllegalArgumentException(f"String \"$s\" contains disallowed ASCII control characters (0x00-0x1F). " +
-        f"This will break the RDF/XML serialization. If these characters must be here, consult the RiverBench " +
-        f"maintainer. Otherwise, if they are here by mistake, please remove them. " +
+    // 0x00–0x1F are disallowed except 0x09 (tab), 0x0A (LF), 0x0D (CR)
+    val charOpt = s.find(c => c < 9 || c == 11 || c == 12 || (c > 13 && c < 20))
+    if charOpt.isDefined then
+      throw new IllegalArgumentException(f"String \"$s\" contains a disallowed ASCII control character " +
+        f"(0x${String.format("%02x", charOpt.get.toInt)}). " +
+        f"This will break the RDF/XML serialization. If this character must be here, consult the RiverBench " +
+        f"maintainer. Otherwise, if they are here by mistake, please remove it. " +
         f"See: https://github.com/RiverBench/dataset-politiquices/issues/1")
 
   def result: StatCounterSuite.Result =
