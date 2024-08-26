@@ -183,6 +183,10 @@ object PackageMainCommand extends Command:
             .map(_.asLiteral.getString)
           Some(npUrl, profile, task, date)
       })
+      // Sort by date...
+      .sortBy(_._4.getOrElse("zzz"))
+      // ... and by task ID
+      .sortBy(_._3.map(_.id).getOrElse("zzz"))
     if benchmarks.isEmpty then
       sb.append("_No benchmark results were reported yet for this category._\n")
       return
@@ -190,11 +194,15 @@ object PackageMainCommand extends Command:
     sb.append("Task | Profile | Date reported | Details | Source\n")
     sb.append("--- | --- | --- | --- | ---\n")
     for (npUrl, profileOption, taskOption, dateOption) <- benchmarks do
-      val profile = profileOption.map(p => f"[${p.id} (${p.version})](${PurlMaker.profile(p.id, p.version)})")
+      val profile = profileOption
+        .map(p => f"[${p.id}](${PurlMaker.profile(p.id, version)}) (${p.version})")
         .getOrElse("_Unknown_")
-      val task = taskOption.map(t => f"[${t.id} (${t.version})](${PurlMaker.task(t.id, t.version)})")
+      val task = taskOption
+        .map(t => f"[${t.id}](${PurlMaker.task(t.id, version)}) (${t.version})")
         .getOrElse("_Unknown_")
-      val date = dateOption.getOrElse("_Unknown_")
+      val date = dateOption
+        .map(dt => dt.split('T').headOption.getOrElse(dt))
+        .getOrElse("_Unknown_")
       val details = if taskOption.isDefined then
         val npId = npUrl.split('/').last
         // Link to the version of the task that we are on right now, not the one that the
