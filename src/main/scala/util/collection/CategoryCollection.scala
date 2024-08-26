@@ -6,6 +6,8 @@ import org.apache.jena.query.Dataset
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
 
+import scala.jdk.CollectionConverters.*
+
 object CategoryCollection:
   def fromReleases(names: Iterable[String], version: String): CategoryCollection =
     val categories = names.map { name =>
@@ -34,7 +36,9 @@ class CategoryCollection(val namesToUris: Iterable[(String, String)]):
     .map((name, uri) => {
       val dumpUri = uri.replace("metadata.ttl", "dump.jelly")
       try {
-        (name, RDFDataMgr.loadDataset(dumpUri, JellyLanguage.JELLY))
+        val ds = RDFDataMgr.loadDataset(dumpUri, JellyLanguage.JELLY)
+        println(f"Loaded dump for category $name from $dumpUri. Named graphs: ${ds.listNames().asScala.size}")
+        (name, ds)
       }
       catch {
         case e: Exception =>
