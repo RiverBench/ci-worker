@@ -43,7 +43,7 @@ object MarkdownUtil:
       f"**[RDF/XML]($baseUrl.rdf$suffix)**, **[Jelly]($baseUrl.jelly$suffix)**"
     
   def formatDatasetMetadataLinks(baseUrl: String, suffix: String = ""): String =
-    f"**[Trig]($baseUrl.trig$suffix)**, **[N-Quads]($baseUrl.nq$suffix)**, " +
+    f"**[TriG]($baseUrl.trig$suffix)**, **[N-Quads]($baseUrl.nq$suffix)**, " +
       f"**[Jelly]($baseUrl.jelly$suffix)**"
 
   def readmeHeader(repoName: String): String =

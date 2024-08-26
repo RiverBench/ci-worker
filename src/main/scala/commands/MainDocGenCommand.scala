@@ -104,6 +104,6 @@ object MainDocGenCommand extends Command:
         MarkdownUtil.formatMetadataLinks(link, ".gz") + "\n\n"
       case None => s
     dump2Link match
-      case Some(link) => s2 + f"    A dump including community-contributed benchmark results (via Nanopublications) is also available: <br>" +
+      case Some(link) => s2 + f"    A dump including community-contributed benchmark results (via nanopublications) is also available: <br>" +
         MarkdownUtil.formatDatasetMetadataLinks(link, ".gz") + "\n\n"
       case None => s2
