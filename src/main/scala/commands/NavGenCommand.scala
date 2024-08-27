@@ -30,7 +30,13 @@ object NavGenCommand extends Command:
         m.v.keys.head,
         YamlMap(
           getNameForFile(taskDir.resolve(m.v.keys.head + "/index.md"), true),
-          m.v.values.head
+          YamlList(m.v.values.head.asInstanceOf[YamlList].v.map {
+            case YamlMap(map) => YamlMap(map.head match
+              case (k, v: YamlString) if v.v.endsWith("results.md") => ("Results", v)
+              case (k, v) => (k, v)
+            )
+            case v => v
+          })
         )
       ) }
       .sortBy(_._1)

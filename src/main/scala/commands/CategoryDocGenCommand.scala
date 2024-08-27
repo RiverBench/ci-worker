@@ -275,7 +275,7 @@ object CategoryDocGenCommand extends Command:
         targetDir.resolve("results.md"),
         s"""# Benchmark results for task $taskName
            |
-           |[<- Back to task definition](index.md)
+           |[:octicons-arrow-left-24: Back to task definition](index.md)
            |
            |$resultsBody""".stripMargin
       )
