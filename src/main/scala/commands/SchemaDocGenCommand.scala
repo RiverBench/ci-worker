@@ -121,6 +121,6 @@ object SchemaDocGenCommand extends Command:
          |
          |""".stripMargin
     })
-    c = MarkdownUtil.makeTopButtons(purl, fileDepth = 1) + c
+    c = MarkdownUtil.makeTopButtons(purl, fileDepth = 1) + "\n\n" + c
 
     Files.writeString(outPath, c)
