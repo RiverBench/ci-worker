@@ -37,7 +37,8 @@ class CategoryCollection(val namesToUris: Iterable[(String, String)]):
       val dumpUri = uri.replace("metadata.ttl", "dump.jelly")
       try {
         val ds = RDFDataMgr.loadDataset(dumpUri, JellyLanguage.JELLY)
-        println(f"Loaded dump for category $name from $dumpUri. Named graphs: ${ds.listNames().asScala.size}")
+        println(f"Loaded dump for category $name from $dumpUri. " +
+          f"Named graphs: ${ds.listNames().asScala.size}. Triples: ${ds.getDefaultModel.size()}.")
         (name, ds)
       }
       catch {
