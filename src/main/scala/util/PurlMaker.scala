@@ -19,8 +19,12 @@ object PurlMaker:
   def profile(id: String, version: String, subpage: Option[String] = None): String = 
     inner(id, version, "profiles", subpage)
 
-  def dataset(id: String, version: String): String =
-    f"${AppConfig.CiWorker.rbRootUrl}datasets/$id/$version"
+  def dataset(id: String, version: String, subpage: Option[String] = None): String =
+    val s = f"${AppConfig.CiWorker.rbRootUrl}datasets/$id/$version"
+    subpage.fold(s)(sp => s"$s/$sp")
+    
+  def schema(id: String, version: String): String =
+    f"${AppConfig.CiWorker.rbRootUrl}schema/$id/$version"
   
   private inline def inner(id: String, version: String, kind: String, subpage: Option[String]): String =
     val s = f"${AppConfig.CiWorker.rbRootUrl}v/$version/$kind/$id"
@@ -28,10 +32,11 @@ object PurlMaker:
   
   // TODO: after introducing the remaining makers, update DocValue.InternalLink to use this
 
-  case class Purl(id: String, version: String, kind: String):
+  case class Purl(id: String, version: String, kind: String, subpage: Option[String] = None):
     def getUrl: String = kind match
-      case "datasets" => dataset(id, version)
-      case _ => inner(id, version, kind, None)
+      case "datasets" => dataset(id, version, subpage)
+      case "schema" => schema(id, version)
+      case _ => inner(id, version, kind, subpage)
 
   def unMake(purl: String): Option[Purl] =
     purl match

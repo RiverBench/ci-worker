@@ -290,7 +290,9 @@ object CategoryDocGenCommand extends Command:
       else resultMds.mkString("\n\n")
       Files.writeString(
         targetDir.resolve("results.md"),
-        s"""# Benchmark results for task $taskName
+        s"""${MarkdownUtil.makeTopButtons(taskPurl.copy(subpage = Some("results")), fileDepth = 2)}
+           |
+           |# Benchmark results for task $taskName
            |
            |[:octicons-arrow-left-24: Back to task definition](index.md)
            |

@@ -51,7 +51,15 @@ object MarkdownUtil:
       f"RiverBench.\">:material-link-variant: Permanent URL:</abbr> [`$purl`]($purl)"
 
   def makeTopButtons(purl: PurlMaker.Purl, fileDepth: Int): String =
-    val editLink = if purl.version == "dev" then
+    val editLink = if purl.version != "dev" then
+      Some(f"<div markdown><abbr title=\"This page corresponds to a stable release of RiverBench, so it cannot " +
+        f"be edited. If you want to edit this page, go to the development version by selecting 'dev' from the " +
+        f"version selector in the top navigation bar.\">" +
+        f":material-lock-check: Stable: ${purl.version}</abbr></div>")
+    else if purl.kind == "tasks" && purl.subpage.contains("results") then
+      Some(f"<div markdown><abbr title=\"This page is entirely automatically generated and cannot be edited.\">" +
+        f":material-lock-reset: Auto-generated</abbr></div>")
+    else
       val intermediate = purl.kind match
         case "datasets" => Seq((f"dataset-${purl.id}", "metadata.ttl", "page"))
         case "categories" => Seq((f"category-${purl.id}", "metadata.ttl", "page"))
@@ -64,23 +72,20 @@ object MarkdownUtil:
         case "profiles" =>
           val repo = "category-" + purl.id.split('-').head
           Seq((repo, f"profiles/${purl.id}.ttl", "page"))
+        case "schema" => Seq(("schema", f"src/${purl.id}.ttl", "ontology"))
         case _ => Seq()
       if intermediate.isEmpty then None
       else
         val editLinks =
-        intermediate.map((repo, file, kind) => {
-          val (icon, format) = if file.endsWith(".ttl") then ("database", "RDF/Turtle") else ("file", "Markdown")
-          f"<div markdown>**[:material-$icon-edit: Edit ${if kind == "page" then "this page" else kind}]" +
-            f"(${Constants.baseRepoUrl}/$repo/edit/main/$file " +
-            f"\"Edit this page's ${if kind == "page" then "source" else kind} in $format on GitHub.\")**</div>"
-        })
+          intermediate.map((repo, file, kind) => {
+            val (icon, format) = if file.endsWith(".ttl") then ("database", "RDF/Turtle") else ("file", "Markdown")
+            f"<div markdown>**[:material-$icon-edit: Edit ${if kind == "page" then "this page" else kind}]" +
+              f"(${Constants.baseRepoUrl}/$repo/edit/main/$file " +
+              f"\"Edit this page's ${if kind == "page" then "source" else kind} in $format on GitHub.\")**</div>"
+          })
         Some(editLinks.mkString + f"<div markdown>[:material-help-circle:]" +
           f"(${"../".repeat(fileDepth)}documentation/editing-docs.md " +
           f"\"Need help with editing?\")</div>")
-    else Some(f"<div markdown><abbr title=\"This page corresponds to a stable release of RiverBench, so it cannot " +
-      f"be edited. If you want to edit this page, go to the development version by selecting 'dev' from the " +
-      f"version selector in the top navigation bar.\">" +
-      f":material-lock-check: Stable: ${purl.version}</abbr></div>")
     val inner = f"<div markdown>[:material-link-variant: Permanent URL]" +
       f"(${purl.getUrl} \"Link to the permanent URL of this resource.\")</div>" +
       editLink.getOrElse("")

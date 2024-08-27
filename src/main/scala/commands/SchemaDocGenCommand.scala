@@ -1,11 +1,10 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, RdfIoUtil}
+import util.doc.MarkdownUtil
+import util.{Constants, PurlMaker, RdfIoUtil}
 
-import io.github.riverbench.ci_worker.util.doc.MarkdownUtil
 import org.apache.jena.rdf.model.Model
-import org.apache.jena.riot.RDFDataMgr
 
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
@@ -95,7 +94,7 @@ object SchemaDocGenCommand extends Command:
     c = rxHeading.replaceAllIn(c, "\n$1 ")
     c = rxIndividualsFix.replaceAllIn(c, "Class(es) | $1\n")
     c = rxTocFix.replaceAllIn(c, "](#$1-$2)")
-    c = rxGenerator.replaceAllIn(c, "$1 and [RiverBench CI worker](https://github.com/RiverBench/ci-worker)")
+    c = rxGenerator.replaceAllIn(c, "$1 and [RiverBench CI worker](https://github.com/RiverBench/ci-worker).")
 
     c = rxPrefixes.replaceAllIn(c, m => {
       val prefix = m.group(1)
@@ -106,7 +105,8 @@ object SchemaDocGenCommand extends Command:
         ""
     })
 
-    val baseLink = s"${AppConfig.CiWorker.rbRootUrl}schema/$name/$version"
+    val purl = PurlMaker.Purl(name, version, "schema")
+    val baseLink = purl.getUrl
     val rdfLinks = MarkdownUtil.formatMetadataLinks(baseLink)
     c = rxRdfLinks.replaceAllIn(c, m => {
       val schemaType = m.group(1).toLowerCase
@@ -115,9 +115,12 @@ object SchemaDocGenCommand extends Command:
          |!!! info
          |
          |    :fontawesome-solid-diagram-project: Download this $schemaType in RDF: $rdfLinks
+         |    <br>:material-github: Source repository: **[schema](${Constants.baseRepoUrl}/schema)**
+         |    <br>${MarkdownUtil.formatPurlLink(baseLink)}
          |
          |
          |""".stripMargin
     })
+    c = MarkdownUtil.makeTopButtons(purl, fileDepth = 1) + c
 
     Files.writeString(outPath, c)
