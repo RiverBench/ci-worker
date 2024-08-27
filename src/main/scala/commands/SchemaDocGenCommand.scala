@@ -114,7 +114,7 @@ object SchemaDocGenCommand extends Command:
          |
          |!!! info
          |
-         |    Download this $schemaType in RDF: $rdfLinks
+         |    :fontawesome-solid-diagram-project: Download this $schemaType in RDF: $rdfLinks
          |
          |
          |""".stripMargin

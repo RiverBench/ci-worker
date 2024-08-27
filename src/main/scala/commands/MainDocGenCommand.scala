@@ -96,7 +96,7 @@ object MainDocGenCommand extends Command:
        |
        |!!! info
        |
-       |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
+       |    :fontawesome-solid-diagram-project: Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
        |
        |""".stripMargin
     val s2 = dumpLink match

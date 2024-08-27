@@ -81,7 +81,11 @@ object DatasetDocGenCommand extends Command:
     docBuilderIndex.buildSection(statsRes, docIndex)
 
     // Save the index.md document
-    Files.writeString(outputDir.resolve("docs/index.md"), docIndex.toMarkdown)
+    val purl = PurlMaker.unMake(landingPage).get
+    Files.writeString(
+      outputDir.resolve("docs/index.md"),
+      MarkdownUtil.makeTopButtons(purl, fileDepth = 2) + "\n\n" + docIndex.toMarkdown
+    )
     println("Generated index.md")
 
     if version == "dev" then
@@ -165,8 +169,9 @@ object DatasetDocGenCommand extends Command:
        |
        |!!! info
        |
-       |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(websiteLink)}
-       |    <br>Source repository: **[${mi.identifier}](${Constants.baseRepoUrl}/dataset-${mi.identifier})**
+       |    :fontawesome-solid-diagram-project: Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(websiteLink)}
+       |    <br>:material-github: Source repository: **[dataset-${mi.identifier}](${Constants.baseRepoUrl}/dataset-${mi.identifier})**
+       |    <br>${MarkdownUtil.formatPurlLink(websiteLink)}
        |
        |    **[:octicons-arrow-down-24: Go to download links](#distributions)**
        |

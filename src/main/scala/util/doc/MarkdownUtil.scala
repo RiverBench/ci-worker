@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import util.Constants
+import util.{Constants, PurlMaker}
 
 object MarkdownUtil:
   private val sizeSuffixes = Seq("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
@@ -44,6 +44,47 @@ object MarkdownUtil:
   def formatDatasetMetadataLinks(baseUrl: String, suffix: String = ""): String =
     f"**[TriG]($baseUrl.trig$suffix)**, **[N-Quads]($baseUrl.nq$suffix)**, " +
       f"**[Jelly]($baseUrl.jelly$suffix)**"
+
+  def formatPurlLink(purl: String): String =
+    f"<abbr title=\"The permanent URL is guaranteed to never change and also allows for retrieving machine-readable " +
+      f"metadata in RDF. You should always use permanent URLs to refer to tasks, profiles, or datasets in " +
+      f"RiverBench.\">:material-link-variant: Permanent URL:</abbr> [`$purl`]($purl)"
+
+  def makeTopButtons(purl: PurlMaker.Purl, fileDepth: Int): String =
+    val editLink = if purl.version == "dev" then
+      val intermediate = purl.kind match
+        case "datasets" => Seq((f"dataset-${purl.id}", "metadata.ttl", "page"))
+        case "categories" => Seq((f"category-${purl.id}", "metadata.ttl", "page"))
+        case "tasks" =>
+          val repo = "category-" + purl.id.split('-').head
+          Seq(
+            (repo, f"tasks/${purl.id}/index.md", "page"),
+            (repo, f"tasks/${purl.id}/metadata.ttl", "metadata"),
+          )
+        case "profiles" =>
+          val repo = "category-" + purl.id.split('-').head
+          Seq((repo, f"profiles/${purl.id}.ttl", "page"))
+        case _ => Seq()
+      if intermediate.isEmpty then None
+      else
+        val editLinks =
+        intermediate.map((repo, file, kind) => {
+          val (icon, format) = if file.endsWith(".ttl") then ("database", "RDF/Turtle") else ("file", "Markdown")
+          f"<div markdown>**[:material-$icon-edit: Edit ${if kind == "page" then "this page" else kind}]" +
+            f"(${Constants.baseRepoUrl}/$repo/edit/main/$file " +
+            f"\"Edit this page's ${if kind == "page" then "source" else kind} in $format on GitHub.\")**</div>"
+        })
+        Some(editLinks.mkString + f"<div markdown>[:material-help-circle:]" +
+          f"(${"../".repeat(fileDepth)}documentation/editing-docs.md " +
+          f"\"Need help with editing?\")</div>")
+    else Some(f"<div markdown><abbr title=\"This page corresponds to a stable release of RiverBench, so it cannot " +
+      f"be edited. If you want to edit this page, go to the development version by selecting 'dev' from the " +
+      f"version selector in the top navigation bar.\">" +
+      f":material-lock-check: Stable: ${purl.version}</abbr></div>")
+    val inner = f"<div markdown>[:material-link-variant: Permanent URL]" +
+      f"(${purl.getUrl} \"Link to the permanent URL of this resource.\")</div>" +
+      editLink.getOrElse("")
+    f"<div markdown class=\"rb-top-buttons\">$inner</div>"
 
   def readmeHeader(repoName: String): String =
     f"""<!--

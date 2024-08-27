@@ -126,15 +126,22 @@ object CategoryDocGenCommand extends Command:
       hidePropsInLevel = catTaskDocOpt.hidePropsInLevel ++ Seq((2, RdfUtil.dctermsDescription))
     )
     val builder = new DocBuilder(ontologies, catOpt)
+    val catPurl = PurlMaker.Purl(id, version, "categories")
     val catDoc = builder.build(
       "Metadata",
-      rdfInfo(PurlMaker.category(id, version)),
+      rdfInfo(catPurl),
       catRes
     )
     val targetDir = outDir.resolve("category")
     Files.writeString(
       targetDir.resolve("index.md"),
-      f"# $title\n\n$description$tableSections\n\n" + catDoc.toMarkdown
+      f"""${MarkdownUtil.makeTopButtons(catPurl, fileDepth = 2)}
+         |
+         |# $title
+         |
+         |$description$tableSections
+         |
+         |""".stripMargin + catDoc.toMarkdown
     )
     DocFileUtil.copyDocs(repoDir.resolve("doc"), targetDir, Seq("index.md"))
 
@@ -187,10 +194,11 @@ object CategoryDocGenCommand extends Command:
       val title = f"Task: ${RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskName} " +
         f"(${readableVersion(version)})"
       val description = Files.readString(f.toPath.resolve("index.md"))
+      val taskPurl = PurlMaker.Purl(taskName, version, "tasks")
 
       val taskDoc = taskDocBuilder.build(
         "Metadata",
-        rdfInfo(PurlMaker.task(taskName, version)),
+        rdfInfo(taskPurl),
         taskRes
       )
 
@@ -254,7 +262,7 @@ object CategoryDocGenCommand extends Command:
              |
              |!!! info
              |
-             |    This benchmark result was reported in a Nanopublication: [$npUri]($npUri).
+             |    :fontawesome-solid-diagram-project: This benchmark result was reported in a Nanopublication: [$npUri]($npUri).
              |
              |    The documentation here was generated automatically.
              |
@@ -268,7 +276,9 @@ object CategoryDocGenCommand extends Command:
       targetDir.toFile.mkdirs()
       Files.writeString(
         targetDir.resolve("index.md"),
-        f"""# $title
+        f"""${MarkdownUtil.makeTopButtons(taskPurl, fileDepth = 2)}
+           |
+           |# $title
            |
            |Task identifier: `$taskName`
            |
@@ -330,9 +340,10 @@ object CategoryDocGenCommand extends Command:
     for (name, profile) <- profileCollection.profiles do
       val profileRes = profile.listSubjectsWithProperty(RDF.`type`, RdfUtil.Profile).next.asResource
       val description = RdfUtil.getString(profileRes, RdfUtil.dctermsDescription) getOrElse ""
+      val profilePurl = PurlMaker.Purl(name, version, "profiles")
       val profileDoc = profileDocBuilder.build(
         s"Profile: $name (${readableVersion(version)})",
-        description + rdfInfo(PurlMaker.profile(name, version)),
+        description + rdfInfo(profilePurl),
         profileRes
       )
       val tableSection =
@@ -350,7 +361,11 @@ object CategoryDocGenCommand extends Command:
           |""".stripMargin +
           Files.readString(metadataOutDir.resolve(f"profiles/doc/${name}_table.md"))
       val profileDocPath = outDir.resolve(s"profiles/$name.md")
-      Files.writeString(profileDocPath, profileDoc.toMarkdown + tableSection)
+
+      Files.writeString(
+        profileDocPath,
+        MarkdownUtil.makeTopButtons(profilePurl, fileDepth = 1) + "\n\n" + profileDoc.toMarkdown + tableSection
+      )
 
   private def profileOverviewDocGen(version: String, profileCollection: ProfileCollection, outDir: Path): Unit =
     def taxoLink(text: String, name: String) =
@@ -388,11 +403,15 @@ object CategoryDocGenCommand extends Command:
   private def readableVersion(v: String) =
     if v == "dev" then "development version" else v
 
-  private def rdfInfo(baseLink: String): String =
+  private def rdfInfo(purl: PurlMaker.Purl): String =
+    val baseLink = purl.getUrl
+    val repo = "category-" + purl.id.split('-').head
     f"""
        |
        |!!! info
        |
-       |    Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
+       |    :fontawesome-solid-diagram-project: Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
+       |    <br>:material-github: Source repository: **[$repo](${Constants.baseRepoUrl}/$repo)**
+       |    <br>${MarkdownUtil.formatPurlLink(baseLink)}
        |
        |""".stripMargin

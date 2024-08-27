@@ -28,7 +28,10 @@ object PurlMaker:
   
   // TODO: after introducing the remaining makers, update DocValue.InternalLink to use this
 
-  case class Purl(id: String, version: String, kind: String)
+  case class Purl(id: String, version: String, kind: String):
+    def getUrl: String = kind match
+      case "datasets" => dataset(id, version)
+      case _ => inner(id, version, kind, None)
 
   def unMake(purl: String): Option[Purl] =
     purl match
