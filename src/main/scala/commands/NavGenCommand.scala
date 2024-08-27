@@ -29,7 +29,9 @@ object NavGenCommand extends Command:
       .collect { case m: YamlMap => (
         m.v.keys.head,
         YamlMap(
-          getNameForFile(taskDir.resolve(m.v.keys.head + "/index.md"), true),
+          getNameForFile(
+            taskDir.resolve(m.v.keys.head + "/index.md"), true
+          ).split('(').head.replace("Task:", "").strip(),
           YamlList(m.v.values.head.asInstanceOf[YamlList].v.map {
             case YamlMap(map) => YamlMap(map.head match
               case (k, v: YamlString) if v.v.endsWith("results.md") => ("Results", v)

@@ -184,7 +184,8 @@ object CategoryDocGenCommand extends Command:
       val taskVersion = Version(version)
       val taskM = RdfIoUtil.loadModelWithStableBNodeIds(metadataOutDir.resolve(f"tasks/task-$taskName.ttl"))
       val taskRes = taskM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).next.asResource
-      val title = RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskName
+      val title = f"Task: ${RdfUtil.getString(taskRes, RdfUtil.dctermsTitle) getOrElse taskName} " +
+        f"(${readableVersion(version)})"
       val description = Files.readString(f.toPath.resolve("index.md"))
 
       val taskDoc = taskDocBuilder.build(
@@ -267,7 +268,13 @@ object CategoryDocGenCommand extends Command:
       targetDir.toFile.mkdirs()
       Files.writeString(
         targetDir.resolve("index.md"),
-        f"# $title\n\n$description\n\n" + taskDoc.toMarkdown
+        f"""# $title
+           |
+           |Task identifier: `$taskName`
+           |
+           |$description
+           |
+           |""".stripMargin + taskDoc.toMarkdown
       )
       val resultsBody = if resultMds.isEmpty then "_No benchmark results were reported yet for this task._"
       else resultMds.mkString("\n\n")
@@ -324,7 +331,7 @@ object CategoryDocGenCommand extends Command:
       val profileRes = profile.listSubjectsWithProperty(RDF.`type`, RdfUtil.Profile).next.asResource
       val description = RdfUtil.getString(profileRes, RdfUtil.dctermsDescription) getOrElse ""
       val profileDoc = profileDocBuilder.build(
-        s"$name (${readableVersion(version)})",
+        s"Profile: $name (${readableVersion(version)})",
         description + rdfInfo(PurlMaker.profile(name, version)),
         profileRes
       )

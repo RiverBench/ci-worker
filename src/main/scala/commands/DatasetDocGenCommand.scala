@@ -39,7 +39,7 @@ object DatasetDocGenCommand extends Command:
     val readableVersion = version match
       case "dev" => "development version"
       case _ => version
-    val title = f"${mi.identifier} ($readableVersion)"
+    val title = f"Dataset: ${mi.identifier} ($readableVersion)"
 
     val ontologies = RdfIoUtil.loadOntologies(schemaRepoDir)
     val optIndex = DocBuilder.Options(
