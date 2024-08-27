@@ -92,7 +92,10 @@ object NavGenCommand extends Command:
         YamlMap("Home", "index.md"),
         YamlMap(
           "Documentation",
-          YamlList(listDir(rootDir, "documentation"))
+          YamlList(listDir(rootDir, "documentation").sortBy {
+            case m: YamlMap => m.v.keys.head
+            case _ => ""
+          })
         ),
         YamlMap("Benchmarks", YamlList(
           YamlString("categories/index.md") +: categories
