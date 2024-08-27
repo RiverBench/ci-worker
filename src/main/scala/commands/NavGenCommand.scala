@@ -147,7 +147,7 @@ object NavGenCommand extends Command:
       path.getFileName.toString.stripSuffix(".md")
     else
       val fallback = prettifyName(path.getFileName.toString)
-      Files.lines(path).limit(2)
+      Files.lines(path).limit(10)
         .filter(_.startsWith("# "))
         .map(_.stripPrefix("# ").strip)
         .findFirst()
