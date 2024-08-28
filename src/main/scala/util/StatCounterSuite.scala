@@ -122,17 +122,21 @@ class StatCounterSuite(val size: Long):
 
       t.getSubject :: t.getPredicate :: t.getObject :: Nil
     }) ++ ds.listGraphNodes().asScala
+    val usesQuads = ds.listGraphNodes().asScala.size > 1
 
     allNodes.foreach(n => {
       if n.isURI then
         val iri = n.getURI
-        checkAsciiControlChars(iri)
+        // We only do the control char checks for RDF graphs, because RDF/XML can't serialize datasets anyway
+        if !usesQuads then
+          checkAsciiControlChars(iri)
         iris += iri
       else if n.isBlank then
         blankNodes += n.getBlankNodeLabel
       else if n.isLiteral then
         val lit = n.toString(false)
-        checkAsciiControlChars(lit)
+        if !usesQuads then
+          checkAsciiControlChars(lit)
         literals += lit
         if n.getLiteralLanguage != "" then
           langLiterals += lit
