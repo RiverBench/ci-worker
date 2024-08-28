@@ -53,7 +53,7 @@ object MainDocGenCommand extends Command:
     val dumpWithResults = f"${AppConfig.CiWorker.rbRootUrl}dumps-with-results/$version"
     val mainDoc = mainDocBuilder.build(
       "RiverBench" + (if version == "dev" then "" else f" ($version)"),
-      Files.readString(repoDir.resolve("doc/index_body.md")) + rdfInfo(baseLink, Some(dumpLink), Some(dumpWithResults)),
+      Files.readString(repoDir.resolve("doc/index_body.md")) + rdfInfo(baseLink, dumpLink, dumpWithResults),
       rootRes
     )
     Files.writeString(
@@ -91,19 +91,17 @@ object MainDocGenCommand extends Command:
       |-->
       |""".stripMargin.strip
 
-  private def rdfInfo(baseLink: String, dumpLink: Option[String] = None, dump2Link: Option[String] = None): String =
-    val s = f"""
+  private def rdfInfo(baseLink: String, dumpLink: String, dump2Link: String): String =
+    f"""
        |
        |!!! info
        |
        |    :fontawesome-solid-diagram-project: Download this metadata in RDF: ${MarkdownUtil.formatMetadataLinks(baseLink)}
+       |    <br>${MarkdownUtil.formatPurlLink(baseLink)}
+       |
+       |    :material-database: A complete dump of all metadata in RiverBench (without benchmark results) is available:
+       |    <br>${MarkdownUtil.formatMetadataLinks(dumpLink, ".gz")}
+       |    <br>:material-database-plus: A dump including community-contributed benchmark results (via nanopublications) is also available:
+       |    <br>${MarkdownUtil.formatDatasetMetadataLinks(dump2Link, ".gz")}
        |
        |""".stripMargin
-    val s2 = dumpLink match
-      case Some(link) => s + f"    :material-database: A complete dump of all metadata in RiverBench (without benchmark results) is available: <br>" +
-        MarkdownUtil.formatMetadataLinks(link, ".gz") + "\n\n"
-      case None => s
-    dump2Link match
-      case Some(link) => s2 + f"    :material-database-plus: A dump including community-contributed benchmark results (via nanopublications) is also available: <br>" +
-        MarkdownUtil.formatDatasetMetadataLinks(link, ".gz") + "\n\n"
-      case None => s2
