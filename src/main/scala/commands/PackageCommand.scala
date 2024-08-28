@@ -248,6 +248,7 @@ object PackageCommand extends Command:
         } catch {
           case e =>
             println(s"Error parsing $name")
+            e.printStackTrace()
             throw e
         }
 
