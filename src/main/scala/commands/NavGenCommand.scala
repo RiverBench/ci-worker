@@ -115,6 +115,7 @@ object NavGenCommand extends Command:
         YamlMap("Schemas & ontologies", YamlList(
           YamlString("schema/index.md") +: schemas,
         )),
+        YamlMap("Release notes", "releases.md"),
       ))
     )))
 
