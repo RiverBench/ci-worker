@@ -296,6 +296,8 @@ object CategoryDocGenCommand extends Command:
            |
            |[:octicons-arrow-left-24: Back to task definition](index.md)
            |
+           |<div style="text-align: center" markdown>[:material-help: How to report benchmark results](../../documentation/reporting-results.md){ .md-button }</div>
+           |
            |$resultsBody""".stripMargin
       )
 
