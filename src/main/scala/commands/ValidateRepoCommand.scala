@@ -161,7 +161,7 @@ object ValidateRepoCommand extends Command:
 
   private def validatePackage(relInfoFile: Path, metadataInfo: MetadataInfo): Future[Seq[String]] =
     val dataFileUrl = ReleaseInfoParser.getDatasetUrl(relInfoFile)
-    val filesFuture = FileHelper.readArchive(dataFileUrl)
+    val filesFuture = FileHelper.readArchiveFromUrl(dataFileUrl)
       .map((tarMeta, _) => {
         tarMeta.filePath.split('/').last
       })

@@ -40,16 +40,15 @@ object PackageCommand extends Command:
   override def name: String = "package"
 
   override def description = "Packages a dataset.\n" +
-    "Args: <repo-dir> <source-rel-info-file> <output-dir>"
+    "Args: <repo-dir> <source archive file> <output-dir>"
 
   override def validateArgs(args: Array[String]) = args.length == 4
 
   override def run(args: Array[String]): Future[Unit] = Future {
     val repoDir = FileSystems.getDefault.getPath(args(1))
-    val sourceRelInfoFile = FileSystems.getDefault.getPath(args(2))
+    val sourceArchiveFile = FileSystems.getDefault.getPath(args(2))
     val outDir = FileSystems.getDefault.getPath(args(3))
-
-    val dataFileUrl = ReleaseInfoParser.getDatasetUrl(sourceRelInfoFile)
+    
     val metadata = MetadataReader.read(repoDir)
     val stats = new StatCounterSuite(metadata.elementCount)
     val packages = Constants.packageSizes
@@ -71,7 +70,7 @@ object PackageCommand extends Command:
     { implicit builder =>
       (sStats, sStreamPackage, sFlatPackage, sJellyPackage, sSampleStream, sChecks) =>
       import GraphDSL.Implicits.*
-      val in = FileHelper.readArchive(dataFileUrl)
+      val in = FileHelper.readArchiveFromFile(sourceArchiveFile)
         .map((name, bytes) => (name, bytes.utf8String))
         .async
         .buffer(16, OverflowStrategy.backpressure)

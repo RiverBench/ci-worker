@@ -5,9 +5,6 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.io.IOUtils
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.ActorSystem
-import org.apache.pekko.http.scaladsl.Http
-import org.apache.pekko.http.scaladsl.model.*
-import org.apache.pekko.http.scaladsl.model.headers.Location
 import org.apache.pekko.stream.*
 import org.apache.pekko.stream.connectors.file.TarArchiveMetadata
 import org.apache.pekko.stream.connectors.file.scaladsl.Archive
@@ -21,19 +18,29 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object FileHelper:
 
+  def readArchiveFromUrl(url: String)(implicit as: ActorSystem[_]):
+  Source[(TarArchiveMetadata, ByteString), NotUsed] =
+    val response = HttpHelper.getWithFollowRedirects(url)
+    given ExecutionContext = as.executionContext
+    readArchive(
+      Source.futureSource(response.map(r => r.entity.dataBytes))
+    )
+
+  def readArchiveFromFile(path: Path)(implicit as: ActorSystem[_]):
+  Source[(TarArchiveMetadata, ByteString), NotUsed] =
+    readArchive(FileIO.fromPath(path))
+
   /**
-   * Reads a source data archive.
-   * @param url the URL from which to download the archive
+   * Reads a source data archive from a byte source.
+   * @param source the source of the archive data
    * @return a source of the archive entries
    */
-  def readArchive(url: String)(implicit as: ActorSystem[_]):
+  def readArchive(source: Source[ByteString, _])(implicit as: ActorSystem[_]):
   Source[(TarArchiveMetadata, ByteString), NotUsed] =
     given ExecutionContext = as.executionContext
-    val response = HttpHelper.getWithFollowRedirects(url)
-
     // Unfortunately, Pekko untar stage is glitchy with large archives, so we have to
     // use the non-reactive Apache Commons implementation instead.
-    val tarIs = Source.futureSource(response.map(r => r.entity.dataBytes))
+    val tarIs = source
       .via(Compression.gunzip())
       .toMat(StreamConverters.asInputStream())(Keep.right)
       .mapMaterializedValue(bytesIs => TarArchiveInputStream(bytesIs))
