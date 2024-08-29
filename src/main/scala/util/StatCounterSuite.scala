@@ -13,7 +13,8 @@ import scala.jdk.CollectionConverters.*
 object StatCounterSuite:
   case class Result(iris: StatCounter.Result, blankNodes: StatCounter.Result, literals: StatCounter.Result,
                     plainLiterals: StatCounter.Result, dtLiterals: StatCounter.Result,
-                    langLiterals: StatCounter.Result, quotedTriples: StatCounter.Result,
+                    langLiterals: StatCounter.Result, controlChars: StatCounter.Result,
+                    quotedTriples: StatCounter.Result,
                     subjects: StatCounter.Result, predicates: StatCounter.Result,
                     objects: StatCounter.Result, graphs: StatCounter.Result,
                     statements: StatCounter.Result):
@@ -26,6 +27,7 @@ object StatCounterSuite:
         "SimpleLiteralCountStatistics" -> plainLiterals,
         "DatatypeLiteralCountStatistics" -> dtLiterals,
         "LanguageLiteralCountStatistics" -> langLiterals,
+        "AsciiControlCharacterCountStatistics" -> controlChars,
         "QuotedTripleCountStatistics" -> quotedTriples,
         "SubjectCountStatistics" -> subjects,
         "PredicateCountStatistics" -> predicates,
@@ -72,6 +74,7 @@ class StatCounterSuite(val size: Long):
   private val cDtLiterals = new StatCounter[String](10 * size)
   private val cLangLiterals = new StatCounter[String](10 * size)
 
+  private val cAsciiControlChars = LightStatCounter[Char]()
   private val cBlankNodes = new LightStatCounter[String]()
   private val cQuotedTriples = new LightStatCounter[String]()
 
@@ -81,13 +84,7 @@ class StatCounterSuite(val size: Long):
   private val cGraphs = new StatCounter[Node](10 * size)
 
   private val cStatements = new LightStatCounter[String]()
-
-  /**
-   * Also runs additional validation checks on the dataset.
-   * See: https://github.com/RiverBench/RiverBench/issues/107
-   * Yeah, I know this spaghettifies the code, but we already iterate over all nodes here.
-   * @throws IllegalArgumentException if the dataset is invalid
-   */
+  
   def add(ds: DatasetGraph): Unit =
     if ds.getDefaultGraph.isEmpty then
       cGraphs.add(ds.listGraphNodes().asScala.toSeq)
@@ -103,6 +100,7 @@ class StatCounterSuite(val size: Long):
     val simpleLiterals = mutable.Set[String]()
     val dtLiterals = mutable.Set[String]()
     val langLiterals = mutable.Set[String]()
+    var controlCharCount = 0
     var quotedTripleCount = 0
     var stCount = 0
 
@@ -126,17 +124,12 @@ class StatCounterSuite(val size: Long):
 
     allNodes.foreach(n => {
       if n.isURI then
-        val iri = n.getURI
-        // We only do the control char checks for RDF graphs, because RDF/XML can't serialize datasets anyway
-        if !usesQuads then
-          checkAsciiControlChars(iri)
-        iris += iri
+        iris += n.getURI
       else if n.isBlank then
         blankNodes += n.getBlankNodeLabel
       else if n.isLiteral then
         val lit = n.toString(false)
-        if !usesQuads then
-          checkAsciiControlChars(lit)
+        controlCharCount += countAsciiControlChars(lit)
         literals += lit
         if n.getLiteralLanguage != "" then
           langLiterals += lit
@@ -157,6 +150,7 @@ class StatCounterSuite(val size: Long):
     cPlainLiterals.addUnique(simpleLiterals)
     cDtLiterals.addUnique(dtLiterals)
     cLangLiterals.addUnique(langLiterals)
+    cAsciiControlChars.lightAdd(controlCharCount)
 
     cQuotedTriples.lightAdd(quotedTripleCount)
 
@@ -165,20 +159,11 @@ class StatCounterSuite(val size: Long):
     cObjects.addUnique(objects)
     cStatements.lightAdd(stCount)
 
-  /**
-   * @throws IllegalArgumentException if the string contains disallowed ASCII control characters
-   */
-  private def checkAsciiControlChars(s: String): Unit =
-    // 0x00–0x1F are disallowed except 0x09 (tab), 0x0A (LF), 0x0D (CR)
-    val charOpt = s.find(c => c < 9 || c == 11 || c == 12 || (c > 13 && c < 20))
-    if charOpt.isDefined then
-      throw new IllegalArgumentException(f"String \"$s\" contains a disallowed ASCII control character " +
-        f"(0x${String.format("%02x", charOpt.get.toInt)}). " +
-        f"This will break the RDF/XML serialization. If this character must be here, consult the RiverBench " +
-        f"maintainer. Otherwise, if they are here by mistake, please remove it. " +
-        f"See: https://github.com/RiverBench/dataset-politiquices/issues/1")
+  private def countAsciiControlChars(s: String): Int =
+    // 0x00–0x1F are disallowed except 0x09 (HT, tab), 0x0A (LF), 0x0D (CR)
+    s.count(c => c < 9 || c == 11 || c == 12 || (c > 13 && c < 20))
 
   def result: StatCounterSuite.Result =
     StatCounterSuite.Result(cIris.result, cBlankNodes.result, cLiterals.result, cPlainLiterals.result,
-      cDtLiterals.result, cLangLiterals.result, cQuotedTriples.result, cSubjects.result,
+      cDtLiterals.result, cLangLiterals.result, cAsciiControlChars.result, cQuotedTriples.result, cSubjects.result,
       cPredicates.result, cObjects.result, cGraphs.result, cStatements.result)

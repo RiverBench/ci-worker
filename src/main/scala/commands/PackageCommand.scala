@@ -212,14 +212,8 @@ object PackageCommand extends Command:
         shouldSplit
       )
       .map((ds, num) => {
-        try {
-          stats.add(ds)
-          num + 1
-        } catch {
-          case e: Throwable =>
-            println(s"Error computing stats for element $num")
-            throw e
-        }
+        stats.add(ds)
+        num + 1
       })
       .reduce((a, b) => a.max(b))
       .map(num => (num, stats.result))
