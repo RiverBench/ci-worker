@@ -1,15 +1,14 @@
 package io.github.riverbench.ci_worker
 package util
 
-import com.google.common.hash.{BloomFilter, Funnel, PrimitiveSink}
+import org.apache.datasketches.hll.HllSketch
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
-import org.apache.jena.graph.Node
 import org.apache.jena.rdf.model.Resource
 
 //noinspection UnstableApiUsage
 object StatCounter:
   case class Result(sum: Long, mean: Double, stDev: Double, min: Long, max: Long,
-                    uniqueCount: Option[Long]):
+                    uniqueCount: Option[Long], uniqueLowerBound: Option[Long], uniqueUpperBound: Option[Long]):
     def addToRdf(statRes: Resource): Unit =
       statRes.addProperty(RdfUtil.sum, sum.toString, XSDinteger)
       statRes.addProperty(RdfUtil.mean, mean.toString, XSDdecimal)
@@ -17,13 +16,8 @@ object StatCounter:
       statRes.addProperty(RdfUtil.minimum, min.toString, XSDinteger)
       statRes.addProperty(RdfUtil.maximum, max.toString, XSDinteger)
       uniqueCount.foreach(c => statRes.addProperty(RdfUtil.uniqueCount, c.toString, XSDinteger))
-
-  implicit val stringFunnel: Funnel[String] =
-    (from: String, into: PrimitiveSink) => into.putBytes(from.getBytes)
-    
-  // Add to the node's funnel both its hashcode and string repr. bytes to avoid collisions... just in case
-  implicit val nodeFunnel: Funnel[Node] =
-    (from: Node, into: PrimitiveSink) => into.putInt(from.hashCode()).putBytes(from.toString.getBytes)
+      uniqueLowerBound.foreach(c => statRes.addProperty(RdfUtil.uniqueCountLowerBound, c.toString, XSDinteger))
+      uniqueUpperBound.foreach(c => statRes.addProperty(RdfUtil.uniqueCountUpperBound, c.toString, XSDinteger))
 
 class LightStatCounter[T]:
   import StatCounter.*
@@ -51,27 +45,33 @@ class LightStatCounter[T]:
   def result: Result = this.synchronized {
     val mean = sum.toDouble / count
     val stDev = Math.sqrt(sumSq.toDouble / count - mean * mean)
-    Result(sum, mean, stDev, min, max, None)
+    Result(sum, mean, stDev, min, max, None, None, None)
   }
 
-//noinspection UnstableApiUsage
-class StatCounter[T : Funnel](size: Long) extends LightStatCounter[T]:
+class StatCounter extends LightStatCounter[String]:
   import StatCounter.*
 
-  private val bloomFilter = BloomFilter.create[T](implicitly[Funnel[T]], size, 0.01)
+  private val sketch = HllSketch(16)
 
-  override def add(values: Seq[T]): Unit =
-    // the bloom filter is thread-safe
-    values.foreach(bloomFilter.put)
-    // but the counter is not
+  override def add(values: Seq[String]): Unit =
+    sketch.synchronized {
+      values.foreach(sketch.update)
+    }
     lightAdd(values.distinct.size)
 
-  override def addUnique(values: Iterable[T]): Unit =
-    values.foreach(bloomFilter.put)
+  override def addUnique(values: Iterable[String]): Unit =
+    sketch.synchronized {
+      values.foreach(sketch.update)
+    }
     lightAdd(values.size)
 
-  override def result: Result =
-    super.result.copy(uniqueCount = Some(bloomFilter.approximateElementCount))
+  override def result: Result = sketch.synchronized {
+    super.result.copy(
+      uniqueCount = Some(sketch.getEstimate.toLong),
+      uniqueLowerBound = Some(sketch.getLowerBound(2).toLong),
+      uniqueUpperBound = Some(sketch.getUpperBound(2).toLong)
+    )
+  }
 
 // uses sets instead of bloom filters
 class PreciseStatCounter[T] extends LightStatCounter[T]:

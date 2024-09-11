@@ -48,7 +48,7 @@ object CategoryDocGenCommand extends Command:
     ),
     startHeadingLevel = 3,
     customValueFormatters = {
-      case res: Resource if {
+      case (_, res: Resource) if {
         val props = res.listProperties().asScala.map(_.getPredicate).toSeq
         res.hasProperty(RDF.`type`, RdfUtil.SystemUnderTest) &&
           props.contains(RDFS.label) &&

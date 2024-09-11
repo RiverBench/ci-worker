@@ -47,6 +47,8 @@ object RdfUtil:
   val stDev = m.createProperty(pRb, "standardDeviation")
   val sum = m.createProperty(pRb, "sum")
   val uniqueCount = m.createProperty(pRb, "uniqueCount")
+  val uniqueCountLowerBound = m.createProperty(pRb, "uniqueCountLowerBound")
+  val uniqueCountUpperBound = m.createProperty(pRb, "uniqueCountUpperBound")
 
   val hasStatistics = m.createProperty(pRb, "hasStatistics")
   val hasStatisticsSet = m.createProperty(pRb, "hasStatisticsSet")

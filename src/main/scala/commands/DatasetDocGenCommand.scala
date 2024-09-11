@@ -1,15 +1,14 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.doc.{DocBuilder, DocFileUtil, MarkdownUtil}
 import util.*
+import util.doc.{DocBuilder, DocFileUtil, MarkdownUtil}
 
 import org.apache.jena.rdf.model.{Property, RDFNode}
-import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.sparql.vocabulary.FOAF
 import org.apache.jena.vocabulary.{RDF, RDFS}
 
-import java.nio.file.{FileSystems, Files, Path}
+import java.nio.file.{FileSystems, Files}
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
@@ -78,7 +77,23 @@ object DatasetDocGenCommand extends Command:
     val statsRes = m.createResource()
     for s <- m.listObjectsOfProperty(RdfUtil.hasStatisticsSet).asScala.distinct do
       statsRes.addProperty(RdfUtil.hasStatisticsSet, s)
-    // val statSection = docIndex.addSubsection()
+    // Another cheat: transform unique count statistics to include upper/lower confidence bounds
+    val statsToProcess = m.listResourcesWithProperty(RdfUtil.uniqueCountLowerBound).asScala.toSeq
+    for stat <- statsToProcess do
+      val uniqueCount = stat.getProperty(RdfUtil.uniqueCount).getLong
+      val lower = stat.getProperty(RdfUtil.uniqueCountLowerBound).getLong
+      val upper = stat.getProperty(RdfUtil.uniqueCountUpperBound).getLong
+      stat.removeAll(RdfUtil.uniqueCount)
+      stat.removeAll(RdfUtil.uniqueCountLowerBound)
+      stat.removeAll(RdfUtil.uniqueCountUpperBound)
+      stat.addProperty(
+        RdfUtil.uniqueCount,
+        MarkdownUtil.prettyLabel(
+          "~ " + MarkdownUtil.formatInt(uniqueCount.toString),
+          Some(s"Estimated value. Lower bound: ${MarkdownUtil.formatInt(lower.toString)}, " +
+            s"upper bound: ${MarkdownUtil.formatInt(upper.toString)} (95% confidence).")
+        )
+      )
     docBuilderIndex.buildSection(statsRes, docIndex)
 
     // Save the index.md document

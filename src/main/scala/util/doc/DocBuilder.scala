@@ -17,7 +17,8 @@ object DocBuilder:
     defaultPropGroup: Option[String] = None,
     tabularProps: Seq[Property] = Seq(),
     startHeadingLevel: Int = 1,
-    customValueFormatters: PartialFunction[RDFNode, DocValue] = PartialFunction.empty,
+    // Arguments to the partial function: predicate, object.
+    customValueFormatters: PartialFunction[(Resource, RDFNode), DocValue] = PartialFunction.empty,
     customSectionContentGen: Map[Resource, Seq[RDFNode] => String] = Map(),
   )
 
@@ -105,19 +106,19 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
 
   private def makeValue(docProp: DocProp, objects: Iterable[RDFNode]): DocValue =
     def makeValueInternal(o: RDFNode): DocValue =
-      o match
+      (docProp.prop, o) match
         case opt.customValueFormatters(value) => value
-        case lit: Literal if docProp.prop.getURI == RdfUtil.dcatByteSize.getURI =>
+        case (RdfUtil.dcatByteSize, lit: Literal) =>
           DocValue.SizeLiteral(lit.getLexicalForm)
-        case lit: Literal => DocValue.Literal(lit)
-        case res: Resource if res.isAnon =>
+        case (_, lit: Literal) => DocValue.Literal(lit)
+        case (_, res: Resource) if res.isAnon =>
           val nestedValues = getDocValuesForRes(res)
           DocValue.BlankNode(nestedValues, getTitleForProps(nestedValues))
-        case res: Resource if docProp.prop.getURI == RDF.`type`.getURI ||
+        case (prop, res: Resource) if prop == RDF.`type` ||
           RdfUtil.isNamedThing(res, Some(ontologies)) =>
           DocValue.RdfNamedThing(res, ontologies)
-        case res: Resource => DocValue.Link(res)
-        case node => DocValue.Text(node.toString)
+        case (_, res: Resource) => DocValue.Link(res)
+        case (_, node) => DocValue.Text(node.toString)
 
     val values = objects.map { o =>
       val list = GraphList.members(GNode.create(o.getModel.getGraph, o.asNode)).asScala

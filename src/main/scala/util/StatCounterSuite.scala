@@ -69,29 +69,29 @@ class StatCounterSuite(val size: Long):
   private val DEFAULT_GRAPH = NodeFactory.createBlankNode("DEFAULT GRAPH")
 
   // A bad heuristic: 10x the size of the stream is assumed to be the number of elements in the bloom filters
-  private val cIris = new StatCounter[String](10 * size)
-  private val cLiterals = new StatCounter[String](10 * size)
-  private val cPlainLiterals = new StatCounter[String](10 * size)
-  private val cDtLiterals = new StatCounter[String](10 * size)
-  private val cLangLiterals = new StatCounter[String](10 * size)
+  private val cIris = new StatCounter()
+  private val cLiterals = new StatCounter()
+  private val cPlainLiterals = new StatCounter()
+  private val cDtLiterals = new StatCounter()
+  private val cLangLiterals = new StatCounter()
   private val cDatatypes = new PreciseStatCounter[String]
 
   private val cAsciiControlChars = LightStatCounter[Char]()
   private val cBlankNodes = new LightStatCounter[String]()
   private val cQuotedTriples = new LightStatCounter[String]()
 
-  private val cSubjects = new StatCounter[Node](10 * size)
-  private val cPredicates = new StatCounter[Node](10 * size)
-  private val cObjects = new StatCounter[Node](10 * size)
-  private val cGraphs = new StatCounter[Node](10 * size)
+  private val cSubjects = new StatCounter()
+  private val cPredicates = new StatCounter()
+  private val cObjects = new StatCounter()
+  private val cGraphs = new StatCounter()
 
   private val cStatements = new LightStatCounter[String]()
   
   def add(ds: DatasetGraph): Unit =
     if ds.getDefaultGraph.isEmpty then
-      cGraphs.add(ds.listGraphNodes().asScala.toSeq)
+      cGraphs.add(ds.listGraphNodes().asScala.map(_.toString(true)).toSeq)
     else
-      cGraphs.add(ds.listGraphNodes().asScala.toSeq :+ DEFAULT_GRAPH)
+      cGraphs.add((ds.listGraphNodes().asScala.toSeq :+ DEFAULT_GRAPH).map(_.toString(true)))
       
     val subjects = mutable.Set[Node]()
     val predicates = mutable.Set[Node]()
@@ -159,9 +159,9 @@ class StatCounterSuite(val size: Long):
 
     cQuotedTriples.lightAdd(quotedTripleCount)
 
-    cSubjects.addUnique(subjects)
-    cPredicates.addUnique(predicates)
-    cObjects.addUnique(objects)
+    cSubjects.addUnique(subjects.map(_.toString(true)))
+    cPredicates.addUnique(predicates.map(_.toString(true)))
+    cObjects.addUnique(objects.map(_.toString(true)))
     cStatements.lightAdd(stCount)
 
   private def countAsciiControlChars(s: String): Int =
