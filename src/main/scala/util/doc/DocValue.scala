@@ -182,9 +182,9 @@ object DocValue:
         .sortBy { case (row, cols) =>
           cols
             .filter((k, _) => k._2.prop == RdfUtil.hasDocWeight)
-            .map((_, v) => v.getSortKey)
+            .map((_, v) => v.asInstanceOf[DocValue.Literal].value.getInt)
             .headOption
-            .getOrElse(row)
+            .getOrElse(1000)
         }
         .foreach { case (row, cols) =>
           sb.append(s"| **$row** ")
