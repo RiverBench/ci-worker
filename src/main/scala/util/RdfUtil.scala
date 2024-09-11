@@ -83,9 +83,12 @@ object RdfUtil:
   val dcatLandingPage = m.createProperty(pDcat, "landingPage")
   val dcatInCatalog = m.createProperty(pDcat, "inCatalog")
   val dcatInSeries = m.createProperty(pDcat, "inSeries")
+  // DCAT 3 property
   val dcatSeriesMember = m.createProperty(pDcat, "seriesMember")
   val dcatDataset = m.createProperty(pDcat, "dataset")
   val dcatResource = m.createProperty(pDcat, "resource")
+  // DCAT 3 property
+  val dcatIsDistributionOf = m.createProperty(pDcat, "isDistributionOf")
 
   val dctermsCreated = m.createProperty(pDcterms, "created")
   val dctermsCreator = m.createProperty(pDcterms, "creator")

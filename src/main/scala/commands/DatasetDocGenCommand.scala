@@ -58,6 +58,7 @@ object DatasetDocGenCommand extends Command:
         (1, RdfUtil.dctermsDescription), // shown as content below the header
         (1, RDF.`type`), // Always the same
         (3, RDF.`type`), // for distributions
+        (3, RdfUtil.dcatIsDistributionOf), // redundant information
       ),
       defaultPropGroup = Some("Technical metadata"),
       tabularProps = Seq(RdfUtil.hasStatistics),

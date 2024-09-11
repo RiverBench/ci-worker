@@ -160,6 +160,7 @@ object PackageCommand extends Command:
     mi.addToRdf(distRes, pResult.size, pResult.dType)
     distRes.addProperty(RdfUtil.hasFileName, pResult.saveRes.name)
     distRes.addProperty(RdfUtil.hasStatisticsSet, statRes)
+    distRes.addProperty(RdfUtil.dcatIsDistributionOf, datasetRes)
     pResult.saveRes.addToRdf(distRes, mi, pResult.dType)
 
   /**
