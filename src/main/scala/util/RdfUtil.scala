@@ -85,6 +85,7 @@ object RdfUtil:
   val dcatInSeries = m.createProperty(pDcat, "inSeries")
   val dcatSeriesMember = m.createProperty(pDcat, "seriesMember")
   val dcatDataset = m.createProperty(pDcat, "dataset")
+  val dcatResource = m.createProperty(pDcat, "resource")
 
   val dctermsCreated = m.createProperty(pDcterms, "created")
   val dctermsCreator = m.createProperty(pDcterms, "creator")

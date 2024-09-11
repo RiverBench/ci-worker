@@ -41,6 +41,8 @@ object MainDocGenCommand extends Command:
         (1, RdfUtil.dctermsDescription),
         (1, RdfUtil.dctermsTitle),
         (1, RDF.`type`),
+        // List of all profiles, categories, and tasks... very verbose
+        (1, RdfUtil.dcatResource),
       ) ++ (if version == "dev" then Seq(
         (1, RdfUtil.hasVersion),
       ) else Seq.empty)

@@ -44,6 +44,9 @@ object PackageMainCommand extends Command:
       .map(_.getName)
     val datasetCollection = DatasetCollection.fromReleases(datasetNames, datasetsVersion)
 
+    println("Fetching category metadata dumps...")
+    val categoryDumps = categoryCollection.categoryDumps.values
+
     // Prepare main model
     val mainModel = RDFDataMgr.loadModel(repoDir.resolve("metadata.ttl").toString)
     val oldMainRes = mainModel.createResource(AppConfig.CiWorker.rbRootUrl)
@@ -55,17 +58,22 @@ object PackageMainCommand extends Command:
     newMainRes.addProperty(RdfUtil.foafHomepage, newMainRes)
     newMainRes.addProperty(RdfUtil.hasVersion, version)
 
-    // Add links to datasets and categories
+    // Add links to datasets, categories, profiles, and tasks
     for ((_, dsModel) <- datasetCollection.datasets) do
       val dsRes = dsModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
       newMainRes.addProperty(RdfUtil.dcatDataset, dsRes)
     for ((_, catModel) <- categoryCollection.categories) do
       val catRes = catModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Category).next.asResource
       newMainRes.addProperty(RdfUtil.hasCategory, catRes)
+      newMainRes.addProperty(RdfUtil.dcatResource, catRes)
+    for catDump <- categoryDumps do
+      val catModel = catDump.getDefaultModel
+      val profilesAndTasks = catModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Profile).asScala
+        .concat(catModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Task).asScala)
+      for res <- profilesAndTasks do
+        newMainRes.addProperty(RdfUtil.dcatResource, res)
 
     // Generate RDF dump of all metadata
-    println("Fetching category dumps for merging...")
-    val categoryDumps = categoryCollection.categoryDumps.values
     val allModels = Seq(mainModel) ++
       datasetCollection.datasets.values ++
       categoryDumps.map(_.getDefaultModel)
