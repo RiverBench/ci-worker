@@ -63,7 +63,6 @@ class StatCounter[T : Funnel](size: Long) extends LightStatCounter[T]:
   override def add(values: Seq[T]): Unit =
     // the bloom filter is thread-safe
     values.foreach(bloomFilter.put)
-
     // but the counter is not
     lightAdd(values.distinct.size)
 
@@ -73,3 +72,18 @@ class StatCounter[T : Funnel](size: Long) extends LightStatCounter[T]:
 
   override def result: Result =
     super.result.copy(uniqueCount = Some(bloomFilter.approximateElementCount))
+
+// uses sets instead of bloom filters
+class PreciseStatCounter[T] extends LightStatCounter[T]:
+  private val set: scala.collection.mutable.HashSet[T] = scala.collection.mutable.HashSet.empty
+
+  override def add(values: Seq[T]): Unit =
+    set ++= values
+    lightAdd(values.distinct.size)
+
+  override def addUnique(values: Iterable[T]): Unit =
+    set ++= values
+    lightAdd(values.size)
+
+  override def result: StatCounter.Result =
+    super.result.copy(uniqueCount = Some(set.size.toLong))

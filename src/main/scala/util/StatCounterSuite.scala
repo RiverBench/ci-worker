@@ -13,8 +13,8 @@ import scala.jdk.CollectionConverters.*
 object StatCounterSuite:
   case class Result(iris: StatCounter.Result, blankNodes: StatCounter.Result, literals: StatCounter.Result,
                     plainLiterals: StatCounter.Result, dtLiterals: StatCounter.Result,
-                    langLiterals: StatCounter.Result, controlChars: StatCounter.Result,
-                    quotedTriples: StatCounter.Result,
+                    langLiterals: StatCounter.Result, datatypes: StatCounter.Result,
+                    controlChars: StatCounter.Result, quotedTriples: StatCounter.Result,
                     subjects: StatCounter.Result, predicates: StatCounter.Result,
                     objects: StatCounter.Result, graphs: StatCounter.Result,
                     statements: StatCounter.Result):
@@ -27,6 +27,7 @@ object StatCounterSuite:
         "SimpleLiteralCountStatistics" -> plainLiterals,
         "DatatypeLiteralCountStatistics" -> dtLiterals,
         "LanguageLiteralCountStatistics" -> langLiterals,
+        "DatatypeCountStatistics" -> datatypes,
         "AsciiControlCharacterCountStatistics" -> controlChars,
         "QuotedTripleCountStatistics" -> quotedTriples,
         "SubjectCountStatistics" -> subjects,
@@ -73,6 +74,7 @@ class StatCounterSuite(val size: Long):
   private val cPlainLiterals = new StatCounter[String](10 * size)
   private val cDtLiterals = new StatCounter[String](10 * size)
   private val cLangLiterals = new StatCounter[String](10 * size)
+  private val cDatatypes = new PreciseStatCounter[String]
 
   private val cAsciiControlChars = LightStatCounter[Char]()
   private val cBlankNodes = new LightStatCounter[String]()
@@ -100,6 +102,7 @@ class StatCounterSuite(val size: Long):
     val simpleLiterals = mutable.Set[String]()
     val dtLiterals = mutable.Set[String]()
     val langLiterals = mutable.Set[String]()
+    val datatypes = mutable.Set[String]()
     var controlCharCount = 0
     var quotedTripleCount = 0
     var stCount = 0
@@ -137,6 +140,7 @@ class StatCounterSuite(val size: Long):
           simpleLiterals += n.getLiteralLexicalForm
         else if n.getLiteralDatatypeURI != null then
           dtLiterals += lit
+          datatypes += n.getLiteralDatatypeURI
         else
           simpleLiterals += n.getLiteralLexicalForm
       else if n.isNodeTriple then
@@ -150,6 +154,7 @@ class StatCounterSuite(val size: Long):
     cPlainLiterals.addUnique(simpleLiterals)
     cDtLiterals.addUnique(dtLiterals)
     cLangLiterals.addUnique(langLiterals)
+    cDatatypes.addUnique(datatypes)
     cAsciiControlChars.lightAdd(controlCharCount)
 
     cQuotedTriples.lightAdd(quotedTripleCount)
@@ -165,5 +170,5 @@ class StatCounterSuite(val size: Long):
 
   def result: StatCounterSuite.Result =
     StatCounterSuite.Result(cIris.result, cBlankNodes.result, cLiterals.result, cPlainLiterals.result,
-      cDtLiterals.result, cLangLiterals.result, cAsciiControlChars.result, cQuotedTriples.result, cSubjects.result,
-      cPredicates.result, cObjects.result, cGraphs.result, cStatements.result)
+      cDtLiterals.result, cLangLiterals.result, cDatatypes.result, cAsciiControlChars.result, cQuotedTriples.result,
+      cSubjects.result, cPredicates.result, cObjects.result, cGraphs.result, cStatements.result)
