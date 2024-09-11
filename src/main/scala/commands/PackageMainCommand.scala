@@ -62,6 +62,8 @@ object PackageMainCommand extends Command:
     for ((_, dsModel) <- datasetCollection.datasets) do
       val dsRes = dsModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Dataset).next.asResource
       newMainRes.addProperty(RdfUtil.dcatDataset, dsRes)
+      // inverse property (DCAT 3)
+      dsRes.addProperty(RdfUtil.dcatInCatalog, newMainRes)
     for ((_, catModel) <- categoryCollection.categories) do
       val catRes = catModel.listSubjectsWithProperty(RDF.`type`, RdfUtil.Category).next.asResource
       newMainRes.addProperty(RdfUtil.hasCategory, catRes)
@@ -79,6 +81,12 @@ object PackageMainCommand extends Command:
       categoryDumps.map(_.getDefaultModel)
 
     val dumpModel = RdfUtil.mergeModels(allModels)
+    // Final touch: add inverse properties from datasets to their profiles
+    for s <- dumpModel.listStatements(null, RdfUtil.dcatSeriesMember, null).asScala do
+      val dataset = s.getObject.asResource
+      val profile = s.getSubject
+      dataset.addProperty(RdfUtil.dcatInSeries, profile)
+
     val dumpWithResultsDataset = DatasetFactory.create(dumpModel)
     for categoryDump <- categoryDumps do
       for graphName <- categoryDump.listNames().asScala do
