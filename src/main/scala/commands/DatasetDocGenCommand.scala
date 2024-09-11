@@ -89,7 +89,7 @@ object DatasetDocGenCommand extends Command:
       stat.addProperty(
         RdfUtil.uniqueCount,
         MarkdownUtil.prettyLabel(
-          "~ " + MarkdownUtil.formatInt(uniqueCount.toString),
+          "~" + MarkdownUtil.formatInt(uniqueCount.toString),
           Some(s"Estimated value. Lower bound: ${MarkdownUtil.formatInt(lower.toString)}, " +
             s"upper bound: ${MarkdownUtil.formatInt(upper.toString)} (95% confidence).")
         )
