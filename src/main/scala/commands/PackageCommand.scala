@@ -7,10 +7,11 @@ import util.io.*
 import eu.ostrzyciel.jelly.core.proto.v1.PhysicalStreamType
 import eu.ostrzyciel.jelly.core.{JellyOptions, LogicalStreamTypeFactory}
 import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
+import org.apache.jena.graph.GraphMemFactory
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
 import org.apache.jena.riot.lang.LabelToNode
-import org.apache.jena.riot.system.{ErrorHandlerFactory, FactoryRDFStd}
+import org.apache.jena.riot.system.{ErrorHandlerFactory, FactoryRDFStd, StreamRDFWriter}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
 import org.apache.pekko.stream.*
 import org.apache.pekko.stream.connectors.file.TarArchiveMetadata
@@ -20,7 +21,7 @@ import org.apache.pekko.{Done, NotUsed}
 import org.eclipse.rdf4j.model.vocabulary.XSD
 import org.eclipse.rdf4j.rio
 
-import java.io.{ByteArrayInputStream, FileOutputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, FileOutputStream}
 import java.nio.file.{FileSystems, Path}
 import java.util.UUID
 import scala.concurrent.Future
@@ -28,6 +29,7 @@ import scala.jdk.CollectionConverters.*
 
 object PackageCommand extends Command:
   import eu.ostrzyciel.jelly.convert.jena.{*, given}
+  import RdfOrdering.given
 
   sealed trait DistType(val weight: Int)
   object DistType:
@@ -48,6 +50,8 @@ object PackageCommand extends Command:
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val sourceArchiveFile = FileSystems.getDefault.getPath(args(2))
     val outDir = FileSystems.getDefault.getPath(args(3))
+
+    GraphMemFactory.setDftGraphSameTerm(false)
     
     val metadata = MetadataReader.read(repoDir)
     val stats = new StatCounterSuite(metadata.elementCount)
@@ -206,11 +210,12 @@ object PackageCommand extends Command:
   Flow[(DatasetGraph, Long), (Long, StatCounterSuite.Result), NotUsed] =
     Flow[(DatasetGraph, Long)]
       .wireTap((_, num) => if (num + 1) % 100_000 == 0 then println(s"Stats stream at: ${num + 1}"))
-      .splitAfter(SubstreamCancelStrategy.propagate)((_, num) =>
+      .splitAfter((_, num) =>
         val shouldSplit = Constants.packageSizes.contains(num + 1)
         if shouldSplit then println(s"Splitting stats stream at ${num + 1}")
         shouldSplit
       )
+      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.stoppingDecider))
       .map((ds, num) => {
         stats.add(ds)
         num + 1
@@ -334,19 +339,20 @@ object PackageCommand extends Command:
     }
 
     Flow[(DatasetGraph, Long)]
-      .map((ds, _) => {
+      .map((ds, _) => ds.find().asScala.toSeq.sorted)
+      .map(quads => {
+        val os = ByteArrayOutputStream()
         if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
-          RDFWriter.create()
-            .lang(Lang.NTRIPLES)
-            .source(ds.getDefaultGraph)
-            .asString()
+          val writer = StreamRDFWriter.getWriterStream(os, Lang.NTRIPLES)
+          quads.foreach(q => writer.triple(q.asTriple))
+          writer.finish()
         else
-          RDFWriter.create()
-            .lang(Lang.NQUADS)
-            .source(ds)
-            .asString()
+          val writer = StreamRDFWriter.getWriterStream(os, Lang.NQUADS)
+          quads.foreach(q => writer.quad(q))
+          writer.finish()
+        os.toByteArray
       })
-      .map(ByteString.fromString)
+      .map(ByteString.fromArrayUnsafe)
       .toMat(StreamUtil.broadcastSink(sinks))(Keep.right)
 
   /**

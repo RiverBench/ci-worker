@@ -89,9 +89,9 @@ class StatCounterSuite(val size: Long):
   
   def add(ds: DatasetGraph): Unit =
     if ds.getDefaultGraph.isEmpty then
-      cGraphs.add(ds.listGraphNodes().asScala.map(_.toString(true)).toSeq)
+      cGraphs.add(ds.listGraphNodes().asScala.map(_.toString()).toSeq)
     else
-      cGraphs.add((ds.listGraphNodes().asScala.toSeq :+ DEFAULT_GRAPH).map(_.toString(true)))
+      cGraphs.add((ds.listGraphNodes().asScala.toSeq :+ DEFAULT_GRAPH).map(_.toString()))
       
     val subjects = mutable.Set[Node]()
     val predicates = mutable.Set[Node]()
@@ -131,7 +131,7 @@ class StatCounterSuite(val size: Long):
       else if n.isBlank then
         blankNodes += n.getBlankNodeLabel
       else if n.isLiteral then
-        val lit = n.toString(false)
+        val lit = n.toString()
         controlCharCount += countAsciiControlChars(lit)
         literals += lit
         if n.getLiteralLanguage != "" then
@@ -159,9 +159,9 @@ class StatCounterSuite(val size: Long):
 
     cQuotedTriples.lightAdd(quotedTripleCount)
 
-    cSubjects.addUnique(subjects.map(_.toString(true)))
-    cPredicates.addUnique(predicates.map(_.toString(true)))
-    cObjects.addUnique(objects.map(_.toString(true)))
+    cSubjects.addUnique(subjects.map(_.toString()))
+    cPredicates.addUnique(predicates.map(_.toString()))
+    cObjects.addUnique(objects.map(_.toString()))
     cStatements.lightAdd(stCount)
 
   private def countAsciiControlChars(s: String): Int =

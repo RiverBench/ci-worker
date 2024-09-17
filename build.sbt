@@ -5,12 +5,12 @@ resolvers +=
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
 
 lazy val circeV = "0.14.7"
-lazy val jellyV = "0.14.1+12-0d137338-SNAPSHOT"
-lazy val jenaV = "4.10.0"
-lazy val pekkoV = "1.0.2"
+lazy val jellyV = "2.0.0"
+lazy val jenaV = "5.1.0"
+lazy val pekkoV = "1.1.0"
 lazy val pekkoHttpV = "1.0.1"
 lazy val pekkoConnV = "1.0.2"
-lazy val rdf4jV = "4.3.11"
+lazy val rdf4jV = "5.0.2"
 lazy val icu4jV = "74.2"
 
 lazy val root = (project in file("."))
@@ -20,7 +20,7 @@ lazy val root = (project in file("."))
 
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
-      "com.google.guava" % "guava" % "33.2.0-jre",
+      "com.google.guava" % "guava" % "33.2.1-jre",
       "com.ibm.icu" % "icu4j" % icu4jV,
       "eu.ostrzyciel.jelly" %% "jelly-stream" % jellyV,
       "eu.ostrzyciel.jelly" %% "jelly-jena" % jellyV,
@@ -62,5 +62,6 @@ lazy val root = (project in file("."))
     // emit deprecated warnings
     scalacOptions ++= Seq(
       "-deprecation",
+      "-Werror",
     ),
   )

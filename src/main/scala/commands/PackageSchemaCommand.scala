@@ -41,14 +41,14 @@ object PackageSchemaCommand extends Command:
     for name <- toProcessNames do
       val inPath = repoDir.resolve(s"src/$name.ttl")
       val model = RDFDataMgr.loadModel(inPath.toString)
-      model.listSubjectsWithProperty(RDF.`type`, OWL.Ontology).asScala.toList match
+      model.listSubjectsWithProperty(RDF.`type`, OWL2.Ontology).asScala.toList match
         case List(ontology) =>
           // Update version IRI
           model.removeAll(ontology, OWL2.versionIRI, null)
           model.add(ontology, OWL2.versionIRI, model.createResource(s"${ontology.getURI}/$version"))
 
           // Update imports
-          ontology.listProperties(OWL.imports).asScala
+          ontology.listProperties(OWL2.imports).asScala
             .filter(_.getObject.isURIResource)
             .map(_.getObject.asResource)
             .filter(_.getURI.startsWith(schemaBase))
@@ -57,8 +57,8 @@ object PackageSchemaCommand extends Command:
             .toSeq
             .foreach { (oldRes, nameParts) =>
               val newRes = model.createResource(s"$schemaBase${nameParts(0)}/$version")
-              model.remove(ontology, OWL.imports, oldRes)
-              model.add(ontology, OWL.imports, newRes)
+              model.remove(ontology, OWL2.imports, oldRes)
+              model.add(ontology, OWL2.imports, newRes)
             }
         case _ => ()
 
