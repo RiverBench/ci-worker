@@ -385,11 +385,11 @@ object PackageCommand extends Command:
     val serializeFlow = (
       if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
         Flow[(DatasetGraph, Long)]
-          .map((ds, _) => ds.getDefaultGraph.asTriples)
+          .map((ds, _) => ds.getDefaultGraph.asTriples.toSeq.sorted)
           .via(EncoderFlow.graphStream(None, jOpt))
       else
         Flow[(DatasetGraph, Long)]
-          .map((ds, _) => ds.asQuads)
+          .map((ds, _) => ds.asQuads.toSeq.sorted)
           .via(EncoderFlow.datasetStreamFromQuads(None, jOpt))
       )
       .via(JellyIo.toBytesDelimited)
