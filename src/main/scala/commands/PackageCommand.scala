@@ -7,11 +7,10 @@ import util.io.*
 import eu.ostrzyciel.jelly.core.proto.v1.PhysicalStreamType
 import eu.ostrzyciel.jelly.core.{JellyOptions, LogicalStreamTypeFactory}
 import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
-import org.apache.jena.graph.GraphMemFactory
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
-import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
 import org.apache.jena.riot.lang.LabelToNode
 import org.apache.jena.riot.system.{ErrorHandlerFactory, FactoryRDFStd, StreamRDFWriter}
+import org.apache.jena.riot.{Lang, RDFParser, RDFWriter}
 import org.apache.jena.sparql.core.{DatasetGraph, DatasetGraphFactory}
 import org.apache.pekko.stream.*
 import org.apache.pekko.stream.connectors.file.TarArchiveMetadata
@@ -28,8 +27,8 @@ import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
 
 object PackageCommand extends Command:
-  import eu.ostrzyciel.jelly.convert.jena.{*, given}
   import RdfOrdering.given
+  import eu.ostrzyciel.jelly.convert.jena.{*, given}
 
   sealed trait DistType(val weight: Int)
   object DistType:
@@ -50,8 +49,6 @@ object PackageCommand extends Command:
     val repoDir = FileSystems.getDefault.getPath(args(1))
     val sourceArchiveFile = FileSystems.getDefault.getPath(args(2))
     val outDir = FileSystems.getDefault.getPath(args(3))
-
-    GraphMemFactory.setDftGraphSameTerm(false)
     
     val metadata = MetadataReader.read(repoDir)
     val stats = new StatCounterSuite(metadata.elementCount)
