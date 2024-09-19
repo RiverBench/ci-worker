@@ -77,6 +77,8 @@ object PackageCategoryCommand extends Command:
     val newRes = categoryM.createResource(PurlMaker.category(id, version))
     RdfUtil.renameResource(categoryRootRes, newRes, categoryM)
     // Version metadata
+    categoryM.add(newRes, RdfUtil.dcatVersion, version)
+    // TODO: Remove in 2.3.0
     categoryM.add(newRes, RdfUtil.hasVersion, version)
     // Link to main
     categoryM.add(newRes, RdfUtil.dcatInCatalog, mainRes)
@@ -110,6 +112,8 @@ object PackageCategoryCommand extends Command:
       val newRes = taskM.createResource(PurlMaker.task(name, version))
       RdfUtil.renameResource(taskRootRes, newRes, taskM)
       // Version metadata
+      taskM.add(newRes, RdfUtil.dcatVersion, version)
+      // TODO: Remove in 2.3.0
       taskM.add(newRes, RdfUtil.hasVersion, version)
       // Link to category
       taskM.add(newRes, RdfUtil.inCategory, categoryRes)
@@ -182,6 +186,8 @@ object PackageCategoryCommand extends Command:
       profileModel.removeAll(res, RdfUtil.isSupersetOfProfile, null)
       profileModel.add(subSupModel.listStatements(res, null, null))
       // Version metadata
+      profileModel.add(res, RdfUtil.dcatVersion, version)
+      // TODO: Remove in 2.3.0
       profileModel.add(res, RdfUtil.hasVersion, version)
       profileModel.add(res, RdfUtil.dcatInCatalog, mainRes)
       profileModel.add(res, RdfUtil.inCategory, categoryRes)

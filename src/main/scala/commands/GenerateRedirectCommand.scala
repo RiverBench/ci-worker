@@ -32,7 +32,7 @@ object GenerateRedirectCommand extends Command:
         val m = RDFDataMgr.loadModel(
           s"https://github.com/RiverBench/dataset-$name/releases/latest/download/metadata.ttl"
         )
-        RdfUtil.getString(null, RdfUtil.hasVersion, Some(m)).get
+        RdfUtil.getString(null, RdfUtil.dcatVersion, Some(m)).get
       else
         val m = RDFDataMgr.loadModel(
           "https://github.com/RiverBench/schema/releases/latest/download/metadata.ttl"

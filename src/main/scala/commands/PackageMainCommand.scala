@@ -56,6 +56,8 @@ object PackageMainCommand extends Command:
     println("Processing main metadata...")
     RdfUtil.renameResource(oldMainRes, newMainRes, mainModel)
     newMainRes.addProperty(RdfUtil.foafHomepage, newMainRes)
+    newMainRes.addProperty(RdfUtil.dcatVersion, version)
+    // TODO: remove in 2.3.0
     newMainRes.addProperty(RdfUtil.hasVersion, version)
 
     // Add links to datasets, categories, profiles, and tasks

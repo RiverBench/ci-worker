@@ -58,6 +58,8 @@ object MergeMetadataCommand extends Command:
     (repoMetadata, newDatasetRes)
 
   private def addVersionMetadata(m: Model, datasetRes: Resource, version: String): Unit =
+    datasetRes.addProperty(RdfUtil.dcatVersion, version)
+    // TODO: Remove in 2.3.0
     datasetRes.addProperty(RdfUtil.hasVersion, version)
     val baseUrl = datasetRes.getURI
     datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))

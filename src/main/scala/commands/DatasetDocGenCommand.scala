@@ -32,7 +32,7 @@ object DatasetDocGenCommand extends Command:
     val mi = MetadataReader.fromModel(metadata)
     val landingPage = mi.datasetRes.listProperties(RdfUtil.dcatLandingPage)
       .asScala.toSeq.head.getResource.getURI
-    val version = mi.datasetRes.listProperties(RdfUtil.hasVersion)
+    val version = mi.datasetRes.listProperties(RdfUtil.dcatVersion)
       .asScala.toSeq.head.getLiteral.getString
 
     val readableVersion = version match

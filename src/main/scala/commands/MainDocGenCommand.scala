@@ -43,8 +43,10 @@ object MainDocGenCommand extends Command:
         (1, RDF.`type`),
         // List of all profiles, categories, and tasks... very verbose
         (1, RdfUtil.dcatResource),
-      ) ++ (if version == "dev" then Seq(
+        // TODO: remove in 2.3.0
         (1, RdfUtil.hasVersion),
+      ) ++ (if version == "dev" then Seq(
+        (1, RdfUtil.dcatVersion),
       ) else Seq.empty)
     )
 
@@ -68,6 +70,8 @@ object MainDocGenCommand extends Command:
     if version == "dev" then
       println("Generating README...")
       val readmeDocOpt = mainDocOpt.copy(hidePropsInLevel = mainDocOpt.hidePropsInLevel ++ Seq(
+        (1, RdfUtil.dcatVersion),
+        // TODO: remove in 2.3.0
         (1, RdfUtil.hasVersion),
       ))
       val readmeDocBuilder = new DocBuilder(ontologies, readmeDocOpt)

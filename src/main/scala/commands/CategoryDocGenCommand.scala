@@ -50,12 +50,14 @@ object CategoryDocGenCommand extends Command:
     customValueFormatters = {
       case (_, res: Resource) if {
         val props = res.listProperties().asScala.map(_.getPredicate).toSeq
-        res.hasProperty(RDF.`type`, RdfUtil.SystemUnderTest) &&
-          props.contains(RDFS.label) &&
-          (props.contains(RdfUtil.hasVersion) && props.size == 3 || props.size == 2)
+        res.hasProperty(RDF.`type`, RdfUtil.SystemUnderTest) && props.contains(RDFS.label)
       } =>
         val name = res.getProperty(RDFS.label).getObject.asLiteral().getString
-        val version = res.listProperties(RdfUtil.hasVersion).asScala.toSeq.headOption
+        // rb:hasVersion was used until 2.2.0, from 2.2.0 onwards dcat:version is used
+        // Read both to support older versions!
+        val version = (res.listProperties(RdfUtil.hasVersion).asScala ++
+          res.listProperties(RdfUtil.dcatVersion).asScala)
+          .toSeq.headOption
           .map(_.getObject.asLiteral().getString)
         DocValueSut(name, version)
     },
@@ -74,7 +76,7 @@ object CategoryDocGenCommand extends Command:
 
     val catM = RdfIoUtil.loadModelWithStableBNodeIds(packageOutDir.resolve("category/metadata.ttl"))
     val catRes = catM.listSubjectsWithProperty(RDF.`type`, RdfUtil.Category).next.asResource
-    val version = RdfUtil.getString(catRes, RdfUtil.hasVersion).get
+    val version = RdfUtil.getString(catRes, RdfUtil.dcatVersion).get
 
     outDir.resolve("category").toFile.mkdirs()
 
