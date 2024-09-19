@@ -80,14 +80,19 @@ object PackageCommand extends Command:
         .zipWithIndex
         .buffer(32, OverflowStrategy.backpressure)
       val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](6))
+      val flatSerialize = packageFlatSerializeFlow(metadata)
+      val flatSerializeBroad = builder.add(Broadcast[ByteString](2))
+      val statsZip = builder.add(Zip[ByteString, (DatasetGraph, Long)]())
       val checksMerge = builder.add(Merge[Unit](2))
 
       in ~> inBroad
       inBroad ~> checkRdf4jFlow(metadata).async ~> checksMerge ~> sChecks
       inBroad ~> parseJenaBuffered.async ~> dsBroad ~> checkStructureFlow(metadata).async ~> checksMerge
-      dsBroad ~> statsFlow(stats).async ~> sStats
+      dsBroad ~> flatSerialize ~> flatSerializeBroad ~> sFlatPackage
+      flatSerializeBroad ~> statsZip.in0
+      dsBroad ~> statsZip.in1
+      statsZip.out ~> statsFlow(stats).async ~> sStats
       dsBroad ~> sStreamPackage
-      dsBroad ~> sFlatPackage
       dsBroad ~> sJellyPackage
       dsBroad ~> sSampleStream
 
@@ -204,17 +209,18 @@ object PackageCommand extends Command:
    * @return a flow that computes statistics
    */
   private def statsFlow(stats: StatCounterSuite):
-  Flow[(DatasetGraph, Long), (Long, StatCounterSuite.Result), NotUsed] =
-    Flow[(DatasetGraph, Long)]
-      .wireTap((_, num) => if (num + 1) % 100_000 == 0 then println(s"Stats stream at: ${num + 1}"))
-      .splitAfter((_, num) =>
-        val shouldSplit = Constants.packageSizes.contains(num + 1)
-        if shouldSplit then println(s"Splitting stats stream at ${num + 1}")
+  Flow[(ByteString, (DatasetGraph, Long)), (Long, StatCounterSuite.Result), NotUsed] =
+    Flow[(ByteString, (DatasetGraph, Long))]
+      .wireTap((_, y) => if (y._2 + 1) % 100_000 == 0 then println(s"Stats stream at: ${y._2 + 1}"))
+      .splitAfter((_, y) =>
+        val shouldSplit = Constants.packageSizes.contains(y._2 + 1)
+        if shouldSplit then println(s"Splitting stats stream at ${y._2 + 1}")
         shouldSplit
       )
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.stoppingDecider))
-      .map((ds, num) => {
-        stats.add(ds)
+      .map((bytes, y) => {
+        val (ds, num) = y
+        stats.add(ds, bytes)
         num + 1
       })
       .reduce((a, b) => a.max(b))
@@ -318,23 +324,7 @@ object PackageCommand extends Command:
     }
     StreamUtil.broadcastSink(sinks)
 
-  /**
-   * Creates a sink that writes the data to flat files
-   * @param metadata the metadata of the dataset
-   * @param outDir the directory to write the files to
-   * @param packages the packages to write (size, name)
-   * @return the sink
-   */
-  private def packageFlatSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
-  Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
-    val fileExtension = if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then "nt" else "nq"
-
-    val sinks = packages.map { case (size, name) =>
-      Flow[ByteString]
-        .take(size)
-        .toMat(FileHelper.writeCompressed(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
-    }
-
+  private def packageFlatSerializeFlow(metadata: MetadataInfo): Flow[(DatasetGraph, Long), ByteString, NotUsed] =
     Flow[(DatasetGraph, Long)]
       .map((ds, _) => ds.find().asScala.toSeq.sorted)
       .map(quads => {
@@ -350,6 +340,23 @@ object PackageCommand extends Command:
         os.toByteArray
       })
       .map(ByteString.fromArrayUnsafe)
+
+  /**
+   * Creates a sink that writes the data to flat files
+   * @param metadata the metadata of the dataset
+   * @param outDir the directory to write the files to
+   * @param packages the packages to write (size, name)
+   * @return the sink
+   */
+  private def packageFlatSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
+  Sink[ByteString, Seq[Future[SaveResult]]] =
+    val fileExtension = if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then "nt" else "nq"
+    val sinks = packages.map { case (size, name) =>
+      Flow[ByteString]
+        .take(size)
+        .toMat(FileHelper.writeCompressed(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
+    }
+    Flow[ByteString]
       .toMat(StreamUtil.broadcastSink(sinks))(Keep.right)
 
   /**

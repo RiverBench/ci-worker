@@ -7,19 +7,61 @@ import org.apache.jena.rdf.model.Resource
 
 //noinspection UnstableApiUsage
 object StatCounter:
-  case class Result(sum: Long, mean: Double, stDev: Double, min: Long, max: Long,
-                    uniqueCount: Option[Long], uniqueLowerBound: Option[Long], uniqueUpperBound: Option[Long]):
+  case class Result[TStat <: Double | Long]
+  (
+    sum: Option[TStat], mean: Double, stDev: Double, min: TStat, max: TStat, uniqueCount: Option[Long],
+    uniqueLowerBound: Option[Long], uniqueUpperBound: Option[Long]
+  ):
     def addToRdf(statRes: Resource): Unit =
-      statRes.addProperty(RdfUtil.sum, sum.toString, XSDinteger)
+      val statDt = min match
+        case _: Long => XSDinteger
+        case _: Double => XSDdecimal
+      sum.foreach(c => statRes.addProperty(RdfUtil.sum, c.toString, statDt))
       statRes.addProperty(RdfUtil.mean, mean.toString, XSDdecimal)
       statRes.addProperty(RdfUtil.stDev, stDev.toString, XSDdecimal)
-      statRes.addProperty(RdfUtil.minimum, min.toString, XSDinteger)
-      statRes.addProperty(RdfUtil.maximum, max.toString, XSDinteger)
+      statRes.addProperty(RdfUtil.minimum, min.toString, statDt)
+      statRes.addProperty(RdfUtil.maximum, max.toString, statDt)
       uniqueCount.foreach(c => statRes.addProperty(RdfUtil.uniqueCount, c.toString, XSDinteger))
       uniqueLowerBound.foreach(c => statRes.addProperty(RdfUtil.uniqueCountLowerBound, c.toString, XSDinteger))
       uniqueUpperBound.foreach(c => statRes.addProperty(RdfUtil.uniqueCountUpperBound, c.toString, XSDinteger))
 
-class LightStatCounter[T]:
+
+trait StatCounter[T, TStat <: Double | Long]:
+  def add(values: Seq[T]): Unit
+  def addUnique(values: Iterable[T]): Unit
+  def result: StatCounter.Result[TStat]
+
+
+class UncountableStatCounter extends StatCounter[Double, Double]:
+  import StatCounter.*
+
+  private var count: Long = 0
+  private var sum: BigDecimal = 0
+  private var sumSq: BigDecimal = 0
+  private var min: Double = Double.MaxValue
+  private var max: Double = Double.MinValue
+
+  override def add(values: Seq[Double]): Unit = addUnique(values)
+
+  override def addUnique(values: Iterable[Double]): Unit =
+    values.foreach(addOne)
+
+  def addOne(value: Double): Unit = this.synchronized {
+    count += 1
+    sum += value
+    sumSq += value * value
+    if value < min then min = value
+    if value > max then max = value
+  }
+
+  override def result: Result[Double] = this.synchronized {
+    val mean = sum.toDouble / count
+    val stDev = Math.sqrt(sumSq.toDouble / count - mean * mean)
+    Result(None, mean, stDev, min, max, None, None, None)
+  }
+
+
+class LightStatCounter[T] extends StatCounter[T, Long]:
   import StatCounter.*
 
   private var count: Long = 0
@@ -42,13 +84,14 @@ class LightStatCounter[T]:
     if c > max then max = c
   }
 
-  def result: Result = this.synchronized {
+  def result: Result[Long] = this.synchronized {
     val mean = sum.toDouble / count
     val stDev = Math.sqrt(sumSq.toDouble / count - mean * mean)
-    Result(sum, mean, stDev, min, max, None, None, None)
+    Result(Some(sum), mean, stDev, min, max, None, None, None)
   }
 
-class StatCounter extends LightStatCounter[String]:
+
+class SketchStatCounter extends LightStatCounter[String]:
   import StatCounter.*
 
   private val sketch = HllSketch(16)
@@ -65,13 +108,14 @@ class StatCounter extends LightStatCounter[String]:
     }
     lightAdd(values.size)
 
-  override def result: Result = sketch.synchronized {
+  override def result: Result[Long] = sketch.synchronized {
     super.result.copy(
       uniqueCount = Some(sketch.getEstimate.toLong),
       uniqueLowerBound = Some(sketch.getLowerBound(2).toLong),
       uniqueUpperBound = Some(sketch.getUpperBound(2).toLong)
     )
   }
+
 
 // uses sets instead of bloom filters
 class PreciseStatCounter[T] extends LightStatCounter[T]:
@@ -85,5 +129,5 @@ class PreciseStatCounter[T] extends LightStatCounter[T]:
     set ++= values
     lightAdd(values.size)
 
-  override def result: StatCounter.Result =
+  override def result: StatCounter.Result[Long] =
     super.result.copy(uniqueCount = Some(set.size.toLong))

@@ -6,18 +6,20 @@ import org.apache.jena.graph.{Node, NodeFactory, Node_URI, Triple}
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.sparql.core.DatasetGraph
 import org.apache.jena.vocabulary.RDF
+import org.apache.pekko.util.ByteString
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
 object StatCounterSuite:
-  case class Result(iris: StatCounter.Result, blankNodes: StatCounter.Result, literals: StatCounter.Result,
-                    plainLiterals: StatCounter.Result, dtLiterals: StatCounter.Result,
-                    langLiterals: StatCounter.Result, datatypes: StatCounter.Result,
-                    controlChars: StatCounter.Result, quotedTriples: StatCounter.Result,
-                    subjects: StatCounter.Result, predicates: StatCounter.Result,
-                    objects: StatCounter.Result, graphs: StatCounter.Result,
-                    statements: StatCounter.Result):
+  case class Result(iris: StatCounter.Result[Long], blankNodes: StatCounter.Result[Long], 
+                    literals: StatCounter.Result[Long],
+                    plainLiterals: StatCounter.Result[Long], dtLiterals: StatCounter.Result[Long],
+                    langLiterals: StatCounter.Result[Long], datatypes: StatCounter.Result[Long],
+                    controlChars: StatCounter.Result[Long], quotedTriples: StatCounter.Result[Long],
+                    subjects: StatCounter.Result[Long], predicates: StatCounter.Result[Long],
+                    objects: StatCounter.Result[Long], graphs: StatCounter.Result[Long],
+                    statements: StatCounter.Result[Long], byteDensity: StatCounter.Result[Double]):
 
     def addToRdf(m: Model, size: Long, totalSize: Long): Resource =
       val toAdd = Seq(
@@ -34,7 +36,8 @@ object StatCounterSuite:
         "PredicateCountStatistics" -> predicates,
         "ObjectCountStatistics" -> objects,
         "GraphCountStatistics" -> graphs,
-        "StatementCountStatistics" -> statements
+        "StatementCountStatistics" -> statements,
+        "ByteDensityStatistics" -> byteDensity
       )
       val sizeName = Constants.packageSizeToHuman(size, true)
       val mainStatRes = m.createResource(RdfUtil.tempDataset.getURI + "#statistics-" + sizeName.toLowerCase)
@@ -67,27 +70,27 @@ class StatCounterSuite(val size: Long):
   
   // Hack. Jena usually represents the default graph node as null, which is not great for us here.
   private val DEFAULT_GRAPH = NodeFactory.createBlankNode("DEFAULT GRAPH")
-
-  // A bad heuristic: 10x the size of the stream is assumed to be the number of elements in the bloom filters
-  private val cIris = new StatCounter()
-  private val cLiterals = new StatCounter()
-  private val cPlainLiterals = new StatCounter()
-  private val cDtLiterals = new StatCounter()
-  private val cLangLiterals = new StatCounter()
+  
+  private val cIris = new SketchStatCounter()
+  private val cLiterals = new SketchStatCounter()
+  private val cPlainLiterals = new SketchStatCounter()
+  private val cDtLiterals = new SketchStatCounter()
+  private val cLangLiterals = new SketchStatCounter()
   private val cDatatypes = new PreciseStatCounter[String]
 
   private val cAsciiControlChars = LightStatCounter[Char]()
   private val cBlankNodes = new LightStatCounter[String]()
   private val cQuotedTriples = new LightStatCounter[String]()
 
-  private val cSubjects = new StatCounter()
-  private val cPredicates = new StatCounter()
-  private val cObjects = new StatCounter()
-  private val cGraphs = new StatCounter()
-
+  private val cSubjects = new SketchStatCounter()
+  private val cPredicates = new SketchStatCounter()
+  private val cObjects = new SketchStatCounter()
+  private val cGraphs = new SketchStatCounter()
   private val cStatements = new LightStatCounter[String]()
   
-  def add(ds: DatasetGraph): Unit =
+  private val cByteDensity = new UncountableStatCounter()
+  
+  def add(ds: DatasetGraph, bytesInFlat: ByteString): Unit =
     if ds.getDefaultGraph.isEmpty then
       cGraphs.add(ds.listGraphNodes().asScala.map(_.toString()).toSeq)
     else
@@ -163,6 +166,9 @@ class StatCounterSuite(val size: Long):
     cPredicates.addUnique(predicates.map(_.toString()))
     cObjects.addUnique(objects.map(_.toString()))
     cStatements.lightAdd(stCount)
+    
+    // Note: the byte count includes exactly stCount newlines.
+    cByteDensity.addOne(bytesInFlat.length.toDouble / stCount)
 
   private def countAsciiControlChars(s: String): Int =
     // 0x00–0x1F are disallowed except 0x09 (HT, tab), 0x0A (LF), 0x0D (CR)
@@ -171,4 +177,4 @@ class StatCounterSuite(val size: Long):
   def result: StatCounterSuite.Result =
     StatCounterSuite.Result(cIris.result, cBlankNodes.result, cLiterals.result, cPlainLiterals.result,
       cDtLiterals.result, cLangLiterals.result, cDatatypes.result, cAsciiControlChars.result, cQuotedTriples.result,
-      cSubjects.result, cPredicates.result, cObjects.result, cGraphs.result, cStatements.result)
+      cSubjects.result, cPredicates.result, cObjects.result, cGraphs.result, cStatements.result, cByteDensity.result)
