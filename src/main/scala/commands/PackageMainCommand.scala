@@ -4,6 +4,7 @@ package commands
 import util.*
 import util.collection.*
 import util.doc.MarkdownUtil
+import util.releases.PreviousVersionHelper
 
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.rdf.model.{Model, Property, RDFNode, Resource}
@@ -59,6 +60,8 @@ object PackageMainCommand extends Command:
     newMainRes.addProperty(RdfUtil.dcatVersion, version)
     // TODO: remove in 2.3.0
     newMainRes.addProperty(RdfUtil.hasVersion, version)
+    if version != "dev" then
+      PreviousVersionHelper.addPreviousVersionInfoSynchronous(newMainRes, "RiverBench")
 
     // Add links to datasets, categories, profiles, and tasks
     for ((_, dsModel) <- datasetCollection.datasets) do

@@ -3,6 +3,7 @@ package commands
 
 import util.{AppConfig, Constants, RdfUtil}
 
+import io.github.riverbench.ci_worker.util.releases.PreviousVersionHelper
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.apache.jena.vocabulary.{OWL, OWL2, RDF}
@@ -46,6 +47,9 @@ object PackageSchemaCommand extends Command:
           // Update version IRI
           model.removeAll(ontology, OWL2.versionIRI, null)
           model.add(ontology, OWL2.versionIRI, model.createResource(s"${ontology.getURI}/$version"))
+          if version != "dev" then
+            // Add previous version info
+            PreviousVersionHelper.addPreviousVersionInfoSynchronous(ontology, "schema")
 
           // Update imports
           ontology.listProperties(OWL2.imports).asScala

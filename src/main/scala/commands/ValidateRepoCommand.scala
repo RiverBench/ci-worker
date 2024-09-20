@@ -1,9 +1,9 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.ReleaseInfoParser.ReleaseInfo
-import util.io.FileHelper
 import util.*
+import util.io.FileHelper
+import util.releases.*
 
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}

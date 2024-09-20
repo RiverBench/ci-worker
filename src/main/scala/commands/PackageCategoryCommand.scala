@@ -4,6 +4,7 @@ package commands
 import util.*
 import util.collection.*
 import util.external.*
+import util.releases.*
 import util.doc.MarkdownUtil
 
 import eu.ostrzyciel.jelly.convert.jena.riot.JellyFormat
@@ -16,7 +17,8 @@ import org.apache.jena.vocabulary.RDF
 import java.io.FileOutputStream
 import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 object PackageCategoryCommand extends Command:
@@ -27,6 +29,8 @@ object PackageCategoryCommand extends Command:
     "Args: <version> <repo-dir> <main-repo-dir> <schema-repo-dir> <out-dir>"
 
   override def validateArgs(args: Array[String]) = args.length == 6
+
+  var previousVersionInfo: Option[ReleaseInfo] = None
 
   override def run(args: Array[String]): Future[Unit] =
     val version = args(1)
@@ -73,6 +77,16 @@ object PackageCategoryCommand extends Command:
     val id = categoryM.listObjectsOfProperty(categoryRootRes, RdfUtil.dctermsIdentifier).asScala
       .map(_.asLiteral().getString)
       .toSeq.head
+
+    // Preload previous version info.
+    // Do it here, as this is the earliest point where we have the category ID.
+    if version != "dev" then
+      println("Fetching previous version info...")
+      previousVersionInfo = Await.result(ReleaseInfoApi.getLatestReleaseInfo(f"category-$id"), 20.seconds)
+      previousVersionInfo match
+        case Some(info) => println(s"Previous version: ${info.tag_name}")
+        case None => println("No previous version found")
+
     // Add version tags to URIs
     val newRes = categoryM.createResource(PurlMaker.category(id, version))
     RdfUtil.renameResource(categoryRootRes, newRes, categoryM)
@@ -80,6 +94,7 @@ object PackageCategoryCommand extends Command:
     categoryM.add(newRes, RdfUtil.dcatVersion, version)
     // TODO: Remove in 2.3.0
     categoryM.add(newRes, RdfUtil.hasVersion, version)
+    PreviousVersionHelper.addPreviousVersionInfoPreloaded(previousVersionInfo, newRes, None)
     // Link to main
     categoryM.add(newRes, RdfUtil.dcatInCatalog, mainRes)
     // Prettify
@@ -115,6 +130,7 @@ object PackageCategoryCommand extends Command:
       taskM.add(newRes, RdfUtil.dcatVersion, version)
       // TODO: Remove in 2.3.0
       taskM.add(newRes, RdfUtil.hasVersion, version)
+      PreviousVersionHelper.addPreviousVersionInfoPreloaded(previousVersionInfo, newRes, Some(f"task-$name.ttl"))
       // Link to category
       taskM.add(newRes, RdfUtil.inCategory, categoryRes)
       categoryRes.getModel.add(categoryRes, RdfUtil.hasTask, newRes)
@@ -182,13 +198,14 @@ object PackageCategoryCommand extends Command:
       // Import SHACL libs
       importShaclLibs(name, profileModel, libs)
       // Add inferred properties
-      val res = subSupModel.createResource(getProfileUri(name))
+      val res = profileModel.createResource(getProfileUri(name))
       profileModel.removeAll(res, RdfUtil.isSupersetOfProfile, null)
       profileModel.add(subSupModel.listStatements(res, null, null))
       // Version metadata
       profileModel.add(res, RdfUtil.dcatVersion, version)
       // TODO: Remove in 2.3.0
       profileModel.add(res, RdfUtil.hasVersion, version)
+      PreviousVersionHelper.addPreviousVersionInfoPreloaded(previousVersionInfo, res, Some(f"profile-$name.ttl"))
       profileModel.add(res, RdfUtil.dcatInCatalog, mainRes)
       profileModel.add(res, RdfUtil.inCategory, categoryRes)
       categoryRes.getModel.add(categoryRes, RdfUtil.hasProfile, res)

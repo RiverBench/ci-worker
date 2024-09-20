@@ -2,6 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.*
+import util.releases.PreviousVersionHelper
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model.{Model, Resource}
@@ -61,6 +62,12 @@ object MergeMetadataCommand extends Command:
     datasetRes.addProperty(RdfUtil.dcatVersion, version)
     // TODO: Remove in 2.3.0
     datasetRes.addProperty(RdfUtil.hasVersion, version)
+
+    if version != "dev" then
+      // Try to add property dcat:previousVersion
+      val identifier = datasetRes.getProperty(RdfUtil.dctermsIdentifier).getObject.asLiteral.getString
+      PreviousVersionHelper.addPreviousVersionInfoSynchronous(datasetRes, f"dataset-$identifier")
+
     val baseUrl = datasetRes.getURI
     datasetRes.addProperty(RdfUtil.dcatLandingPage, m.createResource(baseUrl))
     datasetRes.addProperty(RdfUtil.dctermsModified, m.createTypedLiteral(LocalDate.now.toString, XSDdate))

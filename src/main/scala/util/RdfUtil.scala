@@ -90,6 +90,7 @@ object RdfUtil:
   val dcatResource = m.createProperty(pDcat, "resource")
   val dcatIsDistributionOf = m.createProperty(pDcat, "isDistributionOf")
   val dcatVersion = m.createProperty(pDcat, "version")
+  val dcatPreviousVersion = m.createProperty(pDcat, "previousVersion")
 
   val dctermsCreated = m.createProperty(pDcterms, "created")
   val dctermsCreator = m.createProperty(pDcterms, "creator")
