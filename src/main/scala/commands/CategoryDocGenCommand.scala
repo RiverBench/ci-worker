@@ -176,15 +176,9 @@ object CategoryDocGenCommand extends Command:
   private def taskDocGen(ontologies: Model, repoDir: Path, metadataOutDir: Path, outDir: Path, version: String):
   Seq[(String, Model)] =
     val dumpDataset = RdfIoUtil.loadDatasetWithStableBNodeIds(metadataOutDir.resolve("dump.jelly"))
-    val potentialDois = dumpDataset.listNames().asScala
-      .flatMap(graphName => {
-        val m = dumpDataset.getNamedModel(graphName)
-        m.listObjects().asScala
-      })
-      .filter(_.isResource)
-      .map(_.asResource().getURI)
-      .filter(_.contains("//doi.org"))
-      .toSeq
+    val models = dumpDataset.listNames().asScala
+      .map(graphName => dumpDataset.getNamedModel(graphName))
+    val potentialDois = DoiBibliography.getPotentialDois(models)
     val preloadBibFuture = DoiBibliography.preloadBibliography(potentialDois)
     val taskDocBuilder = new DocBuilder(ontologies, catTaskDocOpt)
     val benchResultsDocBuilder = new DocBuilder(ontologies, benchResultsDocOpt)

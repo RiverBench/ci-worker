@@ -70,7 +70,7 @@ object DocValue:
     override def getSortKey: String = label
 
   object Link:
-    def apply(value: model.Resource)(using DocAnnotationContext): Link =
+    def apply(value: model.Resource): Link =
       val uri = value.getURI
       val split = if uri.startsWith(AppConfig.CiWorker.baseDatasetUrl) then
         if uri.contains("#statistics-") then
@@ -95,7 +95,7 @@ object DocValue:
             InternalLink(parts(0), parts(1))
           else
             InternalLink(uri, s"${parts(0)} (${parts(1)})")
-        case _ if uri.contains("//doi.org") => DoiLink(value)
+        case _ if DoiBibliography.isDoiLike(uri) => DoiLink(value)
         case _ => ExternalLink(value)
 
   trait Link extends DocValue
@@ -104,17 +104,33 @@ object DocValue:
     def toMarkdown: String = f"[$name]($uri)"
     def getSortKey = name
 
-  case class DoiLink(value: model.Resource)(using DocAnnotationContext) extends Link:
+
+  case class DoiLink(value: model.Resource) extends Link:
     // We assume here that someone earlier preloaded the needed bibliography
-    private val bib = DoiBibliography.getBibliographyFromCache(value.getURI).map { entry =>
-      val annotationId = summon[DocAnnotationContext].registerAnnotation(
-        f"BibTeX citation:\n    ```bibtex\n${entry.bibtex.indent(4).stripLineEnd}\n    ```"
-      )
-      f"${entry.apa} :custom-bibtex:{ .rb-bibtex } ($annotationId)"
-    }
-    def toMarkdown: String = bib.fold(f"[${value.getURI}](${value.getURI})")
-      (b => urlRegex.replaceAllIn(b, m => f"[${m.matched}](${m.matched})"))
+    private val maybeBibEntry = DoiBibliography.getBibliographyFromCache(value.getURI)
+    private var annotationId: Option[Int] = None
+
+    override def registerAnnotations(context: DocAnnotationContext): Unit =
+      maybeBibEntry.foreach { entry =>
+        annotationId = Some(context.registerAnnotation(
+          f"BibTeX citation:\n    ``` { .bibtex .rb-wrap-code }\n${entry.bibtex.indent(4).stripLineEnd}\n    ```"
+        ))
+      }
+
+    def toMarkdown: String =
+      if maybeBibEntry.isEmpty then
+        println(f"Warning: DOI link without bibliography entry: ${value.getURI}")
+      else if annotationId.isEmpty then
+        println(f"Warning: DOI link without annotation ID: ${value.getURI}")
+      maybeBibEntry.fold
+        (f"[${value.getURI}](${value.getURI})")
+        (entry => urlRegex.replaceAllIn(
+          f"${entry.apa.strip} :custom-bibtex:{ .rb-bibtex } (${annotationId.map(_.toString).getOrElse("ERROR")})",
+          m => f"[${m.matched}](${m.matched})"
+        ))
+
     override def getSortKey = value.getURI
+
 
   case class ExternalLink(value: model.Resource) extends Link:
     def toMarkdown: String = f"[${value.getURI}](${value.getURI})"
@@ -122,6 +138,10 @@ object DocValue:
 
   case class BlankNode(values: Iterable[(DocProp, DocValue)], name: Option[String]) extends DocValue:
     override val isNestedList = true
+
+    override def registerAnnotations(context: DocAnnotationContext): Unit =
+      values.foreach { case (_, value) => value.registerAnnotations(context) }
+
     override def toMarkdown: String = values
       .toSeq
       .filter(!_._1.hidden)
@@ -149,6 +169,9 @@ object DocValue:
 
   case class List(values: Iterable[DocValue], baseName: Option[String]) extends DocValue:
     override val isNestedList = true
+
+    override def registerAnnotations(context: DocAnnotationContext): Unit =
+      values.foreach(_.registerAnnotations(context))
 
     def toMarkdown: String =
       val baseItemName = baseName.getOrElse("Item").strip
@@ -208,6 +231,8 @@ trait DocValue:
   val isNestedList = false
 
   val noIndent = false
+
+  def registerAnnotations(context: DocAnnotationContext): Unit = ()
 
   def toMarkdown: String
 

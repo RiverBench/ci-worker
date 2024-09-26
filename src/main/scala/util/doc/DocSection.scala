@@ -40,6 +40,7 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot
       val sub = subsections.find(_.title == group.get).get
       sub.addEntry(prop.copy(group = None), value)
     else
+      value.registerAnnotations(this)
       entries.addOne((prop, value))
 
   def addSubsection(): DocSection =
@@ -78,13 +79,13 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot
     if entries.nonEmpty && subsections.nonEmpty then
       sb.append("\n")
 
+    wrapSection(sb).insert(0, headerSb)
+
     val sortedSections = subsections
       .sortBy(_.title)
       .sortBy(_.getWeight)
 
     for sub <- sortedSections do
       sb.append(s"${sub.toMarkdown.strip}\n\n")
-
-    wrapSection(sb).insert(0, headerSb)
 
     sb.toString

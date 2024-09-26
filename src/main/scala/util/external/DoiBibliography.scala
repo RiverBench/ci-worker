@@ -11,7 +11,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import _root_.io.circe.syntax.*
 import _root_.io.circe.generic.auto.*
 import _root_.io.circe.parser.decode
+import org.apache.jena.rdf.model.Model
 
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 object DoiBibliography:
@@ -37,6 +39,17 @@ object DoiBibliography:
       workingCache ++= cache.entries.map(e => e.doi -> e)
       println(s"Loaded bibliography cache with ${workingCache.size} entries from $cacheFile")
   }
+
+  def isDoiLike(s: String): Boolean =
+    s != null && (s.contains("://doi.org") || s.contains("://dx.doi.org"))
+
+  def getPotentialDois(inModels: IterableOnce[Model]): Seq[String] =
+    inModels.iterator
+      .flatMap(_.listObjects().asScala)
+      .filter(_.isResource)
+      .map(_.asResource().getURI)
+      .filter(isDoiLike)
+      .toSeq
 
   def preloadBibliography(doiLikes: Seq[String])(using as: ActorSystem[_]): Future[Unit] =
     given ExecutionContext = as.executionContext
@@ -86,7 +99,7 @@ object DoiBibliography:
       if response.status.isSuccess then
         response.entity.contentType.mediaType.subType match
           case mediaType.subType =>
-            response.entity.dataBytes.runReduce(_ ++ _).map(_.utf8String)
+            response.entity.dataBytes.runReduce(_ ++ _).map(_.utf8String.trim)
           case _ => Future.failed(
             RuntimeException(f"Expected $mediaType, got ${response.entity.contentType.mediaType}")
           )

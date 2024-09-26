@@ -34,7 +34,6 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     rootSection
 
   def buildSection(resource: Resource, section: DocSection): Unit =
-    given DocAnnotationContext = section
     val props = getDocPropsForRes(resource)
 
     val usedValues = props.flatMap { (prop, nodes) =>
@@ -84,12 +83,12 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
       Some(docProp, statements.map(_.getObject))
     }
 
-  private def getDocValuesForRes(resource: Resource)(using DocAnnotationContext): Iterable[(DocProp, DocValue)] =
+  private def getDocValuesForRes(resource: Resource): Iterable[(DocProp, DocValue)] =
     getDocPropsForRes(resource).map { (prop, objects) =>
       prop -> makeValue(prop, objects)
     }
 
-  private def makeTable(objects: Iterable[RDFNode])(using DocAnnotationContext): DocValue =
+  private def makeTable(objects: Iterable[RDFNode]): DocValue =
     val tableMap = objects.flatMap {
       case rowRes: Resource =>
         val rowValues = getDocValuesForRes(rowRes)
@@ -105,7 +104,7 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     }.flatten.toMap
     DocValue.Table(tableMap)
 
-  private def makeValue(docProp: DocProp, objects: Iterable[RDFNode])(using DocAnnotationContext): DocValue =
+  private def makeValue(docProp: DocProp, objects: Iterable[RDFNode]): DocValue =
     def makeValueInternal(o: RDFNode): DocValue =
       (docProp.prop, o) match
         case opt.customValueFormatters(value) => value

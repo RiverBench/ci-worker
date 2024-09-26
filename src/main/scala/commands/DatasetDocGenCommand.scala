@@ -3,13 +3,15 @@ package commands
 
 import util.*
 import util.doc.{DocBuilder, DocFileUtil, MarkdownUtil}
+import util.external.DoiBibliography
 
 import org.apache.jena.rdf.model.{Property, RDFNode}
 import org.apache.jena.sparql.vocabulary.FOAF
 import org.apache.jena.vocabulary.{RDF, RDFS}
 
 import java.nio.file.{FileSystems, Files}
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 object DatasetDocGenCommand extends Command:
@@ -34,6 +36,10 @@ object DatasetDocGenCommand extends Command:
       .asScala.toSeq.head.getResource.getURI
     val version = mi.datasetRes.listProperties(RdfUtil.dcatVersion)
       .asScala.toSeq.head.getLiteral.getString
+
+    // Preload bibliography for DOIs found in the metadata
+    val dois = DoiBibliography.getPotentialDois(Seq(metadata))
+    val preloadBibFuture = DoiBibliography.preloadBibliography(dois)
 
     val readableVersion = version match
       case "dev" => "development version"
@@ -66,6 +72,9 @@ object DatasetDocGenCommand extends Command:
       ),
     )
     val docBuilderIndex = new DocBuilder(ontologies, optIndex)
+    if !preloadBibFuture.isCompleted then
+      println("Waiting for bibliography preloading...")
+    Await.ready(preloadBibFuture, 60.seconds)
     val docIndex = docBuilderIndex.build(
       title,
       mi.description + indexIntro(mi, landingPage) + streamPreview(mi),
