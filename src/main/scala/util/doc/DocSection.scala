@@ -5,7 +5,9 @@ import util.RdfUtil
 
 import scala.collection.mutable
 
-class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot: Boolean = false):
+class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot: Boolean = false)
+  extends DocAnnotationContext:
+
   private val entries = mutable.ListBuffer[(DocProp, DocValue)]()
   private val subsections = mutable.ListBuffer[DocSection]()
 
@@ -60,12 +62,13 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot
     selfWeight + subWeight
 
   def toMarkdown: String =
-    val sb = new StringBuilder()
+    val headerSb = new StringBuilder()
     val anchorMd = anchor.map(a => s" <a name=\"$a\"></a>").getOrElse("")
-    sb.append(s"${"#"*level}$anchorMd $title\n\n")
+    headerSb.append(s"${"#"*level}$anchorMd $title\n\n")
     if content.nonEmpty then
-      sb.append(s"$content\n\n")
+      headerSb.append(s"$content\n\n")
 
+    val sb = new StringBuilder()
     for entry <- entries.sortBy(_._1.weight) do
       if entry._2.noIndent then
         sb.append(s"\n${entry._2.toMarkdown}\n")
@@ -81,5 +84,7 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot
 
     for sub <- sortedSections do
       sb.append(s"${sub.toMarkdown.strip}\n\n")
+
+    wrapSection(sb).insert(0, headerSb)
 
     sb.toString

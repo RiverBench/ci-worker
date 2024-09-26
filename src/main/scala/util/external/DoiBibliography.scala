@@ -15,12 +15,13 @@ import _root_.io.circe.parser.decode
 import scala.util.{Failure, Success, Try}
 
 object DoiBibliography:
-  case class BibliographyEntry(doi: String, bib: String)
+  case class BibliographyEntry(doi: String, apa: String, bibtex: String)
   case class BibliographyCache(entries: List[BibliographyEntry])
 
-  private val workingCache = collection.concurrent.TrieMap.empty[String, String]
+  private val workingCache = collection.concurrent.TrieMap.empty[String, BibliographyEntry]
   private val usedDois = collection.concurrent.TrieMap.empty[String, String]
-  private val mediaBibliography = MediaRange(MediaType.text("x-bibliography", "style=apa"))
+  private val mediaBibliographyApa = MediaType.text("x-bibliography", "style=apa")
+  private val mediaBibtex = MediaType.applicationWithOpenCharset("x-bibtex")
 
   // Initialization code
   {
@@ -33,7 +34,7 @@ object DoiBibliography:
         println(s"Failed to parse bibliography cache: $err")
         BibliographyCache(Nil)
       }, identity)
-      workingCache ++= cache.entries.map(e => e.doi -> e.bib)
+      workingCache ++= cache.entries.map(e => e.doi -> e)
       println(s"Loaded bibliography cache with ${workingCache.size} entries from $cacheFile")
   }
 
@@ -43,30 +44,30 @@ object DoiBibliography:
       saveCache()
     })
 
-  def getBibliography(doiLike: String)(using as: ActorSystem[_]): Future[String] =
+  def getBibliography(doiLike: String)(using as: ActorSystem[_]): Future[BibliographyEntry] =
     given ExecutionContext = as.executionContext
     Future.fromTry(extractDoi(doiLike)) flatMap { doi =>
       usedDois.put(doi, doi)
       workingCache.get(doi) match
-        case Some(bib) => Future.successful(bib)
+        case Some(entry) => Future.successful(entry)
         case None =>
-          val bib = fetchBibliography(doi)
-          bib.foreach(b => {
+          for
+            apa <- fetchBibliography(doi, mediaBibliographyApa)
+            bibtex <- fetchBibliography(doi, mediaBibtex)
+          yield
             println(s"Fetched bibliography for $doi")
-            workingCache.put(doi, b)
-          })
-          bib
+            val entry = BibliographyEntry(doi, apa, bibtex)
+            workingCache.put(doi, entry)
+            entry
     }
 
-  def getBibliographyFromCache(doiLike: String): Option[String] =
+  def getBibliographyFromCache(doiLike: String): Option[BibliographyEntry] =
     extractDoi(doiLike).toOption.flatMap(doi => workingCache.get(doi))
 
   def saveCache(): Unit =
     val cacheFile = CiFileCache.getCachedFile("bibliography", "doi-cache.json")
     val cache = BibliographyCache(
-      workingCache
-        .filter(e => usedDois.contains(e._1))
-        .map(e => BibliographyEntry(e._1, e._2)).toList
+      workingCache.filter(e => usedDois.contains(e._1)).values.toList
     )
     Files.writeString(cacheFile.toPath, cache.asJson.spaces2, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
     println(s"Saved bibliography cache with ${cache.entries.size} entries to $cacheFile")
@@ -78,18 +79,18 @@ object DoiBibliography:
     else
       Success(split(split.length - 2) + "/" + split.last)
 
-  private def fetchBibliography(doi: String)(using as: ActorSystem[_]): Future[String] =
+  private def fetchBibliography(doi: String, mediaType: MediaType)(using as: ActorSystem[_]): Future[String] =
     given ExecutionContext = as.executionContext
     val url = s"https://doi.org/$doi"
-    HttpHelper.getWithFollowRedirects(url, accept = Some(mediaBibliography)) flatMap { response =>
+    HttpHelper.getWithFollowRedirects(url, accept = Some(MediaRange(mediaType))) flatMap { response =>
       if response.status.isSuccess then
         response.entity.contentType.mediaType.subType match
-          case "x-bibliography" =>
+          case mediaType.subType =>
             response.entity.dataBytes.runReduce(_ ++ _).map(_.utf8String)
           case _ => Future.failed(
-            RuntimeException(f"Expected x-bibliography, got ${response.entity.contentType.mediaType}")
+            RuntimeException(f"Expected $mediaType, got ${response.entity.contentType.mediaType}")
           )
       else
-        Future.failed(RuntimeException(f"Failed to fetch bibliography for $doi: ${response.status}"))
+        Future.failed(RuntimeException(f"Failed to fetch bibliography for $doi with $mediaType: ${response.status}"))
     }
 

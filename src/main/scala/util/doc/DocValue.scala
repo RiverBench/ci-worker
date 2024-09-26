@@ -70,7 +70,7 @@ object DocValue:
     override def getSortKey: String = label
 
   object Link:
-    def apply(value: model.Resource): Link =
+    def apply(value: model.Resource)(using DocAnnotationContext): Link =
       val uri = value.getURI
       val split = if uri.startsWith(AppConfig.CiWorker.baseDatasetUrl) then
         if uri.contains("#statistics-") then
@@ -104,9 +104,14 @@ object DocValue:
     def toMarkdown: String = f"[$name]($uri)"
     def getSortKey = name
 
-  case class DoiLink(value: model.Resource) extends Link:
+  case class DoiLink(value: model.Resource)(using DocAnnotationContext) extends Link:
     // We assume here that someone earlier preloaded the needed bibliography
-    private val bib = DoiBibliography.getBibliographyFromCache(value.getURI)
+    private val bib = DoiBibliography.getBibliographyFromCache(value.getURI).map { entry =>
+      val annotationId = summon[DocAnnotationContext].registerAnnotation(
+        f"BibTeX citation:\n    ```bibtex\n${entry.bibtex.indent(4).stripLineEnd}\n    ```"
+      )
+      f"${entry.apa} :custom-bibtex:{ .rb-bibtex } ($annotationId)"
+    }
     def toMarkdown: String = bib.fold(f"[${value.getURI}](${value.getURI})")
       (b => urlRegex.replaceAllIn(b, m => f"[${m.matched}](${m.matched})"))
     override def getSortKey = value.getURI
