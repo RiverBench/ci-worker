@@ -3,7 +3,6 @@ package util
 
 import commands.PackageCommand.DistType
 
-import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.vocabulary.RDF
@@ -65,7 +64,7 @@ case class MetadataInfo(
       else
         (elementCount.toString.length - size.toString.length + 1) * 3
       )
-    distRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
+    distRes.addLiteral(RdfUtil.hasDocWeight, weight)
 
     val sizeString = if size == elementCount then
       distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.fullDistribution)
@@ -97,7 +96,7 @@ case class MetadataInfo(
         distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.jellyDistribution)
         distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString Jelly distribution")
 
-    distRes.addProperty(RdfUtil.hasStreamElementCount, size.toString, XSDinteger)
+    distRes.addLiteral(RdfUtil.hasStreamElementCount, size)
 
 case class ConformanceInfo(conformsToRdf11: Boolean = false, conformsToRdfStarDraft_20211217: Boolean = false,
                            usesGeneralizedRdfDatasets: Boolean = false, usesGeneralizedTriples: Boolean = false,

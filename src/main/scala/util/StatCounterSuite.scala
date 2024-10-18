@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package util
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
-import org.apache.jena.graph.{Node, NodeFactory, Node_URI, Triple}
+import org.apache.jena.graph.{Node, NodeFactory, Triple}
 import org.apache.jena.rdf.model.{Model, Resource}
 import org.apache.jena.sparql.core.DatasetGraph
 import org.apache.jena.vocabulary.RDF
@@ -47,7 +47,7 @@ object StatCounterSuite:
         "Statistics for " + (if sizeName == "Full" then "full" else sizeName) + " distributions"
       )
       val weight = if size == totalSize then 0 else totalSize.toString.length - size.toString.length + 1
-      mainStatRes.addProperty(RdfUtil.hasDocWeight, weight.toString, XSDinteger)
+      mainStatRes.addLiteral(RdfUtil.hasDocWeight, weight)
 
       toAdd
         .zipWithIndex
@@ -55,7 +55,7 @@ object StatCounterSuite:
           val (name, stat) = el
           val statRes = m.createResource(RdfUtil.newAnonId((name + stat.toString).getBytes))
           statRes.addProperty(RDF.`type`, m.createResource(RdfUtil.pRb + name))
-          statRes.addProperty(RdfUtil.hasDocWeight, i.toString, XSDinteger)
+          statRes.addLiteral(RdfUtil.hasDocWeight, i)
           stat.addToRdf(statRes)
           mainStatRes.addProperty(RdfUtil.hasStatistics, statRes)
         })

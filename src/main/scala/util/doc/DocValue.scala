@@ -6,7 +6,6 @@ import util.{AppConfig, PurlMaker, RdfUtil}
 
 import com.ibm.icu.util.ULocale
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
-import org.apache.jena.datatypes.xsd.impl.XSDBaseNumericType
 import org.apache.jena.rdf.model
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
@@ -29,17 +28,15 @@ object DocValue:
         val langName = ULocale.forLanguageTag(lang).getDisplayName
         val langNameOption = if langName != "" then Some(langName) else None
         f"$lex _(${MarkdownUtil.prettyLabelEscaped(lang, langNameOption)})_"
-      else value.getDatatype match
-        case XSDboolean => if value.getBoolean then "yes" else "no"
-        case dt: XSDBaseNumericType =>
-          val dtName = dt.getURI.toLowerCase
-          if dtName.contains("int") || dtName.contains("long") then
-            MarkdownUtil.formatInt(lex)
-          else if dtName.contains("float") || dtName.contains("double") || dtName.contains("decimal") then
-            MarkdownUtil.formatDouble(lex)
-          else
-            lex
-        case _ =>
+      else
+        val dtName = value.getDatatype.getURI.toLowerCase
+        if value.getDatatype == XSDboolean then
+          if value.getBoolean then "yes" else "no"
+        else if dtName.contains("int") || dtName.contains("long") then
+          MarkdownUtil.formatInt(lex)
+        else if dtName.contains("float") || dtName.contains("double") || dtName.contains("decimal") then
+          MarkdownUtil.formatDouble(lex)
+        else
           // Heuristic for hash-like strings and identifiers
           if !lex.contains(' ') && lex.length > 10 && lex.exists(_.isLetter) && lex.exists(_.isDigit) ||
             lex.exists(_.isLetter) && lex.matches("^[a-z0-9-_.]+$") && lex.length > 1 then

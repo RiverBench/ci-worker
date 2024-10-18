@@ -13,17 +13,14 @@ object StatCounter:
     uniqueLowerBound: Option[Long], uniqueUpperBound: Option[Long]
   ):
     def addToRdf(statRes: Resource): Unit =
-      val statDt = min match
-        case _: Long => XSDinteger
-        case _: Double => XSDdecimal
-      sum.foreach(c => statRes.addProperty(RdfUtil.sum, c.toString, statDt))
-      statRes.addProperty(RdfUtil.mean, mean.toString, XSDdecimal)
-      statRes.addProperty(RdfUtil.stDev, stDev.toString, XSDdecimal)
-      statRes.addProperty(RdfUtil.minimum, min.toString, statDt)
-      statRes.addProperty(RdfUtil.maximum, max.toString, statDt)
-      uniqueCount.foreach(c => statRes.addProperty(RdfUtil.uniqueCount, c.toString, XSDinteger))
-      uniqueLowerBound.foreach(c => statRes.addProperty(RdfUtil.uniqueCountLowerBound, c.toString, XSDinteger))
-      uniqueUpperBound.foreach(c => statRes.addProperty(RdfUtil.uniqueCountUpperBound, c.toString, XSDinteger))
+      sum.foreach(c => statRes.addLiteral(RdfUtil.sum, c))
+      statRes.addLiteral(RdfUtil.mean, mean)
+      statRes.addLiteral(RdfUtil.stDev, stDev)
+      statRes.addLiteral(RdfUtil.minimum, min)
+      statRes.addLiteral(RdfUtil.maximum, max)
+      uniqueCount.foreach(c => statRes.addLiteral(RdfUtil.uniqueCount, c))
+      uniqueLowerBound.foreach(c => statRes.addLiteral(RdfUtil.uniqueCountLowerBound, c))
+      uniqueUpperBound.foreach(c => statRes.addLiteral(RdfUtil.uniqueCountUpperBound, c))
 
 
 trait StatCounter[T, TStat <: Double | Long]:
