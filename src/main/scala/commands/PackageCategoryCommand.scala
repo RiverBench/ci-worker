@@ -32,7 +32,7 @@ object PackageCategoryCommand extends Command:
 
   var previousVersionInfo: Option[ReleaseInfo] = None
 
-  override def run(args: Array[String]): Future[Unit] =
+  override def run(args: Array[String]): Future[Unit] = Future {
     val version = args(1)
     val repoDir = FileSystems.getDefault.getPath(args(2))
     val mainRepoDir = FileSystems.getDefault.getPath(args(3))
@@ -65,6 +65,7 @@ object PackageCategoryCommand extends Command:
       val dumpOutFile = outDir.resolve(f"dump.jelly").toFile
       RDFDataMgr.write(new FileOutputStream(dumpOutFile), dataset, JellyFormat.JELLY_BIG_STRICT)
     })
+  } flatMap { future => future }
 
   private def packageCategory(mainRes: Resource, version: String, repoDir: Path, outDir: Path):
   Resource =
