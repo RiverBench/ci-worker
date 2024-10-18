@@ -49,7 +49,7 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
         if !isPropHiddenInLevel then
           val nestedSection = section.addSubsection()
           nestedSection.setWeight(prop.weight)
-          nestedSection.setTitle(prop.group.getOrElse(prop.toMarkdown))
+          nestedSection.setTitle(prop.group.getOrElse(prop.toMarkdownEscaped))
           val customContent = opt.customSectionContentGen.get(prop.prop).map(_(nodes))
           nestedSection.setContent(customContent.getOrElse(""))
           for node <- nodes do
@@ -93,8 +93,8 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
       case rowRes: Resource =>
         val rowValues = getDocValuesForRes(rowRes)
         val rowTitle = rowValues.find(_._1.prop == RDF.`type`)
-          .map(_._2.toMarkdownSimple.replaceAll("\\s*\\(\\[.*?\\)$", ""))
-          .getOrElse(getTitleForProps(rowValues).getOrElse(rowRes.toString))
+          .map(_._2.toMarkdownSimpleEscaped.replaceAll("\\s*\\(\\[.*?\\)$", ""))
+          .getOrElse(getTitleForProps(rowValues).getOrElse(Escaping.escapeHtml(rowRes.toString)))
         Some(rowValues.map((colProp, v) => {
           (rowTitle, colProp) -> v
         }))
@@ -141,6 +141,6 @@ class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
     opt.titleProps.flatMap { prop =>
       props.collect {
         case (p, value) if p.prop.getURI == prop.getURI =>
-          value.getTitle.getOrElse(value.toMarkdownSimple)
+          value.getTitle.map(Escaping.escapeHtml).getOrElse(value.toMarkdownSimpleEscaped)
       }
     }.headOption

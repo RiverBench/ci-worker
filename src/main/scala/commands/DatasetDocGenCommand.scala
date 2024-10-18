@@ -2,7 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.*
-import util.doc.{DocBuilder, DocFileUtil, MarkdownUtil}
+import util.doc.*
 import util.external.DoiBibliography
 
 import org.apache.jena.rdf.model.{Property, RDFNode}
@@ -95,14 +95,13 @@ object DatasetDocGenCommand extends Command:
       stat.removeAll(RdfUtil.uniqueCount)
       stat.removeAll(RdfUtil.uniqueCountLowerBound)
       stat.removeAll(RdfUtil.uniqueCountUpperBound)
-      stat.addProperty(
-        RdfUtil.uniqueCount,
-        MarkdownUtil.prettyLabel(
-          "~" + MarkdownUtil.formatInt(uniqueCount.toString),
-          Some(s"Estimated value. Lower bound: ${MarkdownUtil.formatInt(lower.toString)}, " +
-            s"upper bound: ${MarkdownUtil.formatInt(upper.toString)} (95% confidence).")
-        )
+      val newLabel = MarkdownUtil.prettyLabelEscaped(
+        "~" + MarkdownUtil.formatInt(uniqueCount.toString),
+        Some(s"Estimated value. Lower bound: ${MarkdownUtil.formatInt(lower.toString)}, " +
+          s"upper bound: ${MarkdownUtil.formatInt(upper.toString)} (95% confidence).")
       )
+      Escaping.protectString(newLabel)
+      stat.addProperty(RdfUtil.uniqueCount, newLabel)
     docBuilderIndex.buildSection(statsRes, docIndex)
 
     // Save the index.md document

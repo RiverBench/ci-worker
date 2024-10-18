@@ -1,11 +1,10 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
+import util.external.DoiBibliography
 import util.{AppConfig, PurlMaker, RdfUtil}
 
 import com.ibm.icu.util.ULocale
-import io.github.riverbench.ci_worker.util.doc.MarkdownUtil.prettyLabel
-import io.github.riverbench.ci_worker.util.external.DoiBibliography
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.datatypes.xsd.impl.XSDBaseNumericType
 import org.apache.jena.rdf.model
@@ -23,28 +22,32 @@ object DocValue:
 
   case class Literal(value: model.Literal) extends DocValue:
     def toMarkdown: String =
+      val lex = Escaping.escapeHtml(value.getLexicalForm.strip())
       if value.getLanguage != "" then
         // Language string: get a human-readable language tag
         val lang = value.getLanguage
-        val langName = ULocale.forLanguageTag(value.getLanguage).getDisplayName
+        val langName = ULocale.forLanguageTag(lang).getDisplayName
         val langNameOption = if langName != "" then Some(langName) else None
-        f"${value.getLexicalForm.strip} _(${MarkdownUtil.prettyLabel(lang, langNameOption)})_"
+        f"$lex _(${MarkdownUtil.prettyLabelEscaped(lang, langNameOption)})_"
       else value.getDatatype match
         case XSDboolean => if value.getBoolean then "yes" else "no"
         case dt: XSDBaseNumericType =>
           val dtName = dt.getURI.toLowerCase
           if dtName.contains("int") || dtName.contains("long") then
-            MarkdownUtil.formatInt(value.getLexicalForm)
+            MarkdownUtil.formatInt(lex)
           else if dtName.contains("float") || dtName.contains("double") || dtName.contains("decimal") then
-            MarkdownUtil.formatDouble(value.getLexicalForm)
+            MarkdownUtil.formatDouble(lex)
           else
-            value.getLexicalForm.strip
+            lex
         case _ =>
-          val str = value.getLexicalForm.strip
           // Heuristic for hash-like strings and identifiers
-          if !str.contains(' ') && str.length > 10 && str.exists(_.isLetter) && str.exists(_.isDigit) ||
-            str.exists(_.isLetter) && str.matches("^[a-z0-9-_.]+$") && str.length > 1 then
-            f"`$str`" else str
+          if !lex.contains(' ') && lex.length > 10 && lex.exists(_.isLetter) && lex.exists(_.isDigit) ||
+            lex.exists(_.isLetter) && lex.matches("^[a-z0-9-_.]+$") && lex.length > 1 then
+            f"`$lex`" else lex
+
+    // We do the escaping here manually to allow for <abbr> tags
+    override def toMarkdownEscaped: String = toMarkdown
+    override def toMarkdownSimpleEscaped: String = toMarkdownEscaped
 
     def getSortKey = value.getLexicalForm.strip
     
@@ -63,7 +66,12 @@ object DocValue:
     ).headOption
 
     def toMarkdown: String =
-      f"${MarkdownUtil.prettyLabel(label, comment)} ([${ontologies.shortForm(value.getURI)}](${value.getURI}))"
+      val uri = Escaping.escapeHtml(value.getURI) // you never know
+      f"${MarkdownUtil.prettyLabelEscaped(label, comment)} ([${ontologies.shortForm(uri)}]($uri))"
+
+    // We do the escaping here manually to allow for <abbr> tags
+    override def toMarkdownEscaped: String = toMarkdown
+    override def toMarkdownSimpleEscaped: String = toMarkdownEscaped
 
     override def getTitle: Option[String] = Some(label)
 
@@ -122,12 +130,18 @@ object DocValue:
         println(f"Warning: DOI link without bibliography entry: ${value.getURI}")
       else if annotationId.isEmpty then
         println(f"Warning: DOI link without annotation ID: ${value.getURI}")
+      val uri = Escaping.escapeHtml(value.getURI)
       maybeBibEntry.fold
-        (f"[${value.getURI}](${value.getURI})")
+        (f"[$uri]($uri)")
         (entry => urlRegex.replaceAllIn(
           f"${entry.apa.strip} :custom-bibtex:{ .rb-bibtex } (${annotationId.map(_.toString).getOrElse("ERROR")})",
           m => f"[${m.matched}](${m.matched})"
         ))
+
+    // Treat the output from the DOI API as safe.
+    // It uses basic tags like <i> for formatting.
+    override def toMarkdownEscaped: String = toMarkdown
+    override def toMarkdownSimpleEscaped: String = toMarkdownEscaped
 
     override def getSortKey = value.getURI
 
@@ -148,10 +162,14 @@ object DocValue:
       .sortBy(_._1.weight)
       .map { case (prop, value) =>
         val vMd = if value.isNestedList then
-          value.toMarkdown.linesIterator.map(indent + _).mkString("\n")
-        else value.toMarkdown
-        s"\n$indent- **${prop.toMarkdown}**: $vMd"
+          value.toMarkdownEscaped.linesIterator.map(indent + _).mkString("\n")
+        else value.toMarkdownEscaped
+        s"\n$indent- **${prop.toMarkdownEscaped}**: $vMd"
       }.mkString
+
+    // We do the escaping here manually because we have nested values
+    override def toMarkdownEscaped: String = toMarkdown
+    override def toMarkdownSimpleEscaped: String = toMarkdownEscaped
 
     override def getTitle = name
 
@@ -174,14 +192,17 @@ object DocValue:
       values.foreach(_.registerAnnotations(context))
 
     def toMarkdown: String =
-      val baseItemName = baseName.getOrElse("Item").strip
+      val baseItemName = baseName.map(Escaping.escapeHtml).getOrElse("Item").strip
       val valuesSorted = values.toSeq.sortBy(_.getSortKey)
       val items = for (value, i) <- valuesSorted.zipWithIndex yield
         if value.isNestedList then
-          f"$indent- **${value.getTitle.getOrElse(baseItemName)} (${i + 1})**" +
-            value.toMarkdown.linesIterator.map(indent + _).mkString("\n")
-        else f"$indent- ${value.toMarkdown}"
+          f"$indent- **${value.getTitle.map(Escaping.escapeHtml).getOrElse(baseItemName)} (${i + 1})**" +
+            value.toMarkdownEscaped.linesIterator.map(indent + _).mkString("\n")
+        else f"$indent- ${value.toMarkdownEscaped}"
       "\n" + items.mkString("\n")
+
+    // We do the escaping here manually because we have nested values
+    override def toMarkdownEscaped: String = toMarkdown
 
     override def toMarkdownSimple = values.headOption.map(_.toMarkdown).getOrElse("")
     override def getSortKey = baseName.getOrElse("")
@@ -198,7 +219,7 @@ object DocValue:
         .distinct
         .sortBy(_.weight)
       sb.append("| ")
-      sb.append(allCols.map { col => s"| **${col.toMarkdown}** " }.mkString("") + "|\n")
+      sb.append(allCols.map { col => s"| **${col.toMarkdownEscaped}** " }.mkString("") + "|\n")
       sb.append("| --- ")
       sb.append("| --: " * allCols.size + "|\n")
 
@@ -219,11 +240,15 @@ object DocValue:
           for col <- allCols do
             val value = cols.find((k, _) => k._2 == col).map((_, v) => v)
             value match
-              case Some(value) => sb.append(s"| ${value.toMarkdownSimple} ")
+              case Some(value) => sb.append(s"| ${value.toMarkdownSimpleEscaped} ")
               case None => sb.append("| _N/A_ ")
           sb.append("|\n")
         }
       sb.toString
+
+    // We do the escaping here manually because we have nested values
+    override def toMarkdownEscaped: String = toMarkdown
+    override def toMarkdownSimpleEscaped: String = toMarkdownEscaped
 
     override def getSortKey = ""
 
@@ -234,14 +259,17 @@ trait DocValue:
 
   def registerAnnotations(context: DocAnnotationContext): Unit = ()
 
-  def toMarkdown: String
+  protected def toMarkdown: String
+
+  def toMarkdownEscaped: String = Escaping.escapeHtml(toMarkdown)
+
+  protected def toMarkdownSimple: String = toMarkdown
 
   /**
    * Markdown without nested lists or anything funny – just return a simple MD
    * string that can be used in other formatting (e.g., a list).
-   * @return
    */
-  def toMarkdownSimple: String = toMarkdown
+  def toMarkdownSimpleEscaped: String = Escaping.escapeHtml(toMarkdownSimple)
 
   def getTitle: Option[String] = None
 

@@ -32,4 +32,4 @@ object DocProp:
 
 case class DocProp(prop: Resource, label: String, comment: Option[String],
                    weight: Int, hidden: Boolean, group: Option[String]):
-  def toMarkdown: String = MarkdownUtil.prettyLabel(label, comment)
+  def toMarkdownEscaped: String = MarkdownUtil.prettyLabelEscaped(label, comment)

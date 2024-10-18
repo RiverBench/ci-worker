@@ -2,18 +2,20 @@ package io.github.riverbench.ci_worker
 package util.doc
 
 import util.{Constants, PurlMaker}
+import Escaping.escapeHtml
 
 object MarkdownUtil:
   private val sizeSuffixes = Seq("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
 
   val indent = "    "
 
-  def prettyLabel(label: String, comment: Option[String]): String =
+  def prettyLabelEscaped(label: String, comment: Option[String]): String =
+    val labelEsc = escapeHtml(label)
     comment match
       case Some(c) =>
-        val cClean = c.replace('"', '\'').replace("\n", " ")
-        f"<abbr title=\"$cClean\">$label</abbr>"
-      case None => label
+        val cClean = escapeHtml(c.replace('"', '\'').replace("\n", " "))
+        f"<abbr title=\"$cClean\">$labelEsc</abbr>"
+      case None => labelEsc
 
   def formatInt(v: String): String =
     v.strip
