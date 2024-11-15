@@ -4,9 +4,9 @@ ThisBuild / scalaVersion := "3.3.3"
 resolvers +=
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
 
-lazy val circeV = "0.14.7"
-lazy val jellyV = "2.0.0"
-lazy val jenaV = "5.1.0"
+lazy val circeV = "0.14.9"
+lazy val jellyV = "2.3.0"
+lazy val jenaV = "5.2.0"
 lazy val pekkoV = "1.1.0"
 lazy val pekkoHttpV = "1.0.1"
 lazy val pekkoConnV = "1.0.2"
