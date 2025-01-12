@@ -393,11 +393,11 @@ object PackageCommand extends Command:
       if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
         Flow[(DatasetGraph, Long)]
           .map((ds, _) => ds.getDefaultGraph.asTriples.toSeq.sorted)
-          .via(EncoderFlow.graphStream(None, jOpt))
+          .via(EncoderFlow.builder.graphs(jOpt).flow)
       else
         Flow[(DatasetGraph, Long)]
           .map((ds, _) => ds.asQuads.toSeq.sorted)
-          .via(EncoderFlow.datasetStreamFromQuads(None, jOpt))
+          .via(EncoderFlow.builder.datasetsFromQuads(jOpt).flow)
       )
       .via(JellyIo.toBytesDelimited)
       .map(ByteString(_))
