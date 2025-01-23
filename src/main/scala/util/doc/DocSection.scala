@@ -25,14 +25,14 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot
 
   def addEntry(prop: DocProp, value: DocValue): Unit =
     val group = prop.group.orElse(defaultPropGroup)
-    if prop.hidden then ()
-    else if prop.prop.getURI == RdfUtil.hasDocWeight.getURI then
+    if prop.prop.getURI == RdfUtil.hasDocWeight.getURI then
       value match
         case DocValue.Literal(l) =>
           l.getLexicalForm.toIntOption match
             case Some(i) => setWeight(i)
             case None => ()
         case _ => ()
+    else if prop.hidden then ()
     else if isRoot && group.isDefined then
       if !subsections.exists(_.title == group.get) then
         val subSec = addSubsection()

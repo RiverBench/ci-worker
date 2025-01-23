@@ -32,9 +32,9 @@ object PackageCommand extends Command:
 
   sealed trait DistType(val weight: Int)
   object DistType:
-    case object Stream extends DistType(0)
-    case object Jelly extends DistType(1)
-    case object Flat extends DistType(2)
+    case object Flat extends DistType(0)
+    case object Stream extends DistType(1)
+    case object Jelly extends DistType(2)
 
   private case class PartialResult(size: Long, stats: StatCounterSuite.Result, saveRes: SaveResult, dType: DistType)
 
