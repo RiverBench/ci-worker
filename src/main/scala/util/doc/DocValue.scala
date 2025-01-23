@@ -193,7 +193,10 @@ object DocValue:
       val valuesSorted = values.toSeq.sortBy(_.getSortKey)
       val items = for (value, i) <- valuesSorted.zipWithIndex yield
         if value.isNestedList then
-          f"$indent- **${value.getTitle.map(Escaping.escapeHtml).getOrElse(baseItemName)} (${i + 1})**" +
+          // Escape the opening bracket to avoid mkdocs treating this as a reference to an annotation
+          // So, instead of "(1)" we use "\(1)"
+          // https://github.com/RiverBench/RiverBench/issues/158
+          f"$indent- **${value.getTitle.map(Escaping.escapeHtml).getOrElse(baseItemName)} \\(${i + 1})**" +
             value.toMarkdownEscaped.linesIterator.map(indent + _).mkString("\n")
         else f"$indent- ${value.toMarkdownEscaped}"
       "\n" + items.mkString("\n")
