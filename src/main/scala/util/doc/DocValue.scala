@@ -114,8 +114,10 @@ object DocValue:
     // We assume here that someone earlier preloaded the needed bibliography
     private val maybeBibEntry = DoiBibliography.getBibliographyFromCache(value.getURI)
     private var annotationId: Option[Int] = None
+    private var annotationsEnabled: Boolean = true
 
     override def registerAnnotations(context: DocAnnotationContext): Unit =
+      annotationsEnabled = context.annotationsEnabled
       maybeBibEntry.foreach { entry =>
         annotationId = Some(context.registerAnnotation(
           f"BibTeX citation:\n    ``` { .bibtex .rb-wrap-code }\n${entry.bibtex.indent(4).stripLineEnd}\n    ```"
@@ -127,11 +129,15 @@ object DocValue:
         println(f"Warning: DOI link without bibliography entry: ${value.getURI}")
       else if annotationId.isEmpty then
         println(f"Warning: DOI link without annotation ID: ${value.getURI}")
+
       val uri = Escaping.escapeHtml(value.getURI)
+      val annotation = if annotationsEnabled then
+        f" :custom-bibtex:{ .rb-bibtex } (${annotationId.map(_.toString).getOrElse("ERROR")})"
+      else ""
       maybeBibEntry.fold
         (f"[$uri]($uri)")
         (entry => urlRegex.replaceAllIn(
-          f"${entry.apa.strip} :custom-bibtex:{ .rb-bibtex } (${annotationId.map(_.toString).getOrElse("ERROR")})",
+          f"${entry.apa.strip}" + annotation,
           m => f"[${m.matched}](${m.matched})"
         ))
 

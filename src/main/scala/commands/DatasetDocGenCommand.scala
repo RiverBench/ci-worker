@@ -119,6 +119,7 @@ object DatasetDocGenCommand extends Command:
           (3, RdfUtil.spdxChecksum), // distribution checksums
         ),
         customSectionContentGen = Map(),
+        enableAnnotations = false,
       )
       val docBuilderReadme = new DocBuilder(ontologies, optReadme)
       val docReadme = docBuilderReadme.build(title, mi.description + readmeIntro(landingPage), mi.datasetRes)

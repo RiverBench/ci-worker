@@ -20,13 +20,19 @@ object DocBuilder:
     // Arguments to the partial function: predicate, object.
     customValueFormatters: PartialFunction[(Resource, RDFNode), DocValue] = PartialFunction.empty,
     customSectionContentGen: Map[Resource, Seq[RDFNode] => String] = Map(),
+    // Whether to enable annotation syntax -- disable this for .md files for GitHub
+    // This disables the BibTeX annotations
+    enableAnnotations: Boolean = true,
   )
 
 class DocBuilder(ontologies: Model, opt: DocBuilder.Options):
   private val groups = new DocGroupRegistry(ontologies)
 
   def build(title: String, content: String, rootResource: Resource): DocSection =
-    val rootSection = new DocSection(opt.startHeadingLevel, opt.defaultPropGroup, true)
+    val rootSection = new DocSection(
+      opt.startHeadingLevel, opt.defaultPropGroup, true,
+      annotationsEnabled = opt.enableAnnotations,
+    )
     rootSection.setContent(content)
     buildSection(rootResource, rootSection)
     // Override title

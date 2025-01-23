@@ -2,6 +2,8 @@ package io.github.riverbench.ci_worker
 package util.doc
 
 trait DocAnnotationContext:
+  def annotationsEnabled: Boolean
+
   private val annotations = collection.mutable.ArrayBuffer.empty[String]
 
   def registerAnnotation(text: String): Int =
@@ -9,7 +11,7 @@ trait DocAnnotationContext:
     annotations.size
 
   protected def wrapSection(text: StringBuilder): StringBuilder =
-    if annotations.isEmpty then
+    if !annotationsEnabled || annotations.isEmpty then
       text
     else
       text

@@ -5,8 +5,12 @@ import util.RdfUtil
 
 import scala.collection.mutable
 
-class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot: Boolean = false)
-  extends DocAnnotationContext:
+class DocSection(
+  val level: Int,
+  defaultPropGroup: Option[String] = None,
+  isRoot: Boolean = false,
+  val annotationsEnabled: Boolean = true,
+) extends DocAnnotationContext:
 
   private val entries = mutable.ListBuffer[(DocProp, DocValue)]()
   private val subsections = mutable.ListBuffer[DocSection]()
@@ -44,7 +48,7 @@ class DocSection(val level: Int, defaultPropGroup: Option[String] = None, isRoot
       entries.addOne((prop, value))
 
   def addSubsection(): DocSection =
-    val section = DocSection(level + 1)
+    val section = DocSection(level + 1, annotationsEnabled = annotationsEnabled)
     subsections += section
     section
 
