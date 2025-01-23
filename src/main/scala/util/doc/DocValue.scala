@@ -199,10 +199,11 @@ object DocValue:
       val valuesSorted = values.toSeq.sortBy(_.getSortKey)
       val items = for (value, i) <- valuesSorted.zipWithIndex yield
         if value.isNestedList then
-          // Escape the opening bracket to avoid mkdocs treating this as a reference to an annotation
-          // So, instead of "(1)" we use "\(1)"
+          // Add a zero-width space to avoid mkdocs treating this as a reference to an annotation
+          // So, instead of "(1)" we use "([ZWSP]1)"
           // https://github.com/RiverBench/RiverBench/issues/158
-          f"$indent- **${value.getTitle.map(Escaping.escapeHtml).getOrElse(baseItemName)} \\(${i + 1})**" +
+          // Yes, it's a hack. <insert hackerman meme>
+          f"$indent- **${value.getTitle.map(Escaping.escapeHtml).getOrElse(baseItemName)} (​${i + 1})**" +
             value.toMarkdownEscaped.linesIterator.map(indent + _).mkString("\n")
         else f"$indent- ${value.toMarkdownEscaped}"
       "\n" + items.mkString("\n")
