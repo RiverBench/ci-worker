@@ -4,6 +4,7 @@ package commands.batch
 import commands.*
 import util.*
 import util.io.*
+import util.rdf.*
 
 import eu.ostrzyciel.jelly.stream.{DecoderFlow, JellyIo}
 import eu.ostrzyciel.jelly.convert.jena.given

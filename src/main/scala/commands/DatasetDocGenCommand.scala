@@ -4,6 +4,7 @@ package commands
 import util.*
 import util.doc.*
 import util.external.DoiBibliography
+import util.rdf.*
 
 import org.apache.jena.rdf.model.{Property, RDFNode}
 import org.apache.jena.sparql.vocabulary.FOAF

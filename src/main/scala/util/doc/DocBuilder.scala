@@ -1,8 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import util.RdfUtil
-
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 import org.apache.jena.rdf.model.{Container, Literal, Model, Property, RDFNode, Resource}
 import org.apache.jena.sparql.util.graph.{GNode, GraphList}
 import org.apache.jena.vocabulary.RDF

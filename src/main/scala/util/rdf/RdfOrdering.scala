@@ -1,5 +1,5 @@
 package io.github.riverbench.ci_worker
-package util
+package util.rdf
 
 import org.apache.jena.graph.Triple
 import org.apache.jena.sparql.core.Quad

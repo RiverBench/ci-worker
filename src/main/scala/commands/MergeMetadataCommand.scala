@@ -2,6 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.*
+import util.rdf.*
 import util.releases.PreviousVersionHelper
 
 import org.apache.jena.datatypes.xsd.XSDDatatype.*

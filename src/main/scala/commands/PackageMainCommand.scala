@@ -4,6 +4,7 @@ package commands
 import util.*
 import util.collection.*
 import util.doc.MarkdownUtil
+import util.rdf.*
 import util.releases.PreviousVersionHelper
 
 import org.apache.jena.query.{Dataset, DatasetFactory}

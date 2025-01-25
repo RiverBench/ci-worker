@@ -2,7 +2,8 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.doc.MarkdownUtil
-import util.{Constants, PurlMaker, RdfIoUtil}
+import util.{Constants, PurlMaker}
+import io.github.riverbench.ci_worker.util.rdf.RdfIoUtil
 
 import org.apache.jena.rdf.model.Model
 

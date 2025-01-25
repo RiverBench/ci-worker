@@ -2,9 +2,10 @@ package io.github.riverbench.ci_worker
 package util.doc
 
 import util.external.DoiBibliography
-import util.{AppConfig, PurlMaker, RdfUtil}
+import util.{AppConfig, PurlMaker}
 
 import com.ibm.icu.util.ULocale
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model
 import org.apache.jena.rdf.model.Model

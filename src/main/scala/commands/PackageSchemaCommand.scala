@@ -1,7 +1,8 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import util.{AppConfig, Constants, RdfUtil}
+import util.{AppConfig, Constants}
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 
 import io.github.riverbench.ci_worker.util.releases.PreviousVersionHelper
 import org.apache.jena.rdf.model.Model

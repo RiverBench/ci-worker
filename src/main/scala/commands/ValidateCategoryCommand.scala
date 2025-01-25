@@ -2,6 +2,7 @@ package io.github.riverbench.ci_worker
 package commands
 
 import util.*
+import util.rdf.*
 
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.jena.rdf.model.{Model, ModelFactory}

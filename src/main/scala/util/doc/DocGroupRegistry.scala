@@ -1,8 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import util.RdfUtil
-
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.vocabulary.{RDF, RDFS}
 

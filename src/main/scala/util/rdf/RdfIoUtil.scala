@@ -1,11 +1,11 @@
 package io.github.riverbench.ci_worker
-package util
+package util.rdf
 
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.rdf.model.{Model, ModelFactory}
-import org.apache.jena.riot.{Lang, RDFDataMgr, RDFParser}
 import org.apache.jena.riot.lang.LabelToNode
 import org.apache.jena.riot.system.FactoryRDFStd
+import org.apache.jena.riot.{Lang, RDFDataMgr, RDFParser}
 
 import java.nio.file.Path
 import java.util.UUID

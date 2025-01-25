@@ -3,6 +3,7 @@ package commands
 
 import util.*
 import util.doc.{DocBuilder, MarkdownUtil}
+import util.rdf.*
 
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr

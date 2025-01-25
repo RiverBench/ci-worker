@@ -3,6 +3,7 @@ package commands
 
 import util.*
 import util.io.FileHelper
+import util.rdf.*
 import util.releases.*
 
 import org.apache.commons.io.output.ByteArrayOutputStream

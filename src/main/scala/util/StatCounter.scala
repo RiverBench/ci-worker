@@ -1,6 +1,8 @@
 package io.github.riverbench.ci_worker
 package util
 
+import util.rdf.*
+
 import org.apache.datasketches.hll.HllSketch
 import org.apache.jena.datatypes.xsd.XSDDatatype.*
 import org.apache.jena.rdf.model.Resource

@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package commands
 
-import io.github.riverbench.ci_worker.util.RdfUtil
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 import org.apache.jena.riot.RDFDataMgr
 
 import java.lang.module.ModuleDescriptor.Version

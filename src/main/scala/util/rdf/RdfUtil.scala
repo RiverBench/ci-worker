@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
-package util
+package util.rdf
 
-import org.apache.jena.rdf.model.{AnonId, Model, ModelFactory, Property, Resource}
+import org.apache.jena.rdf.model.*
 import org.apache.jena.vocabulary.{RDF, RDFS, SKOS, VCARD}
 
 import java.util.UUID

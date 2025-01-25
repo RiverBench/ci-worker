@@ -4,6 +4,7 @@ package commands
 import util.*
 import util.collection.*
 import util.external.*
+import util.rdf.*
 import util.releases.*
 import util.doc.MarkdownUtil
 

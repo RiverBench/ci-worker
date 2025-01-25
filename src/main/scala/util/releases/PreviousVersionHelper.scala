@@ -1,7 +1,8 @@
 package io.github.riverbench.ci_worker
 package util.releases
 
-import util.{PurlMaker, RdfUtil}
+import util.PurlMaker
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 
 import org.apache.jena.rdf.model.Resource
 import org.apache.pekko.actor.typed.ActorSystem

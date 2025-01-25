@@ -1,8 +1,8 @@
 package io.github.riverbench.ci_worker
-package util
+package util.rdf
 
 import org.apache.jena.graph.Node
-import org.apache.jena.rdf.model.{Model, Property, Resource}
+import org.apache.jena.rdf.model.Resource
 import org.apache.jena.sparql.core.DatasetGraph
 import org.apache.jena.vocabulary.RDF
 

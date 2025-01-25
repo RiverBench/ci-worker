@@ -1,8 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.doc
 
-import util.RdfUtil
-
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 import scala.collection.mutable
 
 class DocSection(

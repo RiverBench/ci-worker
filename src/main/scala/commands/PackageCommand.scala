@@ -3,6 +3,7 @@ package commands
 
 import util.*
 import util.io.*
+import util.rdf.*
 
 import eu.ostrzyciel.jelly.core.proto.v1.PhysicalStreamType
 import eu.ostrzyciel.jelly.core.{JellyOptions, LogicalStreamTypeFactory}

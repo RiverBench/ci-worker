@@ -6,6 +6,7 @@ import util.SemVer.*
 import util.collection.*
 import util.doc.*
 import util.external.*
+import util.rdf.*
 
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.vocabulary.{RDF, RDFS}

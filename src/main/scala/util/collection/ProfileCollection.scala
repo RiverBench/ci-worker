@@ -1,7 +1,8 @@
 package io.github.riverbench.ci_worker
 package util.collection
 
-import util.{AppConfig, RdfUtil}
+import util.AppConfig
+import io.github.riverbench.ci_worker.util.rdf.RdfUtil
 
 import org.apache.jena.rdf.model.{Model, ModelFactory}
 import org.apache.jena.riot.RDFDataMgr

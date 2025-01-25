@@ -2,9 +2,9 @@ package io.github.riverbench.ci_worker
 package util.io
 
 import commands.PackageCommand.DistType
-import util.{ElementType, MetadataInfo, RdfUtil}
 
 import eu.ostrzyciel.jelly.core
+import io.github.riverbench.ci_worker.util.rdf.{ElementType, MetadataInfo, RdfUtil}
 import org.apache.jena.rdf.model.Resource
 import org.apache.jena.vocabulary.RDF
 import org.apache.pekko.stream.IOResult

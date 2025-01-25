@@ -1,6 +1,5 @@
 package io.github.riverbench.ci_worker
-package util
-
+package util.rdf
 
 enum ElementType(val name: String):
   case Graph extends ElementType("graph")
