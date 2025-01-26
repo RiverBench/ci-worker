@@ -157,7 +157,7 @@ object JsonLdEmbedding:
     val id = input.listObjectsOfProperty(subject, DCTerms.identifier).asScala
       .nextOption().map(_.asLiteral().getString)
     if id.isDefined then
-      output.add(subject, SchemaDO.name, s"RiverBench $typeName: $id")
+      output.add(subject, SchemaDO.name, s"RiverBench $typeName: ${id.get}")
     else output.add(subject, SchemaDO.name, s"RiverBench catalog")
 
     // Publisher
