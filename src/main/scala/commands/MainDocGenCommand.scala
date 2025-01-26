@@ -61,12 +61,14 @@ object MainDocGenCommand extends Command:
       Files.readString(repoDir.resolve("doc/index_body.md")) + rdfInfo(baseLink, dumpLink, dumpWithResults),
       rootRes
     )
+    val indexFilePath = outDir.resolve("index.md")
     Files.writeString(
-      outDir.resolve("index.md"),
+      indexFilePath,
       Files.readString(repoDir.resolve("doc/index_header.md")) ++ "\n" ++
         mainDoc.toMarkdown ++ "\n" ++
         Files.readString(repoDir.resolve("doc/index_footer.md"))
     )
+    JsonLdEmbedding.saveEmbed(mainMetadata, rootRes, indexFilePath)
 
     if version == "dev" then
       println("Generating README...")

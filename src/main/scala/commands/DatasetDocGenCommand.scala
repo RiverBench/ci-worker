@@ -107,11 +107,20 @@ object DatasetDocGenCommand extends Command:
 
     // Save the index.md document
     val purl = PurlMaker.unMake(landingPage).get
+    val indexFilePath = outputDir.resolve("docs/index.md")
     Files.writeString(
-      outputDir.resolve("docs/index.md"),
+      indexFilePath,
       MarkdownUtil.makeTopButtons(purl, fileDepth = 2) + "\n\n" + docIndex.toMarkdown
     )
     println("Generated index.md")
+
+    // Load the model again to get a fresh copy without the custom section content
+    val cleanMetadata = RdfIoUtil.loadModelWithStableBNodeIds(metadataPath)
+    JsonLdEmbedding.saveEmbed(
+      cleanMetadata,
+      MetadataReader.fromModel(cleanMetadata).datasetRes,
+      indexFilePath
+    )
 
     if version == "dev" then
       val optReadme = optIndex.copy(

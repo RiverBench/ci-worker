@@ -138,8 +138,9 @@ object CategoryDocGenCommand extends Command:
       catRes
     )
     val targetDir = outDir.resolve("category")
+    val indexFilePath = targetDir.resolve("index.md")
     Files.writeString(
-      targetDir.resolve("index.md"),
+      indexFilePath,
       f"""${MarkdownUtil.makeTopButtons(catPurl, fileDepth = 2)}
          |
          |# $title
@@ -148,6 +149,7 @@ object CategoryDocGenCommand extends Command:
          |
          |""".stripMargin + catDoc.toMarkdown
     )
+    JsonLdEmbedding.saveEmbed(catRes.getModel, catRes, indexFilePath)
     DocFileUtil.copyDocs(repoDir.resolve("doc"), targetDir, Seq("index.md"))
 
     // Do the README
@@ -273,8 +275,9 @@ object CategoryDocGenCommand extends Command:
 
       val targetDir = outDir.resolve(f"tasks/$taskName")
       targetDir.toFile.mkdirs()
+      val indexFilePath = targetDir.resolve("index.md")
       Files.writeString(
-        targetDir.resolve("index.md"),
+        indexFilePath,
         f"""${MarkdownUtil.makeTopButtons(taskPurl, fileDepth = 2)}
            |
            |# $title
@@ -285,6 +288,7 @@ object CategoryDocGenCommand extends Command:
            |
            |""".stripMargin + taskDoc.toMarkdown
       )
+      JsonLdEmbedding.saveEmbed(taskRes.getModel, taskRes, indexFilePath)
       val resultsBody = if resultMds.isEmpty then "_No benchmark results were reported yet for this task._"
       else resultMds.mkString("\n\n")
       Files.writeString(
@@ -369,6 +373,7 @@ object CategoryDocGenCommand extends Command:
         profileDocPath,
         MarkdownUtil.makeTopButtons(profilePurl, fileDepth = 1) + "\n\n" + profileDoc.toMarkdown + tableSection
       )
+      JsonLdEmbedding.saveEmbed(profileRes.getModel, profileRes, profileDocPath)
 
   private def profileOverviewDocGen(version: String, profileCollection: ProfileCollection, outDir: Path): Unit =
     def taxoLink(text: String, name: String) =
