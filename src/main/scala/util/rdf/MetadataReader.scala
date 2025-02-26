@@ -129,8 +129,10 @@ object MetadataReader:
     val stCount = model.listResourcesWithProperty(RDF.`type`, RdfUtil.StatementCountStatistics)
       .asScala
       .map(_.getProperty(RdfUtil.sum).getLong)
-      .toSeq.headOption
-    
+      .toSeq
+      .sorted
+      .lastOption
+
     MetadataInfo(
       identifier = dataset.listProperties(RdfUtil.dctermsIdentifier)
         .asScala.toSeq.head.getLiteral.getString.strip,
