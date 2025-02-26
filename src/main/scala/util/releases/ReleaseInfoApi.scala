@@ -8,7 +8,7 @@ import org.apache.pekko.actor.typed.ActorSystem
 import scala.concurrent.{ExecutionContext, Future}
 
 object ReleaseInfoApi:
-  def getLatestReleaseInfo(repo: String)(using as: ActorSystem[_]): Future[Option[ReleaseInfo]] =
+  def getLatestReleaseInfo(repo: String)(using as: ActorSystem[?]): Future[Option[ReleaseInfo]] =
     given ExecutionContext = as.executionContext
     HttpHelper.getWithFollowRedirects(
       s"https://api.github.com/repos/RiverBench/$repo/releases/latest"

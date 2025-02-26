@@ -46,7 +46,7 @@ object Command:
       }
 
 trait Command:
-  implicit val actorSystem: ActorSystem[_] = Global.actorSystem
+  implicit val actorSystem: ActorSystem[?] = Global.actorSystem
   implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
   def name: String

@@ -28,7 +28,7 @@ object Nanopublications:
     println(s"Loaded ${workingCache.size} nanopublications from cache")
   }
 
-  def getNanopublication(uri: String)(using as: ActorSystem[_]): Future[Dataset] =
+  def getNanopublication(uri: String)(using as: ActorSystem[?]): Future[Dataset] =
     given ExecutionContext = as.executionContext
     usedUris.put(uri, uri)
     workingCache.get(uri) match
@@ -65,7 +65,7 @@ object Nanopublications:
   private def fileNameToUri(fileName: String): String =
     new String(Base64.getUrlDecoder.decode(fileName.stripSuffix(".trig")))
 
-  private def fetchNanopublication(uri: String)(using as: ActorSystem[_]): Future[Dataset] =
+  private def fetchNanopublication(uri: String)(using as: ActorSystem[?]): Future[Dataset] =
     given ExecutionContext = as.executionContext
     HttpHelper.getWithFollowRedirects(uri, accept = Some(mediaTrig)) flatMap { response =>
       if response.status.isSuccess then

@@ -9,7 +9,7 @@ import org.apache.pekko.http.scaladsl.model.headers.{Accept, Location}
 import scala.concurrent.{ExecutionContext, Future}
 
 object HttpHelper:
-  def getWithFollowRedirects(url: String, accept: Option[MediaRange] = None, n: Int = 0)(using as: ActorSystem[_]):
+  def getWithFollowRedirects(url: String, accept: Option[MediaRange] = None, n: Int = 0)(using as: ActorSystem[?]):
   Future[HttpResponse] =
     given ExecutionContext = as.executionContext
     if n > 10 then

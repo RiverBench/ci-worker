@@ -4,13 +4,12 @@ import commands.Command
 
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
-import org.apache.pekko.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 object Global:
-  val actorSystem: ActorSystem[_] = ActorSystem(Behaviors.empty, "ci-worker")
+  val actorSystem: ActorSystem[?] = ActorSystem(Behaviors.empty, "ci-worker")
 
 @main
 def main(args: String*): Unit =

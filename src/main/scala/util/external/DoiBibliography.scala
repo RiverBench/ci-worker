@@ -51,13 +51,13 @@ object DoiBibliography:
       .filter(isDoiLike)
       .toSeq
 
-  def preloadBibliography(doiLikes: Seq[String])(using as: ActorSystem[_]): Future[Unit] =
+  def preloadBibliography(doiLikes: Seq[String])(using as: ActorSystem[?]): Future[Unit] =
     given ExecutionContext = as.executionContext
     Future.sequence(doiLikes.map(getBibliography)) map (_ => {
       saveCache()
     })
 
-  def getBibliography(doiLike: String)(using as: ActorSystem[_]): Future[BibliographyEntry] =
+  def getBibliography(doiLike: String)(using as: ActorSystem[?]): Future[BibliographyEntry] =
     given ExecutionContext = as.executionContext
     Future.fromTry(extractDoi(doiLike)) flatMap { doi =>
       usedDois.put(doi, doi)
@@ -92,7 +92,7 @@ object DoiBibliography:
     else
       Success(split(split.length - 2) + "/" + split.last)
 
-  private def fetchBibliography(doi: String, mediaType: MediaType)(using as: ActorSystem[_]): Future[String] =
+  private def fetchBibliography(doi: String, mediaType: MediaType)(using as: ActorSystem[?]): Future[String] =
     given ExecutionContext = as.executionContext
     val url = s"https://doi.org/$doi"
     HttpHelper.getWithFollowRedirects(url, accept = Some(MediaRange(mediaType))) flatMap { response =>

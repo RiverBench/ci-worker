@@ -18,7 +18,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object FileHelper:
 
-  def readArchiveFromUrl(url: String)(implicit as: ActorSystem[_]):
+  def readArchiveFromUrl(url: String)(implicit as: ActorSystem[?]):
   Source[(TarArchiveMetadata, ByteString), NotUsed] =
     val response = HttpHelper.getWithFollowRedirects(url)
     given ExecutionContext = as.executionContext
@@ -26,7 +26,7 @@ object FileHelper:
       Source.futureSource(response.map(r => r.entity.dataBytes))
     )
 
-  def readArchiveFromFile(path: Path)(implicit as: ActorSystem[_]):
+  def readArchiveFromFile(path: Path)(implicit as: ActorSystem[?]):
   Source[(TarArchiveMetadata, ByteString), NotUsed] =
     readArchive(FileIO.fromPath(path))
 
@@ -35,7 +35,7 @@ object FileHelper:
    * @param source the source of the archive data
    * @return a source of the archive entries
    */
-  def readArchive(source: Source[ByteString, _])(implicit as: ActorSystem[_]):
+  def readArchive(source: Source[ByteString, ?])(implicit as: ActorSystem[?]):
   Source[(TarArchiveMetadata, ByteString), NotUsed] =
     given ExecutionContext = as.executionContext
     // Unfortunately, Pekko untar stage is glitchy with large archives, so we have to

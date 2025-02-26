@@ -5,11 +5,9 @@ import util.*
 import util.doc.{DocBuilder, MarkdownUtil}
 import util.rdf.*
 
-import org.apache.jena.rdf.model.Model
-import org.apache.jena.riot.RDFDataMgr
 import org.apache.jena.vocabulary.{RDF, RDFS, SKOS}
 
-import java.nio.file.{FileSystems, Files, Path}
+import java.nio.file.{FileSystems, Files}
 import scala.concurrent.Future
 
 object MainDocGenCommand extends Command:
