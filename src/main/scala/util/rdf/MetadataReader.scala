@@ -17,6 +17,7 @@ case class MetadataInfo(
   description: String = "",
   streamTypes: Set[StreamType] = Set.empty,
   elementCount: Long = 0,
+  statementCount: Option[Long] = None,
   temporalProp: Option[Resource] = None,
   subjectNodeShapes: Seq[SubjectNodeShape] = Seq(),
   conformance: ConformanceInfo = ConformanceInfo(),
@@ -125,7 +126,11 @@ object MetadataReader:
       .map(st => st.getResource.getLocalName)
       .map(name => StreamType.values.find(_.iriName == name).get)
       .toSet
-
+    val stCount = model.listResourcesWithProperty(RDF.`type`, RdfUtil.StatementCountStatistics)
+      .asScala
+      .map(_.getProperty(RdfUtil.sum).getLong)
+      .toSeq.headOption
+    
     MetadataInfo(
       identifier = dataset.listProperties(RdfUtil.dctermsIdentifier)
         .asScala.toSeq.head.getLiteral.getString.strip,
@@ -134,6 +139,7 @@ object MetadataReader:
       streamTypes = types,
       elementCount = dataset.listProperties(RdfUtil.hasStreamElementCount)
         .asScala.toSeq.head.getLiteral.getLong,
+      statementCount = stCount,
       temporalProp = model.listObjectsOfProperty(RdfUtil.hasTemporalProperty)
         .asScala.toSeq.headOption.map(_.asResource),
       subjectNodeShapes = model.listResourcesWithProperty(RDF.`type`, RdfUtil.TopicStreamElementSplit)

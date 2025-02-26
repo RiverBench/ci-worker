@@ -133,11 +133,10 @@ object PackageMainCommand extends Command:
   private def generateDatasetOverview(datasetCollection: DatasetCollection, outDir: Path): Unit =
     val sb = new StringBuilder()
     sb.append("Dataset | <abbr title=\"Stream type\">El. type</abbr> | " +
-      "<abbr title=\"Stream element count\">El. count</abbr> | " +
-      "<abbr title=\"Does the dataset use RDF-star?\">RDF-star</abbr> | " +
-      "<abbr title=\"Does the dataset use generalized triples?\">Gen. triples</abbr> | " +
-      "<abbr title=\"Does the dataset use generalized RDF datasets?\">Gen. datasets</abbr>\n")
-    sb.append("--- | --- | --: | :-: | :-: | :-:\n")
+      "<abbr title=\"Stream element count\">Element count</abbr> | " +
+      "<abbr title=\"Statement (triple or quad) count\">Statement count</abbr> | " +
+      "<abbr title=\"Does the dataset use RDF-star?\">RDF-star</abbr>\n")
+    sb.append("--- | --- | --: | --: | :-:\n")
 
     for (name, model) <- datasetCollection.datasets.toSeq.sortBy(_._1) do
       val mi = MetadataReader.fromModel(model)
@@ -145,11 +144,13 @@ object PackageMainCommand extends Command:
       val streamType = mi.streamTypes.filterNot(_.isFlat).head
       sb.append(f"[${streamType.readableName.replace("stream", "").trim}]" +
         f"(${Constants.taxonomyDocBaseLink}${streamType.docName}) | ")
-      sb.append(f"${MarkdownUtil.formatInt(mi.elementCount.toString)}")
+      sb.append(f"${MarkdownUtil.formatInt(mi.elementCount.toString)} | ")
+      sb.append(f"${MarkdownUtil.formatInt(mi.statementCount.getOrElse(0L).toString)}")
       for b <- Seq(
         mi.conformance.usesRdfStar,
-        mi.conformance.usesGeneralizedTriples,
-        mi.conformance.usesGeneralizedRdfDatasets,
+        // No datasets using this...
+//        mi.conformance.usesGeneralizedTriples,
+//        mi.conformance.usesGeneralizedRdfDatasets,
       ) do
         sb.append(" | ")
         sb.append(if b then ":material-check:" else ":material-close:")
