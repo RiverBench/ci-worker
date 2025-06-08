@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package util
 
-import eu.ostrzyciel.jelly.convert.jena.riot.{JellyFormat, JellyLanguage}
+import eu.neverblink.jelly.convert.jena.riot.{JellyFormat, JellyLanguage}
 import org.apache.jena.riot.RDFFormat
 
 object Constants:

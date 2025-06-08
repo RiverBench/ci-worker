@@ -2,9 +2,9 @@ package io.github.riverbench.ci_worker
 package util.io
 
 import commands.PackageCommand.DistType
+import util.rdf.{ElementType, MetadataInfo, RdfUtil}
 
-import eu.ostrzyciel.jelly.core
-import io.github.riverbench.ci_worker.util.rdf.{ElementType, MetadataInfo, RdfUtil}
+import eu.neverblink.jelly.core.JellyConstants
 import org.apache.jena.rdf.model.Resource
 import org.apache.jena.vocabulary.RDF
 import org.apache.pekko.stream.IOResult
@@ -30,7 +30,7 @@ case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1:
         else
           distRes.addProperty(RdfUtil.dcatMediaType, "application/trig")
       case DistType.Jelly =>
-        distRes.addProperty(RdfUtil.dcatMediaType, core.Constants.jellyContentType)
+        distRes.addProperty(RdfUtil.dcatMediaType, JellyConstants.JELLY_CONTENT_TYPE)
 
     val md5Checksum = distRes.getModel.createResource(RdfUtil.newAnonId(md5.getBytes))
       .addProperty(RDF.`type`, RdfUtil.SpdxChecksum)

@@ -4,14 +4,14 @@ ThisBuild / scalaVersion := "3.6.3"
 resolvers +=
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
 
-lazy val circeV = "0.14.10"
-lazy val jellyV = "2.7.1+1-e2478133-SNAPSHOT"
+lazy val circeV = "0.14.13"
+lazy val jellyV = "3.1.2"
 lazy val jenaV = "5.3.0"
 lazy val pekkoV = "1.1.3"
-lazy val pekkoHttpV = "1.1.0"
+lazy val pekkoHttpV = "1.2.0"
 lazy val pekkoConnV = "1.1.0"
-lazy val rdf4jV = "5.1.2"
-lazy val icu4jV = "76.1"
+lazy val rdf4jV = "5.1.3"
+lazy val icu4jV = "77.1"
 
 lazy val root = (project in file("."))
   .settings(
@@ -20,10 +20,10 @@ lazy val root = (project in file("."))
 
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
-      "com.google.guava" % "guava" % "33.4.0-jre",
+      "com.google.guava" % "guava" % "33.4.8-jre",
       "com.ibm.icu" % "icu4j" % icu4jV,
-      "eu.ostrzyciel.jelly" %% "jelly-stream" % jellyV,
-      "eu.ostrzyciel.jelly" %% "jelly-jena" % jellyV,
+      "eu.neverblink.jelly" %% "jelly-pekko-stream" % jellyV,
+      "eu.neverblink.jelly" % "jelly-jena" % jellyV,
       "io.circe" %% "circe-core" % circeV,
       "io.circe" %% "circe-generic" % circeV,
       "io.circe" %% "circe-parser" % circeV,
@@ -40,6 +40,7 @@ lazy val root = (project in file("."))
       "org.eclipse.rdf4j" % "rdf4j-model" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-trig" % rdf4jV,
+      // datasketches 8 requires Java 21 it seems, so we use 7 for now
       "org.apache.datasketches" % "datasketches-java" % "7.0.1",
     ),
 

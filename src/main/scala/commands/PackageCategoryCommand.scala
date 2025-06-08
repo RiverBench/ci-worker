@@ -8,7 +8,7 @@ import util.rdf.*
 import util.releases.*
 import util.doc.MarkdownUtil
 
-import eu.ostrzyciel.jelly.convert.jena.riot.JellyFormat
+import eu.neverblink.jelly.convert.jena.riot.JellyFormat
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.riot.RDFDataMgr

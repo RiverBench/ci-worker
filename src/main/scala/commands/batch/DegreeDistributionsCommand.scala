@@ -6,9 +6,9 @@ import util.*
 import util.io.*
 import util.rdf.*
 
-import eu.ostrzyciel.jelly.stream.{DecoderFlow, JellyIo}
-import eu.ostrzyciel.jelly.convert.jena.given
-import eu.ostrzyciel.jelly.core.proto.v1.RdfStreamFrame
+import eu.neverblink.jelly.convert.jena.JenaConverterFactory
+import eu.neverblink.jelly.pekko.stream.{DecoderFlow, JellyIo}
+import eu.neverblink.jelly.core.proto.v1.RdfStreamFrame
 import org.apache.datasketches.cpc.*
 import org.apache.jena.graph.{Node, NodeFactory, Triple}
 import org.apache.jena.rdf.model.{Model, Resource}
@@ -29,6 +29,8 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 object DegreeDistributionsCommand extends Command:
+  given JenaConverterFactory = JenaConverterFactory.getInstance()
+
   override def name: String = "batch-degree-distribution"
 
   override def description: String =

@@ -5,9 +5,11 @@ import util.*
 import util.io.*
 import util.rdf.*
 
-import eu.ostrzyciel.jelly.core.proto.v1.PhysicalStreamType
-import eu.ostrzyciel.jelly.core.{JellyOptions, LogicalStreamTypeFactory}
-import eu.ostrzyciel.jelly.stream.{EncoderFlow, JellyIo}
+import eu.neverblink.jelly.convert.jena.JenaConverterFactory
+import eu.neverblink.jelly.core.proto.v1.PhysicalStreamType
+import eu.neverblink.jelly.core.JellyOptions
+import eu.neverblink.jelly.core.utils.LogicalStreamTypeUtils
+import eu.neverblink.jelly.pekko.stream.{EncoderFlow, JellyIo}
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
 import org.apache.jena.riot.lang.LabelToNode
 import org.apache.jena.riot.system.{ErrorHandlerFactory, FactoryRDFStd, StreamRDFWriter}
@@ -29,7 +31,8 @@ import scala.jdk.CollectionConverters.*
 
 object PackageCommand extends Command:
   import RdfOrdering.given
-  import eu.ostrzyciel.jelly.convert.jena.{*, given}
+  
+  given JenaConverterFactory = JenaConverterFactory.getInstance()
 
   sealed trait DistType(val weight: Int)
   object DistType:
@@ -376,28 +379,28 @@ object PackageCommand extends Command:
     }
 
     // Large target message size to avoid splitting
-    val jOpt = JellyOptions.bigStrict
-      .withGeneralizedStatements(
+    val jOpt = JellyOptions.BIG_STRICT.clone()
+      .setGeneralizedStatements(
         metadata.conformance.usesGeneralizedTriples || metadata.conformance.usesGeneralizedRdfDatasets
       )
-      .withRdfStar(metadata.conformance.usesRdfStar)
-      .withPhysicalType(
+      .setRdfStar(metadata.conformance.usesRdfStar)
+      .setPhysicalType(
         if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then PhysicalStreamType.TRIPLES
         else PhysicalStreamType.QUADS
       )
       // Add RDF-STaX stream type (logical stream type in RDF-STaX)
-      .withLogicalType(LogicalStreamTypeFactory.fromOntologyIri(
+      .setLogicalType(LogicalStreamTypeUtils.fromOntologyIri(
         metadata.streamTypes.find(!_.isFlat).get.iri
-      ).get)
+      ))
 
     val serializeFlow = (
       if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
         Flow[(DatasetGraph, Long)]
-          .map((ds, _) => ds.getDefaultGraph.asTriples.toSeq.sorted)
+          .map((ds, _) => ds.getDefaultGraph.find.asScala.toSeq.sorted)
           .via(EncoderFlow.builder.graphs(jOpt).flow)
       else
         Flow[(DatasetGraph, Long)]
-          .map((ds, _) => ds.asQuads.toSeq.sorted)
+          .map((ds, _) => ds.find.asScala.toSeq.sorted)
           .via(EncoderFlow.builder.datasetsFromQuads(jOpt).flow)
       )
       .via(JellyIo.toBytesDelimited)

@@ -1,7 +1,7 @@
 package io.github.riverbench.ci_worker
 package util.collection
 
-import eu.ostrzyciel.jelly.convert.jena.riot.JellyLanguage
+import eu.neverblink.jelly.convert.jena.riot.JellyLanguage
 import org.apache.jena.query.Dataset
 import org.apache.jena.rdf.model.Model
 import org.apache.jena.riot.RDFDataMgr
