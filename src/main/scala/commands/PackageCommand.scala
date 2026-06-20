@@ -476,7 +476,7 @@ object PackageCommand extends Command:
     if !metadata.conformance.usesRdfStar then
       val rdfStar = ds.find().asScala
         .flatMap(q => q.getGraph :: q.getSubject :: q.getPredicate :: q.getObject :: Nil)
-        .exists(_.isTripleTerm)
+        .exists(_.isNodeTriple)
       if rdfStar then
         return Some(s"The dataset contains an RDF-star node, " +
           s"but the metadata does not declare the use of RDF-star.")

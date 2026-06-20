@@ -7,7 +7,7 @@ resolvers +=
 lazy val circeV = "0.14.15"
 lazy val jellyV = "3.7.3"
 lazy val jenaV = "5.3.0"
-lazy val pekkoV = "1.1.5"
+lazy val pekkoV = "1.6.0"
 lazy val pekkoHttpV = "1.3.0"
 lazy val pekkoConnV = "1.3.0"
 lazy val rdf4jV = "5.3.1"
@@ -23,11 +23,13 @@ lazy val root = (project in file("."))
       "com.google.guava" % "guava" % "33.6.0-jre",
       "com.ibm.icu" % "icu4j" % icu4jV,
       "eu.neverblink.jelly" %% "jelly-pekko-stream" % jellyV,
-      "eu.neverblink.jelly" % "jelly-jena" % jellyV,
+      // Jelly-JVM >= 3.4.1 includes Jena 5.6.x as a dependency, we must exclude it, because
+      // we use Jena 5.3.0.
+      ("eu.neverblink.jelly" % "jelly-jena" % jellyV).excludeAll(ExclusionRule("org.apache.jena")),
       "io.circe" %% "circe-core" % circeV,
       "io.circe" %% "circe-generic" % circeV,
       "io.circe" %% "circe-parser" % circeV,
-      "org.apache.commons" % "commons-compress" % "1.27.1",
+      "org.apache.commons" % "commons-compress" % "1.28.0",
       "org.apache.jena" % "jena-core" % jenaV,
       "org.apache.jena" % "jena-arq" % jenaV,
       "org.apache.jena" % "jena-shacl" % jenaV,
