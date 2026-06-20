@@ -170,7 +170,8 @@ object DatasetDocGenCommand extends Command:
         |### Download links
         |
         |The dataset is published in a few size variants, each containing a specific number of stream elements.
-        |For each size, there are three distribution types available: flat (just an N-Triples/N-Quads file),
+        |For each size, there are three distribution types available: flat
+        |(an N-Triples/N-Quads file in the [RDF Message Log format](https://w3c-cg.github.io/rsp/spec/messages)),
         |streaming (a .tar.gz archive with Turtle/TriG files, one file per stream element),
         |and [Jelly](https://w3id.org/jelly) (a native binary format for streaming RDF).
         |See the [documentation](../../documentation/dataset-release-format.md) for more details.
