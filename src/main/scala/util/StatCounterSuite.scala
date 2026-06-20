@@ -115,7 +115,7 @@ class StatCounterSuite(val size: Long):
     // Find triples recursively – needed for RDF-star
     def getTriples(t: Triple): List[Triple] =
       t +: (t.getSubject :: t.getPredicate :: t.getObject :: Nil)
-        .filter(_.isTripleTerm)
+        .filter(_.isNodeTriple)
         .flatMap(n => getTriples(n.getTriple))
 
     val allNodes = ds.find().asScala.flatMap(t => {
@@ -148,7 +148,7 @@ class StatCounterSuite(val size: Long):
           datatypes += n.getLiteralDatatypeURI
         else
           simpleLiterals += n.getLiteralLexicalForm
-      else if n.isTripleTerm then
+      else if n.isNodeTriple then
         // isomorphism in RDF-star is a pain...
         quotedTripleCount += 1
     })
