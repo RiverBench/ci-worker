@@ -104,7 +104,7 @@ object DegreeDistributionsCommand extends Command:
       counter.value += 1
     
     val statementSource: Source[Triple | Quad, NotUsed] = Source.futureSource(response.map(_.entity.dataBytes))
-      .via(Compression.gunzip())
+      .via(Compression.gzipDecompress())
       .toMat(StreamConverters.asInputStream())(Keep.right)
       .mapMaterializedValue(JellyIo.fromIoStream)
       .run()

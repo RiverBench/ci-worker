@@ -1,0 +1,19 @@
+name: PR check
+
+on:
+  pull_request:
+    branches: ['main']
+
+jobs:
+  docker-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Build Docker image
+        run: docker build -t ci-worker-smoke .
+
+      - name: Run self-test in Docker
+        run: docker run --rm ci-worker-smoke ci-worker self-test

@@ -1,5 +1,4 @@
-# GraalVM CE 22.3.3-b1 Java 17, Scala 3.3.3, SBT 1.9.9
-FROM sbtscala/scala-sbt:graalvm-ce-22.3.3-b1-java17_1.9.9_3.3.3 as builder
+FROM sbtscala/scala-sbt:eclipse-temurin-25.0.3_9_1.12.12_3.8.4 AS builder
 
 # Copy the project sources
 COPY . /app
@@ -9,11 +8,11 @@ WORKDIR /app
 RUN sbt assembly
 
 # Create the final image
-FROM eclipse-temurin:19-jre-jammy
-MAINTAINER "Piotr Sowiński <piotr.sowinski@ibspan.waw.pl>"
+FROM eclipse-temurin:25-jre-noble
+LABEL maintainer="Piotr Sowiński <piotr@neverblink.eu>"
 
-RUN apt update && \
-    apt install -y git wget && \
+RUN apt-get update && \
+    apt-get install -y git wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy the executable jar
