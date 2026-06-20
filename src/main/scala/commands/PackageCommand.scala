@@ -328,6 +328,12 @@ object PackageCommand extends Command:
     }
     StreamUtil.broadcastSink(sinks)
 
+  /**
+   * RDF Messages delimiter.
+   * https://w3c-cg.github.io/rsp/spec/messages#message-delimiter
+   */
+  private val messageDelimiter = "MESSAGE\n".getBytes
+
   private def packageFlatSerializeFlow(metadata: MetadataInfo): Flow[(DatasetGraph, Long), ByteString, NotUsed] =
     Flow[(DatasetGraph, Long)]
       .map((ds, _) => ds.find().asScala.toSeq.sorted)
@@ -341,9 +347,13 @@ object PackageCommand extends Command:
           val writer = StreamRDFWriter.getWriterStream(os, Lang.NQUADS)
           quads.foreach(q => writer.quad(q))
           writer.finish()
+        os.write(messageDelimiter)
         os.toByteArray
       })
       .map(ByteString.fromArrayUnsafe)
+      // RDF Messages version announcement
+      // https://w3c-cg.github.io/rsp/spec/messages#version-announcement
+      .prepend(Source.single(ByteString("VERSION \"1.1-messages\"\n")))
 
   /**
    * Creates a sink that writes the data to flat files

@@ -19,6 +19,8 @@ case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1:
 
     dType match
       case DistType.Flat =>
+        // Flat files using the RDF Message Log format:
+        // https://w3c-cg.github.io/rsp/spec/messages#turtle
         if mi.streamTypes.exists(_.elementType == ElementType.Triple) then
           distRes.addProperty(RdfUtil.dcatMediaType, "application/n-triples")
         else

@@ -3,6 +3,8 @@ CI worker for processing RiverBench datasets and other repositories.
 
 Please file issues, bugs, and other requests in the **[main issue tracker](https://github.com/RiverBench/RiverBench/issues)**.
 
+This project uses Scala Next (3.8.4) and JDK 25.
+
 ## Usage
 In the container, use `ci-worker <args>` to run the worker.
 
