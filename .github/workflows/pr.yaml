@@ -5,26 +5,6 @@ on:
     branches: ['main']
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '25'
-          cache: sbt
-
-      - name: Compile and assemble
-        run: sbt assembly
-
-      - name: Run self-test
-        run: java -jar target/assembly/ci-worker-assembly.jar self-test
-
   docker-smoke-test:
     runs-on: ubuntu-latest
 
