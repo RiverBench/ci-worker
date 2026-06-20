@@ -1,17 +1,17 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.7.1"
+ThisBuild / scalaVersion := "3.8.4"
 
 resolvers +=
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
 
-lazy val circeV = "0.14.14"
-lazy val jellyV = "3.4.0"
+lazy val circeV = "0.14.15"
+lazy val jellyV = "3.7.3"
 lazy val jenaV = "5.3.0"
 lazy val pekkoV = "1.1.5"
-lazy val pekkoHttpV = "1.2.0"
-lazy val pekkoConnV = "1.1.0"
-lazy val rdf4jV = "5.1.4"
-lazy val icu4jV = "77.1"
+lazy val pekkoHttpV = "1.3.0"
+lazy val pekkoConnV = "1.3.0"
+lazy val rdf4jV = "5.3.1"
+lazy val icu4jV = "78.3"
 
 lazy val root = (project in file("."))
   .settings(
@@ -20,7 +20,7 @@ lazy val root = (project in file("."))
 
     // Scala 3 or not Scala at all
     libraryDependencies ++= Seq(
-      "com.google.guava" % "guava" % "33.4.8-jre",
+      "com.google.guava" % "guava" % "33.6.0-jre",
       "com.ibm.icu" % "icu4j" % icu4jV,
       "eu.neverblink.jelly" %% "jelly-pekko-stream" % jellyV,
       "eu.neverblink.jelly" % "jelly-jena" % jellyV,
@@ -40,8 +40,7 @@ lazy val root = (project in file("."))
       "org.eclipse.rdf4j" % "rdf4j-model" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % rdf4jV,
       "org.eclipse.rdf4j" % "rdf4j-rio-trig" % rdf4jV,
-      // datasketches 8 requires Java 21 it seems, so we use 7 for now
-      "org.apache.datasketches" % "datasketches-java" % "7.0.1",
+      "org.apache.datasketches" % "datasketches-java" % "9.0.0",
     ),
 
     // Discard module-info.class files

@@ -41,7 +41,7 @@ object FileHelper:
     // Unfortunately, Pekko untar stage is glitchy with large archives, so we have to
     // use the non-reactive Apache Commons implementation instead.
     val tarIs = source
-      .via(Compression.gunzip())
+      .via(Compression.gzipDecompress())
       .toMat(StreamConverters.asInputStream())(Keep.right)
       .mapMaterializedValue(bytesIs => TarArchiveInputStream(bytesIs))
       .run()

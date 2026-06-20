@@ -18,6 +18,7 @@ import org.apache.jena.vocabulary.*
 import java.io.FileOutputStream
 import java.nio.file.Path
 import java.util
+import scala.annotation.nowarn
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
@@ -69,6 +70,7 @@ object JsonLdEmbedding:
    * @param m RDF model
    * @param mdFilePath file name of the original markdown file
    */
+  @nowarn("msg=deprecated")
   def saveEmbed(m: Model, subject: Resource, mdFilePath: Path): Unit =
     val mCopy = translateDcatToSchema(m, subject)
     // val mCopy = ModelFactory.createDefaultModel().add(m)

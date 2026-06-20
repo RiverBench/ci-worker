@@ -35,7 +35,7 @@ object SubjectNodeShape:
     override def findInDs(ds: DatasetGraph) = customInstance match
       case RdfUtil.`yagoTarget` => ds.find(null, null, null, null).asScala
         .map(_.getSubject)
-        .filter(_.isNodeTriple)
+        .filter(_.isTripleTerm)
         .map(_.getTriple.getSubject)
         .toSeq
       case _ => throw new Exception(s"Unknown custom target instance: $customInstance")
