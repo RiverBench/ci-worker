@@ -10,12 +10,18 @@ import org.apache.jena.vocabulary.RDF
 import org.apache.pekko.stream.IOResult
 
 case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1: String):
-  def getLocalId: String = name.split('.').head.toLowerCase.replace('_', '-')
+  /**
+   * Local identifier of the distribution, e.g., "flat-10k" for "flat_10K.nt.gz".
+   * Jelly-RDF 1.2 files ("jelly_10K.2.jelly.gz") get the "jelly12" prefix to not clash with Jelly-RDF 1.1 files.
+   */
+  def getLocalId(dType: DistType): String =
+    val id = name.split('.').head.toLowerCase.replace('_', '-')
+    if dType == DistType.Jelly12 then id.replaceFirst("^jelly-", "jelly12-") else id
 
   def addToRdf(distRes: Resource, mi: MetadataInfo, dType: DistType): Unit =
     distRes.addLiteral(RdfUtil.dcatByteSize, size)
     distRes.addProperty(RdfUtil.dcatCompressFormat, "application/gzip")
-    distRes.addProperty(RdfUtil.dctermsIdentifier, getLocalId)
+    distRes.addProperty(RdfUtil.dctermsIdentifier, getLocalId(dType))
 
     dType match
       case DistType.Flat =>
@@ -31,7 +37,7 @@ case class SaveResult(io: IOResult, name: String, size: Long, md5: String, sha1:
           distRes.addProperty(RdfUtil.dcatMediaType, "text/turtle")
         else
           distRes.addProperty(RdfUtil.dcatMediaType, "application/trig")
-      case DistType.Jelly =>
+      case DistType.Jelly | DistType.Jelly12 =>
         distRes.addProperty(RdfUtil.dcatMediaType, JellyConstants.JELLY_CONTENT_TYPE)
 
     val md5Checksum = distRes.getModel.createResource(RdfUtil.newAnonId(md5.getBytes))

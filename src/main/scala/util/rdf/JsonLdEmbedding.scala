@@ -3,14 +3,13 @@ package util.rdf
 
 import com.apicatalog.jsonld.*
 import com.apicatalog.jsonld.api.FramingApi
-import com.apicatalog.jsonld.document.{JsonDocument, RdfDocument}
+import com.apicatalog.jsonld.document.JsonDocument
 import com.apicatalog.jsonld.lang.Keywords
-import com.apicatalog.jsonld.processor.FromRdfProcessor
 import jakarta.json.Json
 import jakarta.json.stream.JsonGenerator
 import org.apache.jena.datatypes.xsd.XSDDatatype
 import org.apache.jena.rdf.model.{Model, ModelFactory, Resource}
-import org.apache.jena.riot.system.JenaTitanium
+import org.apache.jena.riot.system.jsonld.JenaToTitanium
 import org.apache.jena.sparql.core.DatasetGraphFactory
 import org.apache.jena.sparql.vocabulary.FOAF
 import org.apache.jena.vocabulary.*
@@ -79,12 +78,11 @@ object JsonLdEmbedding:
     val fName = mdFilePath.getFileName.toString.replace(".md", "_embed.jsonld")
     val outPath = mdFilePath.getParent.resolve(fName)
     val dsg = DatasetGraphFactory.create(mCopy.getGraph)
-    val doc = RdfDocument.of(JenaTitanium.convert(dsg))
     val options = JsonLdOptions()
     options.setEmbed(JsonLdEmbed.ALWAYS)
 
     // Convert the RDF to JSON
-    val array = FromRdfProcessor.fromRdf(doc, options)
+    val array = JenaToTitanium.convert(dsg, options)
     val context = Json.createObjectBuilder
       .add("@vocab", "https://schema.org/")
       .build

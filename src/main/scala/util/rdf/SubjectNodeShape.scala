@@ -33,9 +33,11 @@ object SubjectNodeShape:
 
   case class TargetCustom(customInstance: Resource) extends SubjectNodeShape:
     override def findInDs(ds: DatasetGraph) = customInstance match
+      // Subject of any triple term. In RDF 1.2, triple terms are only allowed in the object position,
+      // so the RDF-star annotations in YAGO are parsed as reifiers: _:r rdf:reifies <<( s p o )>>
       case RdfUtil.`yagoTarget` => ds.find(null, null, null, null).asScala
-        .map(_.getSubject)
-        .filter(_.isNodeTriple)
+        .map(_.getObject)
+        .filter(_.isTripleTerm)
         .map(_.getTriple.getSubject)
         .toSeq
       case _ => throw new Exception(s"Unknown custom target instance: $customInstance")

@@ -64,7 +64,8 @@ case class MetadataInfo(
       if size == elementCount then
         0
       else
-        (elementCount.toString.length - size.toString.length + 1) * 3
+        // Multiplied by the number of distribution types, so that weights don't clash
+        (elementCount.toString.length - size.toString.length + 1) * 4
       )
     distRes.addLiteral(RdfUtil.hasDocWeight, weight)
 
@@ -97,6 +98,10 @@ case class MetadataInfo(
         addStreamTypes(streamTypes)
         distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.jellyDistribution)
         distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString Jelly distribution")
+      case DistType.Jelly12 =>
+        addStreamTypes(streamTypes)
+        distRes.addProperty(RdfUtil.hasDistributionType, RdfUtil.jelly12Distribution)
+        distRes.addProperty(RdfUtil.dctermsTitle, s"$sizeString Jelly-RDF 1.2 distribution")
 
     distRes.addLiteral(RdfUtil.hasStreamElementCount, size)
 

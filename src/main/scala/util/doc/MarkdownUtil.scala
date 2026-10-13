@@ -41,11 +41,12 @@ object MarkdownUtil:
 
   def formatMetadataLinks(baseUrl: String, suffix: String = ""): String =
     f"**[Turtle]($baseUrl.ttl$suffix)**, **[N-Triples]($baseUrl.nt$suffix)**, " +
-      f"**[RDF/XML]($baseUrl.rdf$suffix)**, **[Jelly]($baseUrl.jelly$suffix)**"
+      f"**[RDF/XML]($baseUrl.rdf$suffix)**, **[Jelly]($baseUrl.jelly$suffix)**, " +
+      f"**[Jelly 1.2]($baseUrl.2.jelly$suffix)**"
     
   def formatDatasetMetadataLinks(baseUrl: String, suffix: String = ""): String =
     f"**[TriG]($baseUrl.trig$suffix)**, **[N-Quads]($baseUrl.nq$suffix)**, " +
-      f"**[Jelly]($baseUrl.jelly$suffix)**"
+      f"**[Jelly]($baseUrl.jelly$suffix)**, **[Jelly 1.2]($baseUrl.2.jelly$suffix)**"
 
   def formatPurlLink(purl: String): String =
     f"<abbr title=\"The permanent URL is guaranteed to never change and also allows for retrieving machine-readable " +

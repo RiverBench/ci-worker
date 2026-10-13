@@ -1,16 +1,16 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 
 resolvers +=
-  "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots"
+  "Sonatype Central Snapshots" at "https://central.sonatype.com/repository/maven-snapshots/"
 
 lazy val circeV = "0.14.15"
-lazy val jellyV = "3.7.3"
-lazy val jenaV = "5.3.0"
+lazy val jellyV = "3.7.3+85-45406b30-SNAPSHOT"
+lazy val jenaV = "6.2.0"
 lazy val pekkoV = "1.6.0"
 lazy val pekkoHttpV = "1.3.0"
 lazy val pekkoConnV = "1.3.0"
-lazy val rdf4jV = "5.3.1"
+lazy val rdf4jV = "6.1.0"
 lazy val icu4jV = "78.3"
 
 lazy val root = (project in file("."))
@@ -23,9 +23,7 @@ lazy val root = (project in file("."))
       "com.google.guava" % "guava" % "33.6.0-jre",
       "com.ibm.icu" % "icu4j" % icu4jV,
       "eu.neverblink.jelly" %% "jelly-pekko-stream" % jellyV,
-      // Jelly-JVM >= 3.4.1 includes Jena 5.6.x as a dependency, we must exclude it, because
-      // we use Jena 5.3.0.
-      ("eu.neverblink.jelly" % "jelly-jena" % jellyV).excludeAll(ExclusionRule("org.apache.jena")),
+      "eu.neverblink.jelly" % "jelly-jena" % jellyV,
       "io.circe" %% "circe-core" % circeV,
       "io.circe" %% "circe-generic" % circeV,
       "io.circe" %% "circe-parser" % circeV,

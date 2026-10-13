@@ -8,7 +8,6 @@ import util.rdf.*
 import util.releases.*
 import util.doc.MarkdownUtil
 
-import eu.neverblink.jelly.convert.jena.riot.JellyFormat
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.rdf.model.{Model, ModelFactory, Property, Resource}
 import org.apache.jena.riot.RDFDataMgr
@@ -64,7 +63,7 @@ object PackageCategoryCommand extends Command:
       val dumpModel = RdfUtil.mergeModels(allModels)
       dataset.setDefaultModel(dumpModel)
       val dumpOutFile = outDir.resolve(f"dump.jelly").toFile
-      RDFDataMgr.write(new FileOutputStream(dumpOutFile), dataset, JellyFormat.JELLY_BIG_STRICT)
+      RDFDataMgr.write(new FileOutputStream(dumpOutFile), dataset, Constants.jelly11Format)
     })
   } flatMap { future => future }
 
@@ -320,13 +319,13 @@ object PackageCategoryCommand extends Command:
       profileTableSb.append(
         f"""!!! note
           |
-          |    There are two available types of distributions for this profile: plain flat files, and the universal distribution in the Jelly format. See the [documentation](../documentation/dataset-release-format.md) for details.
+          |    There are three available types of distributions for this profile: plain flat files, and the universal distributions in the Jelly-RDF 1.1 and Jelly-RDF 1.2 formats. See the [documentation](../documentation/dataset-release-format.md) for details.
           |
           |### Plain flat distributions ($distFormats)
           |
           |""".stripMargin)
       // hack: both .nt and .nq contain ".n"...
-      writeTable(".n")
+      writeTable(_.contains(".n"))
     else
       val distFormats = if name.contains("graphs") then "Turtle"
       else if name.contains("datasets") then "TriG"
@@ -334,12 +333,12 @@ object PackageCategoryCommand extends Command:
       profileTableSb.append(
         f"""!!! note
           |
-          |    There are two available types of distributions for this profile: plain streaming packages, and the universal distribution in the Jelly format. See the [documentation](../documentation/dataset-release-format.md) for details.
+          |    There are three available types of distributions for this profile: plain streaming packages, and the universal distributions in the Jelly-RDF 1.1 and Jelly-RDF 1.2 formats. See the [documentation](../documentation/dataset-release-format.md) for details.
           |
           |### Plain streaming distributions ($distFormats)
           |
           |""".stripMargin)
-      writeTable("tar.gz")
+      writeTable(_.endsWith(".tar.gz"))
 
     profileTableSb.append(
       """
@@ -347,9 +346,17 @@ object PackageCategoryCommand extends Command:
         |### Jelly distributions
         |
         |""".stripMargin)
-    writeTable("jelly.gz")
+    writeTable(url => url.endsWith(".jelly.gz") && !url.endsWith(".2.jelly.gz"))
 
-    def writeTable(filterBy: String): Unit =
+    profileTableSb.append(
+      """
+        |
+        |### Jelly-RDF 1.2 distributions
+        |
+        |""".stripMargin)
+    writeTable(_.endsWith(".2.jelly.gz"))
+
+    def writeTable(filterBy: String => Boolean): Unit =
       profileTableSb.append("Dataset")
       for col <- columns do
         profileTableSb.append(f" | ${col._2}")
@@ -361,10 +368,10 @@ object PackageCategoryCommand extends Command:
         for col <- columns do
           val distOption = if col._2 == "Full" then
             // For the "Full" column get the largest available distribution
-            dists.filter(d => d._1.contains(filterBy)).lastOption
+            dists.filter(d => filterBy(d._1)).lastOption
           else
             // Otherwise get the distribution with the matching size
-            dists.filter(d => d._2 == col._1 && d._1.contains(filterBy)).lastOption
+            dists.filter(d => d._2 == col._1 && filterBy(d._1)).lastOption
           distOption match
             case None => profileTableSb.append(" | –")
             case Some((distUrl, distSize, distByteSize, statements)) =>

@@ -1,24 +1,42 @@
 package io.github.riverbench.ci_worker
 package util
 
-import eu.neverblink.jelly.convert.jena.riot.{JellyFormat, JellyLanguage}
-import org.apache.jena.riot.RDFFormat
+import eu.neverblink.jelly.convert.jena.riot.*
+import eu.neverblink.jelly.core.{JellyConstants, JellyOptions}
+import org.apache.jena.riot.{RDFFormat, RDFWriterRegistry}
 
 object Constants:
   // Register Jelly language in Apache Jena
   JellyLanguage.register()
 
+  /**
+   * Jelly-RDF 1.1 format, published in .jelly files.
+   * Jena writes Jelly-RDF 1.2 by default (JellyFormat.JELLY_BIG_STRICT), published in .2.jelly files.
+   */
+  val jelly11Format = RDFFormat(
+    JellyLanguage.JELLY,
+    JellyFormatVariant.builder()
+      .options(JellyOptions.BIG_STRICT.clone().setVersion(JellyConstants.PROTO_VERSION_1_1_X))
+      .build()
+  )
+  RDFWriterRegistry.register(jelly11Format, JellyGraphWriterFactory())
+  RDFWriterRegistry.register(jelly11Format, JellyDatasetWriterFactory())
+
+  val jelly12Format = JellyFormat.JELLY_BIG_STRICT
+
   val outputFormats = Seq(
     ("ttl", RDFFormat.TURTLE_PRETTY),
     ("rdf", RDFFormat.RDFXML_PRETTY),
     ("nt", RDFFormat.NTRIPLES_UTF8),
-    ("jelly", JellyFormat.JELLY_BIG_STRICT),
+    ("jelly", jelly11Format),
+    ("2.jelly", jelly12Format),
   )
 
   val datasetOutputFormats = Seq(
     ("trig", RDFFormat.TRIG_PRETTY),
     ("nq", RDFFormat.NQUADS_UTF8),
-    ("jelly", JellyFormat.JELLY_BIG_STRICT),
+    ("jelly", jelly11Format),
+    ("2.jelly", jelly12Format),
   )
 
   val allowedDocExtensions = Set("md", "jpg", "png", "svg", "jpeg", "bmp", "webp", "gif")

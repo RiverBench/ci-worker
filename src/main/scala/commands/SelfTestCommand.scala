@@ -16,9 +16,7 @@ object SelfTestCommand extends Command:
   def validateArgs(args: Array[String]): Boolean = args.length == 1
 
   def run(args: Array[String]): Future[Unit] = Future {
-    val rioFormats = Seq(
-      rio.RDFFormat.TURTLE, rio.RDFFormat.TRIG, rio.RDFFormat.TURTLESTAR, rio.RDFFormat.TRIGSTAR,
-    )
+    val rioFormats = Seq(rio.RDFFormat.TURTLE, rio.RDFFormat.TRIG)
     for format <- rioFormats do
       rio.Rio.createParser(format)
 

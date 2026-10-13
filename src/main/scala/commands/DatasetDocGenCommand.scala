@@ -170,22 +170,23 @@ object DatasetDocGenCommand extends Command:
         |### Download links
         |
         |The dataset is published in a few size variants, each containing a specific number of stream elements.
-        |For each size, there are three distribution types available: flat
+        |For each size, there are four distribution types available: flat
         |(an N-Triples/N-Quads file in the [RDF Message Log format](https://w3c-cg.github.io/rsp/spec/messages)),
         |streaming (a .tar.gz archive with Turtle/TriG files, one file per stream element),
-        |and [Jelly](https://w3id.org/jelly) (a native binary format for streaming RDF).
+        |and [Jelly](https://w3id.org/jelly) (a native binary format for streaming RDF),
+        |in two versions: Jelly-RDF 1.1 and Jelly-RDF 1.2.
         |See the [documentation](../../documentation/dataset-release-format.md) for more details.
         |
         |""".stripMargin)
-    sb.append("Distribution size | Statements | Flat | Streaming | Jelly\n")
-    sb.append("--- | --: | --: | --: | --:\n")
+    sb.append("Distribution size | Statements | Flat | Streaming | Jelly | Jelly 1.2\n")
+    sb.append("--- | --: | --: | --: | --: | --:\n")
     for row <- rows do
       val dists = data.filter(_._2 == row._2)
       val hover = f"${MarkdownUtil.formatInt(row._5.toString)} stream elements"
       sb.append(f"<abbr title=\"$hover\">${Constants.packageSizeToHuman(row._5, true)}</abbr>")
       sb.append(" | ")
       sb.append(MarkdownUtil.formatInt(row._6.toString))
-      for dType <- Seq("flat", "stream", "jelly") do
+      for dType <- Seq("flat", "stream", "jelly", "jelly12") do
         sb.append(" | ")
         val dist = dists.find(_._1 == dType).get
         sb.append(f"[:octicons-download-24: ${MarkdownUtil.formatSize(dist._4)}](${dist._3})")

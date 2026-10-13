@@ -6,8 +6,8 @@ import util.io.*
 import util.rdf.*
 
 import eu.neverblink.jelly.convert.jena.JenaConverterFactory
-import eu.neverblink.jelly.core.proto.v1.PhysicalStreamType
-import eu.neverblink.jelly.core.JellyOptions
+import eu.neverblink.jelly.core.proto.v1.RdfVersion
+import eu.neverblink.jelly.core.{JellyConstants, JellyOptions}
 import eu.neverblink.jelly.core.utils.LogicalStreamTypeUtils
 import eu.neverblink.jelly.pekko.stream.{EncoderFlow, JellyIo}
 import org.apache.jena.rdf.model.{ModelFactory, Resource}
@@ -39,6 +39,7 @@ object PackageCommand extends Command:
     case object Flat extends DistType(0)
     case object Stream extends DistType(1)
     case object Jelly extends DistType(2)
+    case object Jelly12 extends DistType(3)
 
   private case class PartialResult(size: Long, stats: StatCounterSuite.Result, saveRes: SaveResult, dType: DistType)
 
@@ -64,16 +65,18 @@ object PackageCommand extends Command:
     val sinkStats = Sink.seq[(Long, StatCounterSuite.Result)]
     val sinkStreamPackage = packageStreamSink(metadata, outDir, packages)
     val sinkFlatPackage = packageFlatSink(metadata, outDir, packages)
-    val sinkJellyPackage = packageJellySink(metadata, outDir, packages)
+    val sinkJellyPackage = packageJellySink(metadata, outDir, packages, jelly12 = false)
+    val sinkJelly12Package = packageJellySink(metadata, outDir, packages, jelly12 = true)
     val sinkSampleStream = streamSamplesSink(metadata, outDir)
     val sinkChecks = Sink.ignore
 
     val g = RunnableGraph.fromGraph(
       GraphDSL.createGraph(
-        sinkStats, sinkStreamPackage, sinkFlatPackage, sinkJellyPackage, sinkSampleStream, sinkChecks
-      )((_, _, _, _, _, _))
+        sinkStats, sinkStreamPackage, sinkFlatPackage, sinkJellyPackage, sinkJelly12Package, sinkSampleStream,
+        sinkChecks
+      )((_, _, _, _, _, _, _))
     { implicit builder =>
-      (sStats, sStreamPackage, sFlatPackage, sJellyPackage, sSampleStream, sChecks) =>
+      (sStats, sStreamPackage, sFlatPackage, sJellyPackage, sJelly12Package, sSampleStream, sChecks) =>
       import GraphDSL.Implicits.*
       val in = FileHelper.readArchiveFromFile(sourceArchiveFile)
         .map((name, bytes) => (name, bytes.utf8String))
@@ -83,7 +86,7 @@ object PackageCommand extends Command:
       val parseJenaBuffered = parseJenaFlow
         .zipWithIndex
         .buffer(32, OverflowStrategy.backpressure)
-      val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](6))
+      val dsBroad = builder.add(Broadcast[(DatasetGraph, Long)](7))
       val flatSerialize = packageFlatSerializeFlow(metadata)
       val flatSerializeBroad = builder.add(Broadcast[ByteString](2))
       val statsZip = builder.add(Zip[ByteString, (DatasetGraph, Long)]())
@@ -98,13 +101,17 @@ object PackageCommand extends Command:
       statsZip.out ~> statsFlow(stats).async ~> sStats
       dsBroad ~> sStreamPackage
       dsBroad ~> sJellyPackage
+      dsBroad ~> sJelly12Package
       dsBroad ~> sSampleStream
 
       ClosedShape
-    }).mapMaterializedValue((fStats, fSeqStreamRes, fSeqFlatRes, fSeqJellyRes, fSeqSampleStream, fChecks) => {
+    }).mapMaterializedValue((
+      fStats, fSeqStreamRes, fSeqFlatRes, fSeqJellyRes, fSeqJelly12Res, fSeqSampleStream, fChecks
+    ) => {
       val fStreamRes = Future.sequence(fSeqStreamRes)
       val fFlatRes = Future.sequence(fSeqFlatRes)
       val fJellyRes = Future.sequence(fSeqJellyRes)
+      val fJelly12Res = Future.sequence(fSeqJelly12Res)
       val fSampleStreamRes = Future.sequence(fSeqSampleStream)
       for
         // There is no value returned from the checks sink, but we need to ensure it is run
@@ -113,6 +120,7 @@ object PackageCommand extends Command:
         streamRes <- fStreamRes
         flatRes <- fFlatRes
         jellyRes <- fJellyRes
+        jelly12Res <- fJelly12Res
         // Ignore the results from sample streams
         _ <- fSampleStreamRes
       yield
@@ -122,7 +130,9 @@ object PackageCommand extends Command:
           PartialResult(num, stat, flatR, DistType.Flat)
         val jr = for ((num, stat), jellyR) <- stats.zip(jellyRes) yield
           PartialResult(num, stat, jellyR, DistType.Jelly)
-        sr ++ fr ++ jr
+        val j12r = for ((num, stat), jelly12R) <- stats.zip(jelly12Res) yield
+          PartialResult(num, stat, jelly12R, DistType.Jelly12)
+        sr ++ fr ++ jr ++ j12r
     })
 
     val m = ModelFactory.createDefaultModel()
@@ -165,7 +175,7 @@ object PackageCommand extends Command:
   private def distributionToRdf(datasetRes: Resource, statRes: Resource, mi: MetadataInfo, pResult: PartialResult):
   Unit =
     val m = datasetRes.getModel
-    val distRes = m.createResource(RdfUtil.tempDataset.getURI + "#" + pResult.saveRes.getLocalId)
+    val distRes = m.createResource(RdfUtil.tempDataset.getURI + "#" + pResult.saveRes.getLocalId(pResult.dType))
     datasetRes.addProperty(RdfUtil.dcatDistribution, distRes)
     mi.addToRdf(distRes, pResult.size, pResult.dType)
     distRes.addProperty(RdfUtil.hasFileName, pResult.saveRes.name)
@@ -237,10 +247,8 @@ object PackageCommand extends Command:
    */
   private def checkRdf4jFlow(mi: MetadataInfo): Flow[(TarArchiveMetadata, String), Unit, NotUsed] =
     val format = mi.streamTypes.find(_.isFlat).get.elementType match
-      case ElementType.Triple =>
-        if mi.conformance.usesRdfStar then rio.RDFFormat.TURTLESTAR else rio.RDFFormat.TURTLE
-      case _ =>
-        if mi.conformance.usesRdfStar then rio.RDFFormat.TRIGSTAR else rio.RDFFormat.TRIG
+      case ElementType.Triple => rio.RDFFormat.TURTLE
+      case _ => rio.RDFFormat.TRIG
 
     Flow[(TarArchiveMetadata, String)]
       .map((_, data) => {
@@ -351,9 +359,6 @@ object PackageCommand extends Command:
         os.toByteArray
       })
       .map(ByteString.fromArrayUnsafe)
-      // RDF Messages version announcement
-      // https://w3c-cg.github.io/rsp/spec/messages#version-announcement
-      .prepend(Source.single(ByteString("VERSION \"1.1-messages\"\n")))
 
   /**
    * Creates a sink that writes the data to flat files
@@ -365,9 +370,17 @@ object PackageCommand extends Command:
   private def packageFlatSink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
   Sink[ByteString, Seq[Future[SaveResult]]] =
     val fileExtension = if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then "nt" else "nq"
+    // RDF Messages version announcement
+    // https://w3c-cg.github.io/rsp/spec/messages#version-announcement
+    val versionAnnouncement = ByteString(
+      if metadata.conformance.usesRdfStar then "VERSION \"1.2-messages\"\n"
+      else "VERSION \"1.1-messages\"\n"
+    )
     val sinks = packages.map { case (size, name) =>
       Flow[ByteString]
         .take(size)
+        // Prepend after take(), so that the announcement is not counted as a stream element
+        .prepend(Source.single(versionAnnouncement))
         .toMat(FileHelper.writeCompressed(outDir.resolve(s"flat_$name.$fileExtension.gz")))(Keep.right)
     }
     Flow[ByteString]
@@ -375,33 +388,42 @@ object PackageCommand extends Command:
 
   /**
    * Creates a sink that writes the data to Jelly-format files.
+   *
+   * Jelly-RDF 1.0/1.1 files (.jelly) have one stream element per frame, with the RDF-STaX logical stream type.
+   * Jelly-RDF 1.2 files (.2.jelly) are streams of RDF Messages, with one message (and frame) per stream element.
    * @param metadata the metadata of the dataset
    * @param outDir the directory to write the files to
    * @param packages the packages to write (size, name)
+   * @param jelly12 whether to write Jelly-RDF 1.2 instead of 1.0/1.1
    * @return the sink
    */
-  private def packageJellySink(metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)]):
-  Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
+  private def packageJellySink(
+    metadata: MetadataInfo, outDir: Path, packages: Seq[(Long, String)], jelly12: Boolean
+  ): Sink[(DatasetGraph, Long), Seq[Future[SaveResult]]] =
+    val extension = if jelly12 then "2.jelly" else "jelly"
     val sinks = packages.map { case (size, name) =>
       Flow[ByteString]
         .take(size)
-        .toMat(FileHelper.writeCompressed(outDir.resolve(s"jelly_$name.jelly.gz")))(Keep.right)
+        .toMat(FileHelper.writeCompressed(outDir.resolve(s"jelly_$name.$extension.gz")))(Keep.right)
     }
 
-    // Large target message size to avoid splitting
-    val jOpt = JellyOptions.BIG_STRICT.clone()
-      .setGeneralizedStatements(
-        metadata.conformance.usesGeneralizedTriples || metadata.conformance.usesGeneralizedRdfDatasets
-      )
-      .setRdfStar(metadata.conformance.usesRdfStar)
-      .setPhysicalType(
-        if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then PhysicalStreamType.TRIPLES
-        else PhysicalStreamType.QUADS
-      )
-      // Add RDF-STaX stream type (logical stream type in RDF-STaX)
-      .setLogicalType(LogicalStreamTypeUtils.fromOntologyIri(
-        metadata.streamTypes.find(!_.isFlat).get.iri
-      ))
+    // The physical type (and the logical type or stream type) is set by the encoder flow
+    val jOpt = if jelly12 then
+      JellyOptions.BIG_STRICT.clone()
+        .setRdfVersion(
+          if metadata.conformance.usesRdfStar then RdfVersion.RDF_VERSION_1_2 else RdfVersion.RDF_VERSION_1_1
+        )
+    else
+      JellyOptions.BIG_STRICT.clone()
+        .setVersion(JellyConstants.PROTO_VERSION_1_1_X)
+        .setGeneralizedStatements(
+          metadata.conformance.usesGeneralizedTriples || metadata.conformance.usesGeneralizedRdfDatasets
+        )
+        .setRdfStar(metadata.conformance.usesRdfStar)
+        // Add RDF-STaX stream type (logical stream type in RDF-STaX)
+        .setLogicalType(LogicalStreamTypeUtils.fromOntologyIri(
+          metadata.streamTypes.find(!_.isFlat).get.iri
+        ))
 
     val serializeFlow = (
       if metadata.streamTypes.exists(_.elementType == ElementType.Triple) then
@@ -476,7 +498,7 @@ object PackageCommand extends Command:
     if !metadata.conformance.usesRdfStar then
       val rdfStar = ds.find().asScala
         .flatMap(q => q.getGraph :: q.getSubject :: q.getPredicate :: q.getObject :: Nil)
-        .exists(_.isNodeTriple)
+        .exists(_.isTripleTerm)
       if rdfStar then
         return Some(s"The dataset contains an RDF-star node, " +
           s"but the metadata does not declare the use of RDF-star.")

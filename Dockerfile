@@ -1,4 +1,4 @@
-FROM sbtscala/scala-sbt:eclipse-temurin-25.0.3_9_1.12.12_3.8.4 AS builder
+FROM sbtscala/scala-sbt:eclipse-temurin-25.0.4_7_1.13.0_3.9.0 AS builder
 
 # Copy the project sources
 COPY . /app

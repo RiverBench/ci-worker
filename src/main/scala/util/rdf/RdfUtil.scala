@@ -142,6 +142,7 @@ object RdfUtil:
   val streamDistribution = m.createResource(pRb + "streamDistribution")
   val flatDistribution = m.createResource(pRb + "flatDistribution")
   val jellyDistribution = m.createResource(pRb + "jellyDistribution")
+  val jelly12Distribution = m.createResource(pRb + "jelly12Distribution")
   val yagoTarget = m.createResource(pRb + "yagoTarget")
 
   val spdxChecksumAlgorithmSha1 = m.createResource(pSpdx + "checksumAlgorithm_sha1")
